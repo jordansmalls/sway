@@ -1,7 +1,15 @@
 import express from "express"
-
+import config from "./config/config";
+import { logger } from "./config/logger";
+import cors from "cors"
 
 export const app = express();
+
+
+
+app.use(express.json())
+app.use(logger)
+app.use(cors(config.cors_options))
 
 
 app.get("/", (req, res) => {
