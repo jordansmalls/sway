@@ -8,8 +8,10 @@ import {
     logoutUserAccount
  } from "../controllers/auth.controller";
 import { protect } from "../middlewares/auth.middleware";
+import generalLimiter from "../utils/general.rate.limiter";
 
  const router = express.Router();
+ router.use(generalLimiter)
 
 
 /**

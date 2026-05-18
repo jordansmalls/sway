@@ -6,9 +6,10 @@ import {
     getUserProfile,
     deleteAccount
 } from "../controllers/user.controller"
+import generalLimiter from "../utils/general.rate.limiter";
 
 const router = express.Router()
-
+router.use(generalLimiter)
 
 /**
  * @desc    Update user profile
