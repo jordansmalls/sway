@@ -388,7 +388,7 @@ GET /api/auth/email/:email
 
 #### Email Taken
 
-**Status:** `400 Bad Request`
+**Status:** `200 OK`
 
 ```json
 {
