@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+
+# Build and Distribution
+dist/
+build/
+
+# Environment and Secrets
+.env
+*.env
+.env.*
+
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# Database/Storage
+data/
+db/
+
+# Version Control
+.git/
+.svn/
+.hg/
+
+# IDE and System Files
+.vscode/
+.idea/
+.DS_Store
+
+# Coverage reports
+coverage/
+
+.cursor
