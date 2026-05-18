@@ -271,7 +271,7 @@ export const checkEmailAvailability = async (req, res) => {
         const taken = await User.findOne({ email })
 
         if(taken) {
-            return res.status(400).json({
+            return res.status(200).json({
                 success: true,
                 taken: true,
                 message: "Email is already in use."
