@@ -563,3 +563,32 @@ None
   "message": "We're having trouble logging you out, please try again."
 }
 ```
+
+# User Endpoints
+
+```js
+/**
+ * @desc    Update user profile
+ * @route   PUT /api/users/profile
+ * @access  PRIVATE
+ */
+
+/**
+ * @desc    Update user password
+ * @route   POST /api/users/password
+ * @access  PRIVATE
+ */
+
+
+/**
+ * @desc    Get current user profile
+ * @route   GET /api/users/me
+ * @access  PRIVATE
+ */
+
+/**
+ * @desc    Delete user account (toggle active prop)
+ * @route   DELETE /api/users/profile
+ * @access
+ */
+```
