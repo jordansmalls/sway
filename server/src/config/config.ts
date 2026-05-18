@@ -15,6 +15,10 @@ interface AppConfig {
     mongo_uri: string | undefined;
     node_env: string | undefined;
     cors_options: object | undefined;
+    spotify_client_id: string | undefined;
+    spotify_client_secret: string | undefined;
+    frontend_url: string | undefined;
+    domain: string | undefined;
 }
 
 const config: AppConfig = {
@@ -23,6 +27,10 @@ const config: AppConfig = {
     mongo_uri: process.env.MONGO_URI,
     node_env: process.env.NODE_ENV,
     cors_options: corsOptions,
+    spotify_client_id: process.env.SPOTIFY_CLIENT_ID,
+    spotify_client_secret: process.env.SPOTIFY_CLIENT_SECRET,
+    frontend_url: process.env.FRONTEND_URL,
+    domain: process.env.DOMAIN,
 };
 
 export default config;
