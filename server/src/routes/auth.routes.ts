@@ -7,6 +7,7 @@ import {
     loginUserAccount,
     logoutUserAccount
  } from "../controllers/auth.controller";
+import { protect } from "../middlewares/auth.middleware";
 
  const router = express.Router();
 
@@ -25,7 +26,7 @@ router.post("/", createUserAccount)
  * @route   POST /api/auth/username
  * @access  PRIVATE
  */
-router.post("/username", createUsername)
+router.post("/username", protect, createUsername)
 
 
 /**
