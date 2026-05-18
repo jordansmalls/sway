@@ -3,8 +3,7 @@ dotenv.config();
 
 const corsOptions = {
     //TODO: update w/ frontend url when deploying production
-    origin:
-        process.env.NODE_ENV === "production" ? "https://sway.onl" : "http://localhost:3000",
+    origin: process.env.NODE_ENV === "production" ? "https://sway.onl" : "http://localhost:3000",
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
     allowedHeaders: ["Content-Type", "Authorization"],

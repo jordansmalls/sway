@@ -1,24 +1,20 @@
-import express from "express"
+import express from "express";
 import config from "./config/config";
 import { logger } from "./config/logger";
-import cors from "cors"
+import cors from "cors";
 
 export const app = express();
 
-
-
-app.use(express.json())
-app.use(logger)
-app.use(cors(config.cors_options))
-
+app.use(express.json());
+app.use(logger);
+app.use(cors(config.cors_options));
 
 app.get("/", (req, res) => {
     return res.status(200).json({
         success: true,
-        message: "Hello from Bun!"
-    })
-})
-
+        message: "Hello from Bun!",
+    });
+});
 
 app.get("/health", (req, res) => {
     return res.status(200).json({
@@ -28,8 +24,4 @@ app.get("/health", (req, res) => {
         memory: process.memoryUsage(),
         version: process.version,
     });
-})
-
-
-
-
+});
