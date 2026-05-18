@@ -6,6 +6,7 @@ import cookieParser from "cookie-parser"
 
 
 import authRouter from "./routes/auth.routes"
+import userRouter from "./routes/user.routes"
 
 
 export const app = express();
@@ -17,6 +18,7 @@ app.use(cors(config.cors_options));
 
 
 app.use("/api/auth", authRouter)
+app.use("/api/users", userRouter)
 
 app.get("/", (req, res) => {
     return res.status(200).json({
