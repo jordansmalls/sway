@@ -6,7 +6,7 @@ import {
     getUserProfile,
     deleteAccount
 } from "../controllers/user.controller"
-import generalLimiter from "../utils/general.rate.limiter";
+import generalLimiter from "../middlewares/rate-limiters/general.limiter";
 
 const router = express.Router()
 router.use(generalLimiter)

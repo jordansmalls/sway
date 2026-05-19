@@ -8,7 +8,7 @@ import {
     logoutUserAccount
  } from "../controllers/auth.controller";
 import { protect } from "../middlewares/auth.middleware";
-import generalLimiter from "../utils/general.rate.limiter";
+import generalLimiter from "../middlewares/rate-limiters/general.limiter";
 
  const router = express.Router();
  router.use(generalLimiter)

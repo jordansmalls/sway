@@ -5,6 +5,7 @@ import {
     deleteRoom,
     fetchRoomDetails,
  } from "../controllers/room.controller";
+ import generalLimiter from "../middlewares/rate-limiters/general.limiter";
 
 const router = express.Router()
 
@@ -13,7 +14,7 @@ const router = express.Router()
  * @route   POST /api/rooms
  * @access  PRIVATE
  */
-router.post("/", protect, createRoom)
+router.post("/", protect, generalLimiter, createRoom)
 
 
 /**
