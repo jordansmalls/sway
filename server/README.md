@@ -16,6 +16,10 @@ A robust web server and API built with Bun, Express, and MongoDB.
 - jsonwebtoken
 - dotenv
 - bcryptjs
+- axios
+- cookie-parser
+- express-rate-limit
+- qrcode
 
 ## Development Dependencies
 
@@ -742,3 +746,163 @@ res.status(500).json({
         message: "We're having trouble, please try again."
        })
 ```
+
+
+
+
+# Spotify Endpoints
+
+Search Spotify for Tracks
+
+```js
+/**
+ * @desc    Search Spotify for Tracks
+ * @route   GET /api/spotify/search
+ * @access  PUBLIC
+ */
+```
+
+on success:
+
+```js
+const tracks = response.data.tracks.items.map((track) => ({
+            id: track.id,
+            name: track.name,
+            artist: track.artists.map((artist) => artist.name).join(", "),
+            duration_ms: track.duration_ms,
+            albumImage: track.album.images[track.album.images.length - 1]?.url,
+            uri: track.uri,
+        }));
+
+        return res.status(200).json({
+            success: true,
+            tracks
+            });
+```
+
+on error:
+
+```js
+res.status(400).json({
+                success: false,
+                error: "Invalid Credentials: search query missing",
+                message: "Search Query is required.",
+            })
+```
+OR
+
+```js
+res.status(500).json({
+            success: false,
+            error: "Internal Server Error",
+            message: "We're having trouble, please try again."
+        })
+```
+
+
+
+Fetch Track Details
+
+```js
+/**
+ * @desc    Fetch Track Details
+ * @route   GET /api/spotify/tracks/:id
+ * @access  PUBLIC
+ */
+```
+
+on success:
+
+```js
+const track = {
+            id: response.data.id,
+            name: response.data.name,
+            artist: response.data.artists.map((artist) => artist.name).join(", "),
+            album: response.data.album.name,
+            duration_ms: response.data.duration_ms,
+            popularity: response.data.popularity,
+            albumImage: response.data.album.images[0]?.url,
+            previewUrl: response.data.preview_url,
+            uri: response.data.uri,
+        };
+        return res.status(200).json({
+            success: true,
+            track
+        })
+```
+
+on error:
+
+```js
+res.status(400).json({
+                success: false,
+                error: "Invalid Credentials: track id missing",
+                message: "Track ID is required."
+            })
+```
+
+or
+
+```js
+res.status(500).json({
+            success: false,
+            error: "Internal Server Error",
+            message: "We're having trouble, please try again."
+        })
+```
+
+
+
+
+
+
+
+
+Fetch an Artist's Top Tracks
+
+```js
+/**
+ * @desc    Fetch Artist's Top Tracks
+ * @route   GET /api/spotify/artists/:id/top-tracks
+ * @access  PUBLIC
+ */
+ ```
+
+on success:
+
+```js
+const tracks = response.data.tracks.map((track) => ({
+            id: track.id,
+            name: track.name,
+            album: track.album.name,
+            duration_ms: track.duration_ms,
+            albumImage: track.album.images[track.album.images.length - 1]?.url,
+            uri: track.uri,
+        }));
+
+        return res.status(200).json({
+            success: true,
+            tracks
+        })
+```
+
+on error:
+
+```js
+res.status(400).json({
+                success: false,
+                error: "Invalid Credentials: artist ID missing",
+                message: "Oops! Artist ID is required."
+            })
+```
+
+
+OR
+
+ ```js
+res.status(500).json({
+            success: false,
+            error: "Internal Server Error",
+            message: "We're having trouble, please try again.",
+        })
+ ```
