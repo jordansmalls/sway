@@ -4,7 +4,11 @@ import {
     updateProfile,
     updatePassword,
     getUserProfile,
-    deleteAccount
+    deleteAccount,
+    fetchUserActiveRoom,
+    fetchUserHasActiveRoom,
+    fetchUserInactiveRooms,
+
 } from "../controllers/user.controller"
 import generalLimiter from "../middlewares/rate-limiters/general.limiter";
 
@@ -40,6 +44,32 @@ router.get("/me", protect, getUserProfile);
  * @access  PRIVATE
  */
 router.delete("/profile", protect, deleteAccount);
+
+
+/**
+ * @desc    Fetch User's active room
+ * @route   GET /api/users/:userId/rooms/active
+ * @access  PUBLIC
+ */
+router.get("/:userId/rooms/active", fetchUserActiveRoom)
+
+
+
+/**
+ * @desc    Fetch a User's hasActiveRoom value
+ * @route   GET /api/users/:userId/has-active-room
+ * @access  PRIVATE
+ */
+router.get("/:userId/has-active-room", protect, fetchUserHasActiveRoom)
+
+
+
+/**
+ * @desc    Fetch User Inactive Rooms
+ * @route   GET /api/users/:userId/inactive
+ * @access  PRIVATE
+ */
+router.get("/:userId/inactive", protect, fetchUserInactiveRooms)
 
 
 

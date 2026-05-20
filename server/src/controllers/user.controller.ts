@@ -1,6 +1,7 @@
 import config from "../config/config";
 import User from "../models/user.model";
 import validator from "validator"
+import Room from "../models/room.model";
 
 /**
  * @desc    Update user profile
@@ -278,4 +279,141 @@ export const deleteAccount = async (req, res) => {
             message: "We're having trouble deleting your account, please try again soon.",
         });
     }
+};
+
+/**
+ * @desc    Fetch User's active room
+ * @route   GET /api/users/:userId/rooms/active
+ * @access  PUBLIC
+ */
+
+export const fetchUserActiveRoom = async (req, res) => {
+    const { userId } = req.params;
+
+    if(!userId) {
+        return res.status(400).json({
+            success: false,
+            error: "Invalid Credentials: user ID missing",
+            message: "We're having trouble, please try again."
+        })
+    }
+
+    try {
+
+        const user = await User.findById(userId);
+
+        if(!user) {
+            return res.status(404).json({
+                success: false,
+                error: "Resource not found",
+                message: "User not found."
+            })
+        }
+
+        const activeRoom = await Room.findOne({ roomCreator: userId, active: true })
+
+        if(!activeRoom) {
+            return res.status(404).json({
+                success: false,
+                error: "Resource not found",
+                message: "User does not currently have any active rooms."
+            })
+        }
+
+        return res.status(200).json({
+            success: true,
+            activeRoom
+        })
+
+    } catch (err) {
+        console.error("There was an error fetching a user's active room:", err)
+
+        return res.status(500).json({
+            success: false,
+            error: "Internal Server Error",
+            message: "We're having trouble, please try again."
+        })
+    }
+}
+
+
+
+/**
+ * @desc    Fetch a User's hasActiveRoom value
+ * @route   GET /api/users/:userId/has-active-room
+ * @access  PRIVATE
+ */
+
+export const fetchUserHasActiveRoom = async (req, res) => {
+	const { userId } = req.params;
+	try {
+		const user = await User.findById(userId);
+
+		if (!user) {
+            return res.status(404).json({
+                success: false,
+                error: "Resource not found",
+                message: "User not found."
+            })
+		}
+
+		const hasActiveRoom = user.hasActiveRoom;
+
+        return res.status(200).json({
+            success: true,
+            hasActiveRoom
+        });
+	} catch (err) {
+        console.error("There was an error fetching a user's active room:", err);
+        return res.status(500).json({
+            success: false,
+            error: `Internal Server Error - ${err.message}`,
+            message: "We're having trouble, please try again."
+        })
+	}
+};
+
+
+/**
+ * @desc    Fetch User Inactive Rooms
+ * @route   GET /api/users/:userId/inactive
+ * @access  PRIVATE
+ * @feats   Get an array of objects of users' inactive rooms
+ */
+
+export const fetchUserInactiveRooms = async (req, res) => {
+	const { userId } = req.params;
+
+	try {
+		const user = await User.findById(userId);
+
+		if (!user) {
+            return res.status(404).json({
+                success: false,
+                error: "Resource not found",
+                message: "User not found."
+            })
+		}
+
+		const inactiveRooms = await Room.find({ roomCreator: userId, active: false });
+
+		if (inactiveRooms.length === 0) {
+            return res.status(200).json({
+                success: true,
+                inactiveRooms: []
+            });
+		};
+
+        return res.status(200).json({
+            success: true,
+            inactiveRooms
+        })
+	} catch (err) {
+		console.error("There was an error attempting to fetch a user's inactive rooms:", err);
+        return res.status(500).json({
+            success: false,
+            error: `Internal Server Error - ${err.message}`,
+            message: "We're having trouble, please try again soon."
+        })
+	}
 };
