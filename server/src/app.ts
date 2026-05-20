@@ -5,9 +5,11 @@ import cors from "cors";
 import cookieParser from "cookie-parser"
 
 
+import { notFound } from "./controllers/health.controller";
 import { errorHandler } from "./middlewares/error.middleware";
 
 
+import health from "./routes/health.routes"
 import authRouter from "./routes/auth.routes"
 import userRouter from "./routes/user.routes"
 import roomRouter from "./routes/room.routes"
@@ -22,26 +24,11 @@ app.use(cookieParser())
 app.use(cors(config.cors_options));
 
 
+app.use("/", health);
 app.use("/api/auth", authRouter)
 app.use("/api/users", userRouter)
 app.use("/api/rooms", roomRouter)
 app.use("/api/spotify", spotifyRouter)
+app.use(notFound)
 
 app.use(errorHandler);
-
-app.get("/", (req, res) => {
-    return res.status(200).json({
-        success: true,
-        message: "Hello from Bun!",
-    });
-});
-
-app.get("/health", (req, res) => {
-    return res.status(200).json({
-        success: true,
-        timestamp: new Date().toISOString(),
-        uptime: process.uptime(),
-        memory: process.memoryUsage(),
-        version: process.version,
-    });
-});
