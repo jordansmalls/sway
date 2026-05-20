@@ -601,6 +601,26 @@ None
  */
 ```
 
+```js
+/**
+ * @desc    Fetch User's active room
+ * @route   GET /api/users/:userId/rooms/active
+ * @access  PUBLIC
+ */
+
+/**
+ * @desc    Fetch a User's hasActiveRoom value
+ * @route   GET /api/users/:userId/has-active-room
+ * @access  PRIVATE
+ */
+
+/**
+ * @desc    Fetch User Inactive Rooms
+ * @route   GET /api/users/:userId/inactive
+ * @access  PRIVATE
+ */
+
+```
 
 # Room Endpoints
 
