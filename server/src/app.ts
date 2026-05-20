@@ -5,9 +5,13 @@ import cors from "cors";
 import cookieParser from "cookie-parser"
 
 
+import { errorHandler } from "./middlewares/error.middleware";
+
+
 import authRouter from "./routes/auth.routes"
 import userRouter from "./routes/user.routes"
 import roomRouter from "./routes/room.routes"
+import spotifyRouter from "./routes/spotify.routes"
 
 
 export const app = express();
@@ -21,6 +25,9 @@ app.use(cors(config.cors_options));
 app.use("/api/auth", authRouter)
 app.use("/api/users", userRouter)
 app.use("/api/rooms", roomRouter)
+app.use("/api/spotify", spotifyRouter)
+
+app.use(errorHandler);
 
 app.get("/", (req, res) => {
     return res.status(200).json({
