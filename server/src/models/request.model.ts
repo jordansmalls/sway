@@ -24,6 +24,10 @@ const requestSchema = new Schema({
         type: String,
         required: false,
     },
+    completedAt: {
+        type: Date,
+        default: null,
+    },
     track: {
         spotifyTrackId: {
             type: String,
@@ -49,7 +53,7 @@ const requestSchema = new Schema({
         },
         spotifyURI: {
             type: String,
-            requried: true,
+            required: true,
         },
     },
 }, {
@@ -70,7 +74,8 @@ requestSchema.pre("save", function (next) {
     if (this.status === "played" && this.playedAt === null) {
         this.playedAt = new Date();
     }
-    return;
+    // return;
+    next();
 })
 
 const Request = mongoose.model("Request", requestSchema);
