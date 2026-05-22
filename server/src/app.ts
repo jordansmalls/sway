@@ -14,6 +14,7 @@ import authRouter from "./routes/auth.routes"
 import userRouter from "./routes/user.routes"
 import roomRouter from "./routes/room.routes"
 import spotifyRouter from "./routes/spotify.routes"
+import requestRouter from "./routes/request.routes"
 
 
 export const app = express();
@@ -29,6 +30,7 @@ app.use("/api/auth", authRouter)
 app.use("/api/users", userRouter)
 app.use("/api/rooms", roomRouter)
 app.use("/api/spotify", spotifyRouter)
+app.use("/api/requests", requestRouter)
 app.use(notFound)
 
 app.use(errorHandler);

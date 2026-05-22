@@ -2,8 +2,12 @@ import express from "express"
 import { protect } from "../middlewares/auth.middleware";
 import {
     createRoom,
+    updateRoom,
+    joinRoom,
+    endRoom,
     deleteRoom,
     fetchRoomDetails,
+    fetchRoomRequests
  } from "../controllers/room.controller";
  import generalLimiter from "../middlewares/rate-limiters/general.limiter";
 
@@ -15,6 +19,30 @@ const router = express.Router()
  * @access  PRIVATE
  */
 router.post("/", protect, generalLimiter, createRoom)
+
+
+/**
+ * @desc    Update Room Details
+ * @route   PUT /api/rooms/:roomId
+ * @access  PRIVATE
+ */
+router.put("/:roomId", protect, updateRoom);
+
+
+/**
+ * @desc    Join a Room
+ * @route   POST /api/rooms/join
+ * @access  PUBLIC
+ */
+router.post("/join", joinRoom)
+
+
+/**
+ * @desc    End a Room/Make a Room Inactive
+ * @route   PUT /api/rooms/end
+ * @access  PRIVATE
+ */
+router.put("/end", protect, endRoom)
 
 
 /**
@@ -31,6 +59,14 @@ router.delete("/:roomId", protect, deleteRoom)
  * @access  PUBLIC
  */
 router.get("/:roomCode", fetchRoomDetails)
+
+
+/**
+ * @desc    Fetch Room's Requests (with spotify links + URIs)
+ * @route   GET /api/rooms/:roomCode/fetch/requests
+ * @access  PUBLIC
+ */
+router.get("/:roomCode/fetch/requests", fetchRoomRequests)
 
 
 export default router;
