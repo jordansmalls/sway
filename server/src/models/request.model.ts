@@ -75,7 +75,7 @@ requestSchema.pre("save", function (next) {
         this.playedAt = new Date();
     }
     // return;
-    next();
+    // next();
 })
 
 const Request = mongoose.model("Request", requestSchema);

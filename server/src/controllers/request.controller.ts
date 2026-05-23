@@ -207,7 +207,7 @@ export const markRequestPlaying = async (req, res) => {
 
         // Check if user is room creator
         const room = await Room.findById(request.roomId);
-        if (room.roomCreator.toString() !== req.user.id) {
+        if (room.roomCreator.toString() !== req.user.id.toString()) {
             return res.status(403).json({
                 success: false,
                 error: "Forbidden - Not authorized",
@@ -216,7 +216,7 @@ export const markRequestPlaying = async (req, res) => {
         }
 
         request.status = "playing";
-        request.playedAt = Date.now();
+        request.playedAt = new Date;
 
         await request.save();
 
@@ -260,7 +260,7 @@ export const markRequestPlayed = async (req, res) => {
 
         // Check if user is room creator
         const room = await Room.findById(request.roomId);
-        if (room.roomCreator.toString() !== req.user.id) {
+        if (room.roomCreator.toString() !== req.user.id.toString()) {
             return res.status(403).json({
                 success: false,
                 error: "Forbidden - not authorized",
@@ -269,7 +269,7 @@ export const markRequestPlayed = async (req, res) => {
         }
 
         request.status = "played";
-        request.completedAt = Date.now();
+        request.completedAt = new Date;
 
         await request.save();
 
@@ -315,7 +315,7 @@ export const deleteRequest = async (req, res) => {
 
         // Check if user is room creator
         const room = await Room.findById(request.roomId);
-        if (room.roomCreator.toString() !== req.user.id) {
+        if (room.roomCreator.toString() !== req.user.id.toString()) {
             return res.status(403).json({
                 success: false,
                 error: "Forbidden - not authorized",

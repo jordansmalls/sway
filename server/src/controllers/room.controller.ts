@@ -6,6 +6,7 @@ import mongoose from "mongoose";
 import { emitRoomEnded, emitRoomUpdated } from "./request.controller";
 import { setRoomInactive } from "../utils/set.room.inactive";
 import Request from "../models/request.model";
+import { createSpotifyLink, createSpotifyUriLink } from "../utils/formatters/format.spotify";
 
 /**
  * @desc    Create a Room
@@ -104,7 +105,7 @@ export const createRoom = async (req, res) => {
 
 export const updateRoom = async (req, res) => {
     const { roomName, roomDescription } = req.body;
-    const { userId } = req.user._id;
+    const userId = req.user._id;
     const { roomId } = req.params;
 
     try {
@@ -160,7 +161,7 @@ export const updateRoom = async (req, res) => {
 
         try {
             // emit the live event update to all connected clients in the room
-            emitRoomUpdated(roomId, updateRoom);
+            emitRoomUpdated(roomId, updatedRoom);
         } catch (err) {
             console.error("There was an error: Failed to emit room updated event: ", err);
         }
@@ -257,7 +258,7 @@ export const endRoom = async (req, res) => {
     console.log("🔥 END ROOM FUNCTION CALLED");
 
     const { roomId } = req.body;
-    const { userId } = req.user._id;
+    const userId = req.user._id;
 
     console.log("Room ID:", roomId);
     console.log("User ID:", userId);
