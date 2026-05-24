@@ -7,6 +7,7 @@ import { emitRoomEnded, emitRoomUpdated } from "./request.controller";
 import { setRoomInactive } from "../utils/set.room.inactive";
 import Request from "../models/request.model";
 import { createSpotifyLink, createSpotifyUriLink } from "../utils/formatters/format.spotify";
+import { formatTo12HourTime } from "../utils/formatters/format.times";
 
 /**
  * @desc    Create a Room
@@ -486,4 +487,63 @@ export const fetchRoomRequests = async (req, res) => {
             message: "We're having trouble, please try again. Thank you.",
         });
     };
+};
+
+
+
+/**
+ * @desc	Fetch a Room's Played Requests (with Spotify Links + URIs)
+ * @route	GET /api/rooms/:roomCode/fetch/spotify/played
+ * @access	PUBLIC
+ */
+
+export const fetchRoomPlayedRequests = async (req, res) => {
+	const { roomCode } = req.params;
+
+	if (!roomCode) {
+        return res.status(400).json({
+            success: false,
+            error: "Invalid Credentials: room code missing",
+            message: "Room code is required."
+        });
+	};
+
+	try {
+		const room = await Room.findOne({ roomCode });
+
+		if (!room) {
+            return res.status(404).json({
+                success: false,
+                error: "Resource not found",
+                message: "Room does not exist."
+            });
+		};
+
+		// find only played requests
+		const requests = await Request.find({ roomId: room._id, status: "played" }).populate("track")
+
+		const data = requests.map((req) => ({
+            id: req._id,
+            title: req.track.title,
+            artist: req.track.artist,
+            albumArtUrl: req.track.albumArtUrl,
+            spotifyUri: createSpotifyUriLink(req.track.spotifyTrackId),
+            spotifyLink: createSpotifyLink(req.track.spotifyTrackId),
+            status: req.status,
+            votes: req.votes,
+            requestedAt: formatTo12HourTime(req.createdAt),
+            requestedBy: req.requestedBy,
+            playedAt: req.playedAt ? formatTo12HourTime(req.playedAt) : "",
+        }));
+
+		return res.json(data);
+	} catch (err) {
+		console.error(
+			"There was an error fetching a room's played requests with spotify information:",
+			err
+		);
+		return res
+			.status(500)
+			.json({ message: "We're having trouble, please try again. Thank you." });
+	}
 };

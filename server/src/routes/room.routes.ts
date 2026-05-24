@@ -7,7 +7,8 @@ import {
     endRoom,
     deleteRoom,
     fetchRoomDetails,
-    fetchRoomRequests
+    fetchRoomRequests,
+    fetchRoomPlayedRequests
  } from "../controllers/room.controller";
  import generalLimiter from "../middlewares/rate-limiters/general.limiter";
 
@@ -67,6 +68,14 @@ router.get("/:roomCode", fetchRoomDetails)
  * @access  PUBLIC
  */
 router.get("/:roomCode/fetch/requests", fetchRoomRequests)
+
+
+/**
+ * @desc	Fetch a Room's Played Requests (with Spotify Links + URIs)
+ * @route	GET /api/rooms/:roomCode/fetch/spotify/played
+ * @access	PUBLIC
+ */
+router.get("/:roomCode/fetch/spotify/played", fetchRoomPlayedRequests)
 
 
 export default router;
