@@ -535,7 +535,10 @@ export const fetchRoomPlayedRequests = async (req, res) => {
             playedAt: req.playedAt ? formatTo12HourTime(req.playedAt) : "",
         }));
 
-        return res.json(data);
+        return res.status(200).json({
+            success: true,
+            data
+        });
     } catch (err) {
         console.error(
             "There was an error fetching a room's played requests with spotify information:",
