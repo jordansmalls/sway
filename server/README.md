@@ -8,6 +8,7 @@ A robust web API built with Bun, Express, and MongoDB.
 
 - [Core Dependencies](#core-dependencies)
 - [Installation](#installation)
+- [Project Structure](#project-structure)
 - [Environment Variables](#environment-variables)
 - [Errors](#errors)
 - [Database Models](#database-models)
@@ -57,6 +58,63 @@ bun install
 touch .env
 bun run dev
 ```
+
+---
+
+## Project Structure
+
+```
+./
+├── src/
+│   ├── config/
+│   │   ├── config.ts
+│   │   ├── db.ts
+│   │   └── logger.ts
+│   ├── controllers/
+│   │   ├── auth.controller.ts
+│   │   ├── export.controller.ts
+│   │   ├── health.controller.ts
+│   │   ├── request.controller.ts
+│   │   ├── room.controller.ts
+│   │   ├── spotify.controller.ts
+│   │   └── user.controller.ts
+│   ├── middlewares/
+│   │   ├── rate-limiters/
+│   │   │   ├── general.limiter.ts
+│   │   │   └── vote.limiter.ts
+│   │   ├── auth.middleware.ts
+│   │   └── error.middleware.ts
+│   ├── models/
+│   │   ├── request.model.ts
+│   │   ├── room.model.ts
+│   │   └── user.model.ts
+│   ├── routes/
+│   │   ├── auth.routes.ts
+│   │   ├── export.routes.ts
+│   │   ├── health.routes.ts
+│   │   ├── request.routes.ts
+│   │   ├── room.routes.ts
+│   │   ├── spotify.routes.ts
+│   │   └── user.routes.ts
+│   ├── utils/
+│   │   ├── formatters/
+│   │   │   ├── format.spotify.ts
+│   │   │   ├── format.times.ts
+│   │   │   ├── format.uptime.ts
+│   │   │   └── plaintext-helpers.ts
+│   │   ├── generate.jwt.ts
+│   │   ├── generate.room.code.ts
+│   │   ├── set.room.inactive.ts
+│   │   └── set.user.active.room.ts
+│   ├── app.ts
+│   ├── server.ts
+│   └── socket.ts
+├── bun.lock
+├── package.json
+├── README.md
+└── tsconfig.json
+```
+
 
 ---
 
