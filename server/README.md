@@ -1,12 +1,30 @@
-# Sway: Server
+# Sway Server
 
-A robust web server and API built with Bun, Express, and MongoDB.
+A robust web API built with Bun, Express, and MongoDB.
 
 ---
 
-# Stack
+## Table of Contents
+
+- [Core Dependencies](#core-dependencies)
+- [Installation](#installation)
+- [Environment Variables](#environment-variables)
+- [Errors](#errors)
+- [Database Models](#database-models)
+- [Authentication](#authentication)
+- [Users](#users)
+- [Rooms](#rooms)
+- [Spotify](#spotify)
+- [Requests](#requests)
+- [Exports](#exports)
+- [Server Health](#server-health)
+- [Contact](#contact)
+
+---
 
 ## Core Dependencies
+
+**Production**
 
 - express
 - mongoose
@@ -14,39 +32,37 @@ A robust web server and API built with Bun, Express, and MongoDB.
 - morgan
 - validator
 - jsonwebtoken
-- dotenv
 - bcryptjs
+- dotenv
 - axios
 - cookie-parser
 - express-rate-limit
 - qrcode
+- csv-writer
+- socket.io
 
-## Development Dependencies
+**Development**
 
 - prettier
 - @types/bun
 
 ---
 
-# Installation
+## Installation
 
 ```bash
 git clone git@github.com:jordansmalls/sway.git
-
 cd server
-
 bun install
-
 touch .env
-
 bun run dev
 ```
 
+---
+
 ## Environment Variables
 
-Environment variables must be configured before starting the server.
-
-Example:
+Configure these before starting the server:
 
 ```env
 PORT=
@@ -61,672 +77,608 @@ DOMAIN=
 
 ---
 
-# API Endpoints
+## Errors
 
----
-
-# Auth Routes
-
-## Create User Account
-
-Creates a new user account and authenticates the user with a JWT cookie.
-
-### Endpoint
-
-```http
-POST /api/auth
-```
-
-### Access
-
-`PUBLIC`
-
-### Request Body
-
-```json
-{
-    "email": "user@example.com",
-    "password": "password123"
-}
-```
-
-### Validation Rules
-
-- `email` must be a valid email address
-- `password` must be at least 8 characters long
-
-### Success Response
-
-**Status:** `201 Created`
-
-```json
-{
-    "success": true,
-    "message": "Account created successfully. Welcome to Sway!",
-    "user": {
-        "_id": "6828e5f7a2b4c91e1d9a1f32",
-        "email": "user@example.com",
-        "hasActiveRoom": false,
-        "hasUsername": false,
-        "createdAt": "2026-05-18T15:20:00.000Z",
-        "updatedAt": "2026-05-18T15:20:00.000Z"
-    }
-}
-```
-
-### Additional Behavior
-
-- Sets an HTTP-only JWT cookie for authentication
-
-### Error Response
-
-**Status:** `500 Internal Server Error`
-
-```json
-{
-    "success": false,
-    "error": "Internal Server Error",
-    "message": "Sorry, we're having trouble creating your account. Please try again soon."
-}
-```
-
----
-
-## Create Username
-
-Creates a username for an authenticated user.
-
-### Endpoint
-
-```http
-POST /api/auth/username
-```
-
-### Access
-
-`PRIVATE`
-
-### Request Body
-
-```json
-{
-    "username": "john"
-}
-```
-
-### Validation Rules
-
-- Username must be between 3 and 20 characters long
-- Username may only contain:
-    - letters
-    - numbers
-    - underscores (`_`)
-
-Regex:
-
-```txt
-a-zA-Z0-9_
-```
-
-### Success Response
-
-**Status:** `201 Created`
-
-```json
-{
-    "success": true,
-    "message": "john has a great ring to it, let's do this.",
-    "user": {
-        "_id": "6828e5f7a2b4c91e1d9a1f32",
-        "username": "john",
-        "email": "user@example.com",
-        "hasActiveRoom": false,
-        "hasUsername": true,
-        "createdAt": "2026-05-18T15:20:00.000Z",
-        "updatedAt": "2026-05-18T15:20:00.000Z"
-    }
-}
-```
-
-### Error Responses
-
-#### Unauthorized
-
-**Status:** `401 Unauthorized`
-
-```json
-{
-    "success": false,
-    "error": "Invalid Credentials: ID missing",
-    "message": "You must be logged in."
-}
-```
-
-#### User Not Found
-
-**Status:** `404 Not Found`
-
-```json
-{
-    "success": false,
-    "error": "Resource Not Found",
-    "message": "User not found."
-}
-```
-
-#### User Already Has Username
-
-**Status:** `400 Bad Request`
-
-```json
-{
-    "success": false,
-    "error": "Invalid Credentials: user has username",
-    "message": "You have already created a username."
-}
-```
-
-#### Invalid Username Length
-
-**Status:** `400 Bad Request`
-
-```json
-{
-    "success": false,
-    "error": "Invalid Credentials: username length",
-    "message": "Usernames must be between 3 and 20 characters long."
-}
-```
-
-#### Invalid Username Characters
-
-**Status:** `400 Bad Request`
-
-```json
-{
-    "success": false,
-    "error": "Invalid Credentials: invalid username characters",
-    "message": "Usernames can only contain letters, numbers, and underscores."
-}
-```
-
-#### Username Taken
-
-**Status:** `400 Bad Request`
-
-```json
-{
-    "success": false,
-    "error": "Username taken",
-    "message": "This username is already in use."
-}
-```
-
-#### Internal Server Error
-
-**Status:** `500 Internal Server Error`
-
-```json
-{
-    "success": false,
-    "error": "Internal Server Error",
-    "message": "We're having trouble, please try again."
-}
-```
-
----
-
-## Check Username Availability
-
-Checks whether a username is already in use.
-
-### Endpoint
-
-```http
-GET /api/auth/username/:username
-```
-
-### Access
-
-`PUBLIC`
-
-### Route Parameters
-
-```json
-{
-    "username": "john"
-}
-```
-
-### Validation Rules
-
-- Username must be between 3 and 20 characters long
-- Username may only contain:
-    - letters
-    - numbers
-    - underscores (`_`)
-
-Regex:
-
-```txt
-a-zA-Z0-9_
-```
-
-### Success Responses
-
-#### Username Taken
-
-**Status:** `200 OK`
-
-```json
-{
-    "success": true,
-    "taken": true,
-    "message": "Username is already in use."
-}
-```
-
-#### Username Available
-
-**Status:** `200 OK`
-
-```json
-{
-    "success": true,
-    "taken": false,
-    "message": "Username is available."
-}
-```
-
-### Error Responses
-
-#### Invalid Username
-
-**Status:** `400 Bad Request`
-
-```json
-{
-    "success": false,
-    "error": "Invalid Credentials: invalid username characters or length",
-    "message": "Usernames must be between 3 and 20 characters in length, and only contain no special characters."
-}
-```
-
-#### Internal Server Error
-
-**Status:** `500 Internal Server Error`
-
-```json
-{
-    "success": false,
-    "error": "Internal Server Error",
-    "message": "We're having trouble, please try again soon."
-}
-```
-
----
-
-## Check Email Availability
-
-Checks whether an email is already associated with an account.
-
-### Endpoint
-
-```http
-GET /api/auth/email/:email
-```
-
-### Access
-
-`PUBLIC`
-
-### Route Parameters
-
-```json
-{
-    "email": "user@example.com"
-}
-```
-
-### Success Responses
-
-#### Email Taken
-
-**Status:** `200 OK`
-
-```json
-{
-    "success": true,
-    "taken": true,
-    "message": "Email is already in use."
-}
-```
-
-#### Email Available
-
-**Status:** `200 OK`
-
-```json
-{
-    "success": true,
-    "taken": false,
-    "message": "Email is available!"
-}
-```
-
-### Error Responses
-
-#### Invalid Email
-
-**Status:** `400 Bad Request`
-
-```json
-{
-    "success": false,
-    "error": "Invalid Credentials: invalid email",
-    "message": "Oops! Please enter a valid email address."
-}
-```
-
-#### Internal Server Error
-
-**Status:** `500 Internal Server Error`
-
-```json
-{
-    "success": false,
-    "error": "Internal Server Error",
-    "message": "We're having trouble, please try again soon."
-}
-```
-
----
-
-## Log In User
-
-Authenticates a user and sets a JWT cookie.
-
-### Endpoint
-
-```http
-POST /api/auth/login
-```
-
-### Access
-
-`PUBLIC`
-
-### Request Body
-
-```json
-{
-    "identifier": "john",
-    "password": "password123"
-}
-```
-
-### Notes
-
-- `identifier` can be either:
-    - email
-    - username
-
-### Success Response
-
-**Status:** `200 OK`
-
-```json
-{
-    "success": true,
-    "message": "You've been successfully logged in.",
-    "user": {
-        "_id": "6828e5f7a2b4c91e1d9a1f32",
-        "username": "john",
-        "email": "user@example.com",
-        "hasActiveRoom": false,
-        "hasUsername": true,
-        "createdAt": "2026-05-18T15:20:00.000Z",
-        "updatedAt": "2026-05-18T15:20:00.000Z"
-    }
-}
-```
-
-### Additional Behavior
-
-- Sets an HTTP-only JWT cookie for authentication
-
-### Error Responses
-
-#### Invalid Credentials
-
-**Status:** `401 Unauthorized`
-
-```json
-{
-    "success": false,
-    "error": "Invalid Credentials: invalid username/email or password",
-    "message": "We're having trouble logging you in, please try again soon."
-}
-```
-
-#### Internal Server Error
-
-**Status:** `500 Internal Server Error`
-
-```json
-{
-    "success": false,
-    "error": "Internal Server Error",
-    "message": "We're having trouble logging you in, please try again soon."
-}
-```
-
----
-
-## Log Out User
-
-Logs out the authenticated user and clears the JWT cookie.
-
-### Endpoint
-
-```http
-POST /api/auth/logout
-```
-
-### Access
-
-`PUBLIC`
-
-### Request Body
-
-None
-
-### Success Response
-
-**Status:** `200 OK`
-
-```json
-{
-    "success": true,
-    "message": "Logged out successfully. Please come back soon."
-}
-```
-
-### Additional Behavior
-
-- Clears the JWT authentication cookie
-
-### Error Response
-
-**Status:** `500 Internal Server Error`
-
-```json
-{
-    "success": false,
-    "error": "Internal Server Error",
-    "message": "We're having trouble logging you out, please try again."
-}
-```
-
-<!-- TODO: === UPDATE README ROOM AND USER ENDPOINTS === -->
-
-# User Endpoints
-
-```js
-/**
- * @desc    Update user profile
- * @route   PUT /api/users/profile
- * @access  PRIVATE
- */
-
-/**
- * @desc    Update user password
- * @route   POST /api/users/password
- * @access  PRIVATE
- */
-
-/**
- * @desc    Get current user profile
- * @route   GET /api/users/me
- * @access  PRIVATE
- */
-
-/**
- * @desc    Delete user account (toggle active prop)
- * @route   DELETE /api/users/profile
- * @access
- */
-```
-
-```js
-/**
- * @desc    Fetch User's active room
- * @route   GET /api/users/:userId/rooms/active
- * @access  PUBLIC
- */
-
-/**
- * @desc    Fetch a User's hasActiveRoom value
- * @route   GET /api/users/:userId/has-active-room
- * @access  PRIVATE
- */
-
-/**
- * @desc    Fetch User Inactive Rooms
- * @route   GET /api/users/:userId/inactive
- * @access  PRIVATE
- */
-```
-
-# Room Endpoints
-
-Create Room
-
-```js
-/**
- * @desc    Create a Room
- * @route   POST /api/rooms
- * @access  PRIVATE
- */
-```
-
-input
-
-```json
-{
-    "roomName": "testing room",
-    "roomDescription": "this is a test."
-}
-```
-
-note: only can be accessed while authorized.
-
-output
-
-```json
-{
-    "success": true,
-    "message": "Success! testing room has been created and is now active.",
-    "newRoom": {
-        "roomName": "testing room",
-        "roomDescription": "this is a test.",
-        "roomCode": "3LBW9",
-        "roomCreator": "6a0b88f356dcc29585f08be0",
-        "active": true,
-        "_id": "6a0b892556dcc29585f08be1",
-        "createdAt": "2026-05-18T21:48:21.283Z",
-        "updatedAt": "2026-05-18T21:48:21.283Z",
-        "__v": 0
-    }
-}
-```
-
-Delete Room
-
-input
-
-_DELETE - http://localhost:9999/api/rooms/6a0b892556dcc29585f08be1_
-
-request body
-
-```json
-{
-    "userId": "6a0b88f356dcc29585f08be0"
-}
-```
-
-output
-
-```json
-{
-    "success": true,
-    "message": "The testing room room has been successfully deleted.",
-    "room": {
-        "_id": "6a0b892556dcc29585f08be1",
-        "roomName": "testing room",
-        "roomDescription": "this is a test.",
-        "roomCode": "3LBW9",
-        "roomCreator": "6a0b88f356dcc29585f08be0",
-        "active": true,
-        "createdAt": "2026-05-18T21:48:21.283Z",
-        "updatedAt": "2026-05-18T21:48:21.337Z",
-        "__v": 0,
-        "roomQr": "data:image/png;base64,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"
-    }
-}
-```
-
-on error:
+Standard error response format:
 
 ```js
 res.status(500).json({
-    success: false,
-    error: "Internal Server Error",
-    message: "We're currently having trouble deleting this room, please try again soon.",
+  success: false,
+  error: "Internal Server Error",
+  message: "We're having trouble, please try again.",
 });
 ```
 
-or
+- `success` and `error` values assist with debugging
+- `message` is displayed in Sonner toast notifications
+- Used consistently across 400, 401, 403, 404, etc. (text varies per endpoint)
+
+---
+
+## Database Models
+
+### User
+
+| Field | Type | Constraints |
+|-------|------|-------------|
+| `username` | String | 3-20 chars, alphanumeric + underscore, unique, sparse |
+| `email` | String | Required, unique, lowercase |
+| `password` | String | Required, min 8 chars |
+| `active` | Boolean | Default: `true` |
+| `hasActiveRoom` | Boolean | Default: `false` |
+| `hasUsername` | Boolean | Default: `false` |
+| `admin` | Boolean | Default: `false` |
 
 ```js
-
+const userSchema = new mongoose.Schema(
+  {
+    username: {
+      type: String,
+      sparse: true,
+      minLength: 3,
+      maxLength: 20,
+      unique: true,
+      lowercase: true,
+      index: 1,
+      validate: {
+        validator: function (v) {
+          if (!v) return true;
+          const isValidLength = v.length >= 3 && v.length <= 20;
+          const isValidFormat = /^[a-zA-Z0-9_]+$/.test(v);
+          return isValidLength && isValidFormat;
+        },
+        message:
+          "Username must be 3-20 characters and contain only letters, numbers, and underscores",
+      },
+    },
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+      lowercase: true,
+      trim: true,
+      index: 1,
+    },
+    password: {
+      type: String,
+      required: true,
+      minLength: 8,
+    },
+    active: { type: Boolean, default: true },
+    hasActiveRoom: { type: Boolean, default: false },
+    hasUsername: { type: Boolean, default: false },
+    admin: { type: Boolean, default: false },
+  },
+  { timestamps: true }
+);
 ```
 
-## Fetch Room Details
+### Room
+
+| Field | Type | Constraints |
+|-------|------|-------------|
+| `roomName` | String | Required, max 100 chars |
+| `roomDescription` | String | Required, max 450 chars |
+| `roomCode` | String | Required, unique, max 5 chars |
+| `roomQr` | String | Optional |
+| `roomCreator` | ObjectId | Required, ref: `User` |
+| `active` | Boolean | Default: `true` |
 
 ```js
-/**
- * @desc    Fetch Room Details
- * @route   GET /api/rooms/:roomCode
- * @access  PUBLIC
- * @feats   Finds and returns a room's details based on roomCode
- */
+const roomSchema = new mongoose.Schema(
+  {
+    roomName: {
+      type: String,
+      required: [true, "A room name is required"],
+      trim: true,
+      maxLength: [100, "Room names cannot exceed 100 characters"],
+    },
+    roomDescription: {
+      type: String,
+      required: [true, "Room descriptions are required"],
+      trim: true,
+      maxLength: [450, "Room descriptions cannot exceed 450 characters"],
+    },
+    roomCode: {
+      type: String,
+      unique: true,
+      required: [true, "A room code is required"],
+      maxLength: 5,
+      trim: true,
+      index: 1,
+    },
+    roomQr: { type: String, required: false },
+    roomCreator: {
+      type: Schema.Types.ObjectId,
+      required: true,
+      ref: "User",
+      index: 1,
+    },
+    active: { type: Boolean, default: true },
+  },
+  { timestamps: true }
+);
 ```
 
-on success returns
+### Request
+
+| Field | Type | Constraints |
+|-------|------|-------------|
+| `roomId` | ObjectId | Required, ref: `Room` |
+| `status` | String | Enum: `pending`, `playing`, `played`, `rejected` |
+| `votes` | Number | Default: `1`, min: `1` |
+| `playedAt` | Date | Nullable |
+| `requestedBy` | String | Optional |
+| `completedAt` | Date | Nullable |
+| `track.spotifyTrackId` | String | Required |
+| `track.title` | String | Required |
+| `track.artist` | String | Required |
+| `track.albumArtUrl` | String | Optional |
+| `track.spotifyLink` | String | Required |
+| `track.spotifyURI` | String | Required |
 
 ```js
-const roomDetails = {
+const requestSchema = new Schema(
+  {
+    roomId: { type: Schema.Types.ObjectId, ref: "Room", required: true },
+    status: {
+      type: String,
+      enum: ["pending", "playing", "played", "rejected"],
+      default: "pending",
+    },
+    votes: { type: Number, default: 1, min: 1 },
+    playedAt: { type: Date, default: null },
+    requestedBy: { type: String, required: false },
+    completedAt: { type: Date, default: null },
+    track: {
+      spotifyTrackId: { type: String, required: true },
+      title: { type: String, required: true, trim: true },
+      artist: { type: String, required: true, trim: true },
+      albumArtUrl: { type: String, required: false },
+      spotifyLink: { type: String, required: true },
+      spotifyURI: { type: String, required: true },
+    },
+  },
+  { timestamps: true }
+);
+```
+
+---
+
+## Authentication
+
+### Create Account
+
+```
+POST /api/auth
+```
+
+**Access:** Public
+**Body:** `{ email, password }`
+
+| Field | Constraints |
+|-------|-------------|
+| `email` | Valid email format |
+| `password` | Min 8 characters |
+
+**Success Response:**
+
+```js
+res.status(201).json({
+  success: true,
+  message: "Account created successfully. Welcome to Sway!",
+  user: {
+    _id: user._id,
+    email: user.email,
+    hasActiveRoom: user.hasActiveRoom,
+    hasUsername: user.hasUsername,
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt,
+  },
+});
+```
+
+> Sets JWT cookie on success.
+
+---
+
+### Create Username
+
+```
+POST /api/auth/username
+```
+
+**Access:** Private
+**Body:** `{ username }`
+
+| Field | Constraints |
+|-------|-------------|
+| `username` | 3-20 chars, `/^[a-zA-Z0-9_]+$/` |
+
+**Success Response:**
+
+```js
+res.status(201).json({
+  success: true,
+  message: `${username} has a great ring to it, let's do this.`,
+  user: {
+    _id: user._id,
+    username: updatedUser.username,
+    email: updatedUser.email,
+    hasActiveRoom: updatedUser.hasActiveRoom,
+    hasUsername: updatedUser.hasUsername,
+    createdAt: updatedUser.createdAt,
+    updatedAt: updatedUser.updatedAt,
+  },
+});
+```
+
+---
+
+### Check Username Availability
+
+```
+GET /api/auth/username/:username
+```
+
+**Access:** Public
+
+**Success Responses:**
+
+```js
+// Taken
+{ success: true, taken: true, message: "Username is already in use." }
+
+// Available
+{ success: true, taken: false, message: "Username is available." }
+```
+
+---
+
+### Check Email Availability
+
+```
+GET /api/auth/email/:email
+```
+
+**Access:** Public
+
+**Success Responses:**
+
+```js
+// Taken
+{ success: true, taken: true, message: "Email is already in use." }
+
+// Available
+{ success: true, taken: false, message: "Email is available!" }
+```
+
+---
+
+### Log In
+
+```
+POST /api/auth/login
+```
+
+**Access:** Public
+**Body:** `{ identifier, password }`
+
+> `identifier` can be username or email.
+
+**Success Response:**
+
+```js
+res.status(200).json({
+  success: true,
+  message: "You've been successfully logged in.",
+  user: {
+    _id: user._id,
+    username: user.username,
+    email: user.email,
+    hasActiveRoom: user.hasActiveRoom,
+    hasUsername: user.hasUsername,
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt,
+  },
+});
+```
+
+> Sets JWT cookie on success.
+
+---
+
+### Log Out
+
+```
+POST /api/auth/logout
+```
+
+**Access:** Public
+
+Clears JWT cookie and returns:
+
+```js
+res.status(200).json({
+  success: true,
+  message: "Logged out successfully. Please come back soon.",
+});
+```
+
+---
+
+## Users
+
+### Update Profile
+
+```
+PUT /api/users/profile
+```
+
+**Access:** Private
+**Body:** `{ username?, email? }` (at least one required)
+
+**Success Response:**
+
+```js
+res.status(200).json({
+  success: true,
+  message: "Success! Your account has been updated.",
+  user: { /* updated user object */ },
+});
+```
+
+---
+
+### Update Password
+
+```
+POST /api/users/password
+```
+
+**Access:** Private
+**Body:** `{ currentPassword, newPassword }`
+
+**Success Response:**
+
+```js
+res.status(200).json({
+  success: true,
+  message: "Password updated successfully.",
+});
+```
+
+---
+
+### Get Current User
+
+```
+GET /api/users/me
+```
+
+**Access:** Private
+
+**Success Response:**
+
+```js
+res.status(200).json({
+  success: true,
+  user: { /* user object */ },
+});
+```
+
+---
+
+### Delete Account
+
+```
+DELETE /api/users/profile
+```
+
+**Access:** Private
+**Effect:** Toggles `active` to `false`, clears JWT cookie
+
+**Success Response:**
+
+```js
+res.status(200).json({
+  success: true,
+  message: "Account deactivated successfully.",
+});
+```
+
+---
+
+### Fetch Active Room
+
+```
+GET /api/users/:userId/rooms/active
+```
+
+**Access:** Public
+
+**Success Response:**
+
+```js
+res.status(200).json({
+  success: true,
+  activeRoom,
+});
+```
+
+---
+
+### Check Active Room Status
+
+```
+GET /api/users/:userId/has-active-room
+```
+
+**Access:** Private
+
+**Success Response:**
+
+```js
+res.status(200).json({
+  success: true,
+  hasActiveRoom,
+});
+```
+
+---
+
+### Fetch Inactive Rooms
+
+```
+GET /api/users/:userId/inactive
+```
+
+**Access:** Private
+
+**Success Response:**
+
+```js
+res.status(200).json({
+  success: true,
+  inactiveRooms: [], // or array of rooms
+});
+```
+
+---
+
+## Rooms
+
+### Create Room
+
+```
+POST /api/rooms
+```
+
+**Access:** Private
+**Body:** `{ roomName, roomDescription }`
+
+| Field | Constraints |
+|-------|-------------|
+| `roomName` | Max 100 chars |
+| `roomDescription` | Max 450 chars |
+
+**Success Response:**
+
+```js
+res.status(201).json({
+  success: true,
+  message: `Success! ${newRoom.roomName} has been created and is now active.`,
+  newRoom,
+});
+```
+
+---
+
+### Update Room
+
+```
+PUT /api/rooms/:roomId
+```
+
+**Access:** Private
+**Body:** `{ roomName?, roomDescription? }`
+**Socket Event:** `room:updated` → `roomId, payload`
+
+**Success Response:**
+
+```js
+res.status(200).json({
+  success: true,
+  message: "Room updated successfully.",
+  updatedRoom,
+});
+```
+
+---
+
+### Join Room
+
+```
+POST /api/rooms/join
+```
+
+**Access:** Public
+**Body:** `{ roomCode }`
+
+**Success Response:**
+
+```js
+res.status(200).json({
+  success: true,
+  roomDetails: {
+    _id: room._id,
+    roomName: room.roomName,
+    roomDescription: room.roomDescription,
+    roomCode: room.roomCode,
+    createdAt: room.createdAt,
+  },
+});
+```
+
+---
+
+### End Room
+
+```
+PUT /api/rooms/end
+```
+
+**Access:** Private
+**Body:** `{ roomId }`
+**Socket Event:** `room:ended` → `roomId, { roomId }`
+
+**Success Response:**
+
+```js
+res.status(200).json({
+  success: true,
+  message: "The room is now over.",
+});
+```
+
+---
+
+### Delete Room
+
+```
+DELETE /api/rooms/:roomId
+```
+
+**Access:** Private
+**Body:** `{ userId }`
+
+**Success Response:**
+
+```js
+res.status(200).json({
+  success: true,
+  message: `The ${room.roomName} room has been successfully deleted.`,
+  room,
+});
+```
+
+---
+
+### Fetch Room Details
+
+```
+GET /api/rooms/:roomCode
+```
+
+**Access:** Public
+
+**Success Response:**
+
+```js
+res.status(200).json({
+  success: true,
+  message: `Success! Here's ${room.roomName}'s details.`,
+  roomDetails: {
     _id: room._id,
     roomName: room.roomName,
     roomDescription: room.roomDescription,
@@ -735,169 +687,532 @@ const roomDetails = {
     createdAt: room.createdAt,
     updatedAt: room.updatedAt,
     active: room.active,
-};
-
-return res.status(200).json({
-    success: true,
-    message: `Success! Here's ${room.roomName}'s details.`,
-    roomDetails,
+  },
 });
 ```
 
-on error returns
+---
+
+### Fetch Room Requests
+
+```
+GET /api/rooms/:roomCode/fetch/requests
+```
+
+**Access:** Public
+
+**Success Response:**
 
 ```js
-res.status(500).json({
-    success: false,
-    error: "Internal Server Error",
-    message: "We're having trouble, please try again.",
+res.status(200).json({
+  success: true,
+  message: "Requests loaded.",
+  data: [
+    {
+      id: req._id,
+      title: req.track.title,
+      artist: req.track.artist,
+      albumArtUrl: req.track.albumArtUrl,
+      spotifyUri: "spotify:track:{id}",
+      spotifyLink: "https://open.spotify.com/track/{id}",
+      status: req.status,
+      votes: req.votes,
+      requestedAt: req.createdAt,
+      requestedBy: req.requestedBy,
+      playedAt: req.playedAt,
+    },
+  ],
 });
 ```
 
-# Spotify Endpoints
+---
 
-Search Spotify for Tracks
+### Fetch Played Requests (Spotify Format)
 
-```js
-/**
- * @desc    Search Spotify for Tracks
- * @route   GET /api/spotify/search
- * @access  PUBLIC
- */
+```
+GET /api/rooms/:roomCode/fetch/spotify/played
 ```
 
-on success:
+**Access:** Public
+
+**Success Response:**
 
 ```js
-const tracks = response.data.tracks.items.map((track) => ({
+res.status(200).json({
+  success: true,
+  data: [
+    {
+      id: req._id,
+      title: req.track.title,
+      artist: req.track.artist,
+      albumArtUrl: req.track.albumArtUrl,
+      spotifyUri: "spotify:track:{id}",
+      spotifyLink: "https://open.spotify.com/track/{id}",
+      status: req.status,
+      votes: req.votes,
+      requestedAt: "12:34 PM", // formatted
+      requestedBy: req.requestedBy,
+      playedAt: "1:05 PM", // formatted or empty string
+    },
+  ],
+});
+```
+
+---
+
+## Spotify
+
+### Search Tracks
+
+```
+GET /api/spotify/search?q={query}
+```
+
+**Access:** Public
+
+**Success Response:**
+
+```js
+res.status(200).json({
+  success: true,
+  tracks: [
+    {
+      id: track.id,
+      name: track.name,
+      artist: "Artist 1, Artist 2",
+      duration_ms: track.duration_ms,
+      albumImage: "https://...",
+      uri: track.uri,
+    },
+  ],
+});
+```
+
+---
+
+### Fetch Track Details
+
+```
+GET /api/spotify/tracks/:id
+```
+
+**Access:** Public
+
+**Success Response:**
+
+```js
+res.status(200).json({
+  success: true,
+  track: {
     id: track.id,
     name: track.name,
-    artist: track.artists.map((artist) => artist.name).join(", "),
-    duration_ms: track.duration_ms,
-    albumImage: track.album.images[track.album.images.length - 1]?.url,
-    uri: track.uri,
-}));
-
-return res.status(200).json({
-    success: true,
-    tracks,
-});
-```
-
-on error:
-
-```js
-res.status(400).json({
-    success: false,
-    error: "Invalid Credentials: search query missing",
-    message: "Search Query is required.",
-});
-```
-
-OR
-
-```js
-res.status(500).json({
-    success: false,
-    error: "Internal Server Error",
-    message: "We're having trouble, please try again.",
-});
-```
-
-Fetch Track Details
-
-```js
-/**
- * @desc    Fetch Track Details
- * @route   GET /api/spotify/tracks/:id
- * @access  PUBLIC
- */
-```
-
-on success:
-
-```js
-const track = {
-    id: response.data.id,
-    name: response.data.name,
-    artist: response.data.artists.map((artist) => artist.name).join(", "),
-    album: response.data.album.name,
-    duration_ms: response.data.duration_ms,
-    popularity: response.data.popularity,
-    albumImage: response.data.album.images[0]?.url,
-    previewUrl: response.data.preview_url,
-    uri: response.data.uri,
-};
-return res.status(200).json({
-    success: true,
-    track,
-});
-```
-
-on error:
-
-```js
-res.status(400).json({
-    success: false,
-    error: "Invalid Credentials: track id missing",
-    message: "Track ID is required.",
-});
-```
-
-or
-
-```js
-res.status(500).json({
-    success: false,
-    error: "Internal Server Error",
-    message: "We're having trouble, please try again.",
-});
-```
-
-Fetch an Artist's Top Tracks
-
-```js
-/**
- * @desc    Fetch Artist's Top Tracks
- * @route   GET /api/spotify/artists/:id/top-tracks
- * @access  PUBLIC
- */
-```
-
-on success:
-
-```js
-const tracks = response.data.tracks.map((track) => ({
-    id: track.id,
-    name: track.name,
+    artist: "Artist 1, Artist 2",
     album: track.album.name,
     duration_ms: track.duration_ms,
-    albumImage: track.album.images[track.album.images.length - 1]?.url,
+    popularity: track.popularity,
+    albumImage: "https://...",
+    previewUrl: track.preview_url,
     uri: track.uri,
-}));
-
-return res.status(200).json({
-    success: true,
-    tracks,
+  },
 });
 ```
 
-on error:
+---
+
+### Fetch Artist's Top Tracks
+
+```
+GET /api/spotify/artists/:id/top-tracks
+```
+
+**Access:** Public
+
+**Success Response:**
 
 ```js
-res.status(400).json({
-    success: false,
-    error: "Invalid Credentials: artist ID missing",
-    message: "Oops! Artist ID is required.",
+res.status(200).json({
+  success: true,
+  tracks: [
+    {
+      id: track.id,
+      name: track.name,
+      album: track.album.name,
+      duration_ms: track.duration_ms,
+      albumImage: "https://...",
+      uri: track.uri,
+    },
+  ],
 });
 ```
 
-OR
+---
+
+## Requests
+
+### Create Request
+
+```
+POST /api/requests
+```
+
+**Access:** Public
+**Body:** `{ track, roomId, requestedBy? }`
+**Socket Event:** `request:created` → `roomId, request`
+
+**Success Response:**
 
 ```js
-res.status(500).json({
-    success: false,
-    error: "Internal Server Error",
-    message: "We're having trouble, please try again.",
+res.status(201).json({
+  success: true,
+  message: `Success! ${request.track.title} has been added to the queue.`,
+  request,
 });
 ```
+
+---
+
+### Upvote Request
+
+```
+PUT /api/requests/vote
+```
+
+**Access:** Public
+**Body:** `{ requestId }`
+**Socket Event:** `request:updated` → `request.roomId, request`
+
+**Success Response:**
+
+```js
+res.status(200).json({
+  success: true,
+  message: `Your upvote on ${request.track.title} has been counted!`,
+  request,
+});
+```
+
+---
+
+### Mark as Playing
+
+```
+PUT /api/requests/:requestId/mark-playing
+```
+
+**Access:** Private
+**Body:** `{ requestId }`
+**Socket Event:** `request:playing` → `request.roomId, request`
+
+**Success Response:**
+
+```js
+res.status(200).json({
+  success: true,
+  message: "Request marked as playing.",
+  request,
+});
+```
+
+---
+
+### Mark as Played
+
+```
+PUT /api/requests/:requestId/mark-played
+```
+
+**Access:** Private
+**Body:** `{ requestId }`
+**Socket Event:** `request:played` → `request.roomId, request`
+
+**Success Response:**
+
+```js
+res.status(200).json({
+  success: true,
+  message: "Request marked as played.",
+  request,
+});
+```
+
+---
+
+### Remove Request
+
+```
+DELETE /api/requests/:requestId/delete
+```
+
+**Access:** Private
+**Body:** `{ requestId }`
+**Socket Event:** `request:deleted` → `roomId, { requestId }`
+
+**Success Response:**
+
+```js
+res.status(200).json({
+  success: true,
+  message: "Request has been removed.",
+});
+```
+
+---
+
+### Fetch Room Requests
+
+```
+GET /api/requests/:roomId/requests
+```
+
+**Access:** Public
+
+> Returns requests sorted by votes (descending).
+
+**Success Response:**
+
+```js
+res.status(200).json({
+  success: true,
+  requests, // array of Request documents
+});
+```
+
+---
+
+### Fetch Request Details
+
+```
+GET /api/requests/:requestId
+```
+
+**Access:** Public
+
+**Success Response:**
+
+```js
+res.status(200).json({
+  success: true,
+  request,
+});
+```
+
+---
+
+### Filter Requests
+
+```
+GET /api/requests/:roomId/filter?status={status}
+```
+
+**Access:** Public
+**Query:** `status` (optional) — `pending`, `playing`, `played`, `rejected`
+
+> Returns requests sorted by votes (descending).
+
+**Success Response:**
+
+```js
+res.status(200).json({
+  success: true,
+  requests,
+});
+```
+
+---
+
+## Exports
+
+### Export Tracklist — JSON
+
+```
+GET /api/exports/:roomId/tracklist/json
+```
+
+**Access:** Private (played songs only)
+
+**Success Response:**
+
+```js
+res.status(200).json({
+  success: true,
+  message: "Tracklist exported successfully.",
+  tracklist: [
+    {
+      title: request.track.title,
+      artist: request.track.artist,
+      playedAt: "12:34 PM",
+    },
+  ],
+});
+```
+
+---
+
+### Export Tracklist — CSV
+
+```
+GET /api/exports/:roomId/tracklist/csv
+```
+
+**Access:** Private (played songs only)
+**Response:** CSV file download
+
+---
+
+### Export Tracklist — Plain Text
+
+```
+GET /api/exports/:roomId/tracklist/txt
+```
+
+**Access:** Private (played songs only)
+**Response:** Text file download
+
+---
+
+### Export Requests — JSON
+
+```
+GET /api/exports/:roomCode/export/json
+```
+
+**Access:** Public
+
+**Success Response:**
+
+```js
+res.status(200).json({
+  success: true,
+  message: "Requests exported successfully.",
+  data: [
+    {
+      title: req.track.title,
+      artist: req.track.artist,
+      votes: req.votes,
+      status: req.status,
+      playedAt: "12:34 PM", // or ""
+      requestedAt: "Jan 15, 2024 at 10:30 AM",
+      requestedBy: req.requestedBy,
+    },
+  ],
+});
+```
+
+---
+
+### Export Requests — CSV
+
+```
+GET /api/exports/:roomCode/export/csv
+```
+
+**Access:** Public
+**Response:** CSV file download
+
+---
+
+### Export Requests — Plain Text
+
+```
+GET /api/exports/:roomCode/export/plaintext
+```
+
+**Access:** Public
+**Response:** Text file download
+
+---
+
+## Server Health
+
+### Root Route
+
+```
+GET /
+```
+
+**Access:** Public
+
+**Success Response:**
+
+```js
+res.status(200).json({
+  success: true,
+  message: "What are you doing here? This is Sway's API!",
+  home: "https://www.sway.onl",
+  service: "sway - a DJ's best friend",
+  version: "1.0.2",
+  development: "https://www.jsmalls.net",
+  timestamp: "2024-01-15T10:30:00.000Z",
+});
+```
+
+---
+
+### Health Check
+
+```
+GET /server/health/admin
+```
+
+**Access:** Private (admin only)
+
+**Success Response:**
+
+```js
+res.status(200).json({
+  status: "OK",
+  success: true,
+  message: "Services are currently up and running.",
+  service: "sway - a DJ's best friend",
+  version: "1.0.2",
+  development: "https://www.jsmalls.net",
+  documentation: "https://www.github.com/jordansmalls/sway",
+  timestamp: "2024-01-15T10:30:00.000Z",
+  environment: "production",
+  uptime_raw_seconds: 12345.67,
+  uptime_formatted: "3h 25m 45s",
+  memory: { rss: 49352704, heapTotal: 18268160, /* ... */ },
+  process_version: "v20.10.0",
+});
+```
+
+---
+
+### 404 Handler
+
+```
+ANY /*
+```
+
+**Access:** Public
+
+**Response:**
+
+```js
+res.status(404).json({
+  success: false,
+  error: "404 ROUTE NOT FOUND",
+  message: "CANNOT GET /unknown-route",
+});
+```
+
+---
+
+## Socket.IO Events
+
+| Event | Direction | Payload | Description |
+|-------|-----------|---------|-------------|
+| `room:updated` | Server → Client | `{ roomId, ...roomData }` | Room details changed |
+| `room:ended` | Server → Client | `{ roomId }` | Room was closed |
+| `request:created` | Server → Client | `Request` | New song added to queue |
+| `request:updated` | Server → Client | `Request` | Request upvoted |
+| `request:playing` | Server → Client | `Request` | Song now playing |
+| `request:played` | Server → Client | `Request` | Song finished |
+| `request:deleted` | Server → Client | `{ requestId }` | Song removed from queue |
+
+
+---
+
+# Contact
+
+I'd love to talk about Sway. Feel free to message me on [twitter](https://www.x.com/@jsmallsdev), or send me an [email](mailto:jsmallsdev@gmail.com).
