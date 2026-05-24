@@ -1,21 +1,19 @@
-import express from "express";
 import Room from "../models/room.model";
-import User from "../models/user.model";
+import Request from "../models/request.model.js";
 import { formatTo12HourTime, formatToFullDate12Hour } from "../utils/formatters/format.times.js";
-import { createSpotifyLink, createSpotifyUriLink } from "../utils/formatters/format.spotify";
 import { createObjectCsvStringifier } from "csv-writer";
 import { pad, truncate } from "../utils/formatters/plaintext-helpers.js";
 
 /**
  * @desc    Export Room Tracklist JSON (Played songs only)
- * @route   GET /api/rooms/:roomId/tracklist/json
+ * @route   GET /api/exports/:roomId/tracklist/json
  * @access  PRIVATE
  * @feats   Allows authorized users to export the tracklist for a room, once it's over. (only songs that were played during the room)
  */
 
 export const exportTracklistJson = async (req, res) => {
 
-    const roomId = req.params.roomId;
+    const { roomId } = req.params;
 
     try {
 
@@ -23,7 +21,7 @@ export const exportTracklistJson = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 error: "Invalid Credentials: room ID missing",
-                message: "Room ID missing.",
+                message: "Room ID is required.",
             });
         };
 
@@ -42,7 +40,7 @@ export const exportTracklistJson = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 error: "Invalid Credentials: room is active",
-                message: "A room must be inactive to export its' tracklist."
+                message: "A room must be inactive to export the tracklist."
             });
         };
 
@@ -84,7 +82,7 @@ export const exportTracklistJson = async (req, res) => {
 
 /**
  * @desc    Export Room Tracklist CSV (Played songs only)
- * @route   GET /api/rooms/:roomId/tracklist/csv
+ * @route   GET /api/exports/:roomId/tracklist/csv
  * @access  PRIVATE
  * @feats   Allows authorized users to export the tracklist as CSV for a room, once it's over.
  */
@@ -106,7 +104,7 @@ export const exportTracklistCsv = async (req, res) => {
     return res.status(400).json({
         success: false,
         error: "Invalid Credentials: room ID missing",
-        message: "Oops! A Room ID is required.",
+        message: "Room ID is required.",
     });
   };
 
@@ -125,7 +123,7 @@ export const exportTracklistCsv = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 error: "Invalid Credentials: room is active",
-                message: "A room must be inactive to export its' tracklist.",
+                message: "A room must be inactive to export the tracklist.",
             });
 		};
 
@@ -144,7 +142,7 @@ export const exportTracklistCsv = async (req, res) => {
             return res.status(404).json({
                 success: false,
                 error: "Resource not found",
-                message: "Could not find any played songs for this room!",
+                message: "Could not find any played songs for this room.",
             });
 		};
 
@@ -178,10 +176,7 @@ export const exportTracklistCsv = async (req, res) => {
         console.error("There was an error attempting to export a tracklist as CSV:", err)
         return res.status(500).json({
             success: false,
-            error: {
-                message: "Internal Server Error",
-                err: err
-            },
+            error: "Internal Server Error",
             message: "We're having trouble exporting the CSV, please try again.",
         });
 	};
@@ -191,7 +186,7 @@ export const exportTracklistCsv = async (req, res) => {
 
 /**
  * @desc    Export Room Tracklist Plain text (Played songs only)
- * @route   GET /api/rooms/:roomId/tracklist/txt
+ * @route   GET /api/exports/:roomId/tracklist/txt
  * @access  PRIVATE
  * @feats   Allows auth'd users to export the tracklist as txt for a room, once it's over.
  */
@@ -222,7 +217,7 @@ export const exportTracklistTxt = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 error: "Invalid Credentials: room is active",
-                message: "A room must be inactive to export its' tracklist.",
+                message: "A room must be inactive to export the tracklist.",
             });
         };
 
@@ -242,7 +237,7 @@ export const exportTracklistTxt = async (req, res) => {
             return res.status(404).json({
                 success: false,
                 error: "Resource not found",
-                message: "Could not find any played songs for this room!",
+                message: "Could not find any played songs for this room.",
             });
         };
 
@@ -274,10 +269,7 @@ export const exportTracklistTxt = async (req, res) => {
         console.error("There was an error attempting to export a tracklist as plaintext:", err)
         return res.status(500).json({
             success: false,
-            error: {
-                message: "Internal Server Error",
-                err: err
-            },
+            error:  "Internal Server Error",
             message: "We're having trouble exporting your plaintext file, please try again."
         });
 	};
@@ -288,7 +280,7 @@ export const exportTracklistTxt = async (req, res) => {
 
 /**
  * @desc    Exporting a Room's Requests as JSON
- * @route   GET /api/rooms/:roomCode/export/json
+ * @route   GET /api/exports/:roomCode/export/json
  * @access  PUBLIC
  * @feats   If Room active -> false: Exports a list of the requests (will implement played songs only later) for a Room in csv or json?
  */
@@ -314,7 +306,7 @@ export const exportRoomRequestsJson = async (req, res) => {
             return res.status(404).json({
                 success: false,
                 error: "Resource not found",
-                message: "Room does not exist!",
+                message: "Room does not exist.",
             });
 		};
 
@@ -323,30 +315,31 @@ export const exportRoomRequestsJson = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 error: "Invalid Credentials: room is active",
-                message: "Room must be over before exporting requests!"
+                message: "Room must be over before exporting requests."
             });
 		};
 
 		// find requests
 		const requests = await Request.find({ roomId: room._id })
 
-		if(!requests) {
+		if (!requests.length) {
             return res.status(404).json({
                 success: false,
                 error: "Resource not found",
-                message: "Could not find any requests for this room!",
+                message: "Could not find any requests for this room.",
             });
-		};
+        };
 
 		const data = requests.map((req) => ({
-			title: req.track.title,
-			artist: req.track.artist,
-			votes: req.votes,
-			status: req.status,
-			playedAt: formatTo12HourTime(req.playedAt),
-			requestedAt: formatToFullDate12Hour(req.createdAt),
-			requestedBy: req.requestedBy
-		}))
+            title: req.track.title,
+            artist: req.track.artist,
+            votes: req.votes,
+            status: req.status,
+            // playedAt: formatTo12HourTime(req.playedAt),
+            playedAt: req.playedAt ? formatTo12HourTime(req.playedAt) : "",
+            requestedAt: formatToFullDate12Hour(req.createdAt),
+            requestedBy: req.requestedBy,
+        }));
 
         return res.status(200).json({
             success: true,
@@ -358,10 +351,7 @@ export const exportRoomRequestsJson = async (req, res) => {
 		console.error("There was an error exporting a room's requests as JSON:", err);
         return res.status(500).json({
             success: false,
-            error: {
-                message: "Internal Server Error",
-                err: err
-            },
+            error: "Internal Server Error",
             message: "We're having trouble exporting the requests of the room, please try again.",
         });
 	}
@@ -371,7 +361,7 @@ export const exportRoomRequestsJson = async (req, res) => {
 
 /**
  * @desc    Exporting a Room's Requests as CSV
- * @route   GET /api/rooms/:roomCode/export/csv
+ * @route   GET /api/exports/:roomCode/export/csv
  * @access  PUBLIC
  * @feats   If Room active -> false: Exports a list of the requests (will implement played songs only later) for a Room in csv or json?
  */
@@ -383,7 +373,7 @@ export const exportRoomRequestsCsv = async (req, res) => {
         return res.status(400).json({
             success: false,
             error: "Invalid Credentials: room code missing",
-            message: "Room code is missing!"
+            message: "Room code is required."
         });
 	};
 
@@ -395,7 +385,7 @@ export const exportRoomRequestsCsv = async (req, res) => {
             return res.status(404).json({
                 success: false,
                 error: "Resource not found",
-                message: "Room does not exist!",
+                message: "Room does not exist.",
             });
 		};
 
@@ -403,11 +393,14 @@ export const exportRoomRequestsCsv = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 error: "Invalid Credentials: room is active",
-                message: "Room must be over before exporting requests!"
+                message: "Room must be over before exporting requests."
             });
 		};
 
-		const requests = await Request.find({ roomId: room._id });
+        // TODO: test with and without populate
+		// const requests = await Request.find({ roomId: room._id });
+        const requests = await Request.find({ roomId: room._id }).populate("track");
+
 
 		if(!requests.length) {
             return res.status(404).json({
@@ -424,7 +417,8 @@ export const exportRoomRequestsCsv = async (req, res) => {
       		artist: r.track.artist,
       		votes: r.votes,
       		status: r.status,
-      		playedAt: r.playedAt ? formatTo12HourTime(r.playedAt) : '',
+      		// playedAt: r.playedAt ? formatTo12HourTime(r.playedAt) : '',
+            playedAt: r.playedAt ? formatTo12HourTime(r.playedAt) : "",
       		requestedAt: formatToFullDate12Hour(r.createdAt),
       		requestedBy: r.requestedBy,
     	}));
@@ -458,10 +452,8 @@ export const exportRoomRequestsCsv = async (req, res) => {
         console.error("There was an error attempting to export a room's requests as CSV:", err);
         return res.status(500).json({
             success: false,
-            error: {
-                message: "Internal Server Error",
-                err: err
-            },
+            error: "Internal Server Error",
+            message: "We're having trouble exporting the CSV, please try again."
         });
 	};
 };
@@ -469,7 +461,7 @@ export const exportRoomRequestsCsv = async (req, res) => {
 
 /**
  * @desc    Exporting a Room's Requests as Plain text
- * @route   GET /api/rooms/:roomCode/export/plaintext
+ * @route   GET /api/exports/:roomCode/export/plaintext
  * @access  PUBLIC
  * @feats   If Room active -> false: Exports a list of the requests (will implement played songs only later) for a Room in csv or json?
  */
@@ -481,7 +473,7 @@ export const exportRoomRequestsTxt = async (req, res) => {
         return res.status(400).json({
             success: false,
             error: "Invalid Credentials: room code missing",
-            message: "Room code is missing",
+            message: "Room code is required.",
         });
 	};
 
@@ -493,7 +485,7 @@ export const exportRoomRequestsTxt = async (req, res) => {
             return res.status(404).json({
                 success: false,
                 error: "Resource not found",
-                message: "Room does not exist!",
+                message: "Room does not exist.",
             });
 		};
 
@@ -502,12 +494,14 @@ export const exportRoomRequestsTxt = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 error: "Invalid Credentials: room is active",
-                message: "Room must be ended before exporting requests.",
+                message: "Room must be over before exporting requests.",
             });
 		};
 
 
-		const requests = await Request.find({ roomId: room._id })
+        // TODO: test
+		// const requests = await Request.find({ roomId: room._id })
+        const requests = await Request.find({ roomId: room._id }).populate("track");
 
 		if(!requests.length) {
             return res.status(404).json({
@@ -536,14 +530,14 @@ export const exportRoomRequestsTxt = async (req, res) => {
 
 		for (const r of requests) {
       const line = [
-        pad(truncate(r.track.title, 30), 30),
-        pad(truncate(r.track.artist, 25), 25),
-        pad(String(r.votes), 6),
-        pad(r.status, 10),
-        pad(r.playedAt ? formatTo12HourTime(r.playedAt) : '', 12),
-        pad(formatToFullDate12Hour(r.createdAt), 20),
-        pad(r.requestedBy, 20),
-      ].join(' | ');
+          pad(truncate(r.track.title, 30), 30),
+          pad(truncate(r.track.artist, 25), 25),
+          pad(String(r.votes), 6),
+          pad(r.status, 10),
+          pad(r.playedAt ? formatTo12HourTime(r.playedAt) : "", 12),
+          pad(formatToFullDate12Hour(r.createdAt), 20),
+          pad(r.requestedBy, 20),
+      ].join(" | ");
       lines.push(line);
     }
 
@@ -559,12 +553,8 @@ export const exportRoomRequestsTxt = async (req, res) => {
 		console.error("There was an error exporting requests as plaintext:", err);
         return res.status(500).json({
             success: false,
-            error: {
-                message: "Internal Server Error",
-                err: err,
-            },
+            error: "Internal Server Error",
             message: "We're having trouble exporting the plain text file, please try again.",
         });
 	};
 };
-
