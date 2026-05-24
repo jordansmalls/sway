@@ -1,7 +1,6 @@
 import User from "../models/user.model";
 import generateToken from "../utils/generate.jwt";
-import validator from "validator"
-
+import validator from "validator";
 
 /**
  * @desc    Create user account
@@ -13,60 +12,55 @@ export const createUserAccount = async (req, res) => {
     const { email, password } = req.body;
 
     try {
-
-        if(!email || !password) {
+        if (!email || !password) {
             return res.status(400).json({
                 success: false,
                 error: "Invalid Credentials: missing email and/or password",
-                message: "Both email and password fields are required!"
-            })
+                message: "Both email and password fields are required!",
+            });
         }
 
-
         // email validation
-        if(!validator.isEmail(email)) {
+        if (!validator.isEmail(email)) {
             return res.status(400).json({
                 success: false,
                 error: "Invalid Credentials: invalid email",
-                message: "Please enter a valid email address."
-            })
+                message: "Please enter a valid email address.",
+            });
         }
 
         // password length check
-        if(password.length < 8) {
+        if (password.length < 8) {
             return res.status(400).json({
                 success: false,
                 error: "Invalid Credentials: invalid password",
-                message: "Passwords must be at least 8 characters long!"
-            })
+                message: "Passwords must be at least 8 characters long!",
+            });
         }
-
 
         // check if email is already in use
         const emailExists = await User.findOne({ email: email.toLowerCase() });
 
-        if(emailExists) {
+        if (emailExists) {
             return res.status(400).json({
                 success: false,
                 error: "Invalid Credentials: email collision",
-                message: "Email is already associated with another account."
-            })
+                message: "Email is already associated with another account.",
+            });
         }
-
 
         // create user account
         const user = await User.create({
             email: email.toLowerCase(),
             password,
-        })
+        });
 
-
-        if(!user) {
+        if (!user) {
             return res.status(500).json({
                 success: false,
                 error: "Invalid Credentials: invalid user data",
                 message: "We're having trouble, please try again.",
-            })
+            });
         }
 
         generateToken(res, user._id);
@@ -81,11 +75,10 @@ export const createUserAccount = async (req, res) => {
                 hasUsername: user.hasUsername,
                 createdAt: user.createdAt,
                 updatedAt: user.updatedAt,
-            }
-        })
-
+            },
+        });
     } catch (err) {
-       console.error("There was an error creating a user account:", err);
+        console.error("There was an error creating a user account:", err);
 
         if (err.code === 11000) {
             const field = Object.keys(err.keyValue)[0];
@@ -97,11 +90,10 @@ export const createUserAccount = async (req, res) => {
         return res.status(500).json({
             success: false,
             error: "Internal Server Error",
-            message: "Sorry, we're having trouble creating your account. Please try again soon."
-        })
+            message: "Sorry, we're having trouble creating your account. Please try again soon.",
+        });
     }
-}
-
+};
 
 /**
  * @desc    Create username
@@ -163,12 +155,12 @@ export const createUsername = async (req, res) => {
         // check if username is taken
         const usernameTaken = await User.findOne({ username });
 
-        if(usernameTaken) {
+        if (usernameTaken) {
             return res.status(400).json({
                 success: false,
                 error: "Username taken",
-                message: "This username is already in use."
-            })
+                message: "This username is already in use.",
+            });
         }
 
         user.username = username;
@@ -189,18 +181,15 @@ export const createUsername = async (req, res) => {
                 updatedAt: updatedUser.updatedAt,
             },
         });
-
     } catch (err) {
-       console.error("There was an error assigning a user a username:", err);
-       return res.status(500).json({
-        success: false,
-        error: "Internal Server Error",
-        message: "We're having trouble, please try again."
-       })
+        console.error("There was an error assigning a user a username:", err);
+        return res.status(500).json({
+            success: false,
+            error: "Internal Server Error",
+            message: "We're having trouble, please try again.",
+        });
     }
-}
-
-
+};
 
 /**
  * @desc    Check username availability
@@ -212,42 +201,44 @@ export const checkUsernameAvailability = async (req, res) => {
     const { username } = req.params;
 
     try {
-
-        if(!username || typeof username !== "string" || username.length < 3 || username.length > 20) {
+        if (
+            !username ||
+            typeof username !== "string" ||
+            username.length < 3 ||
+            username.length > 20
+        ) {
             return res.status(400).json({
                 success: false,
                 error: "Invalid Credentials: invalid username characters or length",
-                message: "Usernames must be between 3 and 20 characters in length, and only contain no special characters."
-            })
+                message:
+                    "Usernames must be between 3 and 20 characters in length, and only contain no special characters.",
+            });
         }
 
-        const taken = await User.findOne({ username })
+        const taken = await User.findOne({ username });
 
-        if(taken) {
+        if (taken) {
             return res.status(200).json({
                 success: true,
                 taken: true,
                 message: "Username is already in use.",
-            })
+            });
         } else {
             return res.status(200).json({
                 success: true,
                 taken: false,
-                message: "Username is available."
-            })
+                message: "Username is available.",
+            });
         }
-
-
     } catch (err) {
-       console.error("There was an error attempting to check username availability:", err);
-       return res.status(500).json({
-        success: false,
-        error: "Internal Server Error",
-        message: "We're having trouble, please try again soon."
-       })
+        console.error("There was an error attempting to check username availability:", err);
+        return res.status(500).json({
+            success: false,
+            error: "Internal Server Error",
+            message: "We're having trouble, please try again soon.",
+        });
     }
-}
-
+};
 
 /**
  * @desc    Check email availability
@@ -259,41 +250,38 @@ export const checkEmailAvailability = async (req, res) => {
     const { email } = req.params;
 
     try {
-
-        if(!validator.isEmail(email)) {
+        if (!validator.isEmail(email)) {
             return res.status(400).json({
                 success: false,
                 error: "Invalid Credentials: invalid email",
-                message: "Oops! Please enter a valid email address."
-            })
+                message: "Oops! Please enter a valid email address.",
+            });
         }
 
-        const taken = await User.findOne({ email })
+        const taken = await User.findOne({ email });
 
-        if(taken) {
+        if (taken) {
             return res.status(200).json({
                 success: true,
                 taken: true,
-                message: "Email is already in use."
-            })
+                message: "Email is already in use.",
+            });
         } else {
             return res.status(200).json({
                 success: true,
                 taken: false,
-                message: "Email is available!"
-            })
+                message: "Email is available!",
+            });
         }
-
     } catch (err) {
-       console.error("There was an error fetching the availability of an email:", err);
-       return res.status(500).json({
-        success: false,
-        error: "Internal Server Error",
-        message: "We're having trouble, please try again soon."
-       })
+        console.error("There was an error fetching the availability of an email:", err);
+        return res.status(500).json({
+            success: false,
+            error: "Internal Server Error",
+            message: "We're having trouble, please try again soon.",
+        });
     }
-}
-
+};
 
 /**
  * @desc    Log in user
@@ -317,7 +305,7 @@ export const loginUserAccount = async (req, res) => {
             $or: [{ username: identifier.toLowerCase() }, { email: identifier.toLowerCase() }],
         }).select("+password"); // Explicitly include password if it's set to select: false
 
-        if(user && user.active && (await user.comparePassword(password))) {
+        if (user && user.active && (await user.comparePassword(password))) {
             generateToken(res, user._id);
             return res.status(200).json({
                 success: true,
@@ -330,27 +318,24 @@ export const loginUserAccount = async (req, res) => {
                     hasUsername: user.hasUsername,
                     createdAt: user.createdAt,
                     updatedAt: user.updatedAt,
-                }
-            })
+                },
+            });
         } else {
             return res.status(401).json({
                 success: false,
                 error: "Invalid Credentials: invalid username/email or password",
-                message: "We're having trouble logging you in, please try again soon."
-            })
+                message: "We're having trouble logging you in, please try again soon.",
+            });
         }
-
     } catch (err) {
-       console.error("There was an error attempting to log a user in:", err);
-       return res.status(500).json({
-        success: false,
-        error: "Internal Server Error",
-        message: "We're having trouble logging you in, please try again soon."
-       })
+        console.error("There was an error attempting to log a user in:", err);
+        return res.status(500).json({
+            success: false,
+            error: "Internal Server Error",
+            message: "We're having trouble logging you in, please try again soon.",
+        });
     }
-}
-
-
+};
 
 /**
  * @desc    Log out user

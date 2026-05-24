@@ -1,8 +1,8 @@
 import axios from "axios";
 import config from "../config/config";
 
-const CLIENT_ID = config.spotify_client_id
-const CLIENT_SECRET = config.spotify_client_secret
+const CLIENT_ID = config.spotify_client_id;
+const CLIENT_SECRET = config.spotify_client_secret;
 
 // Cache the token to avoid unnecessary requests
 let cachedToken = null;
@@ -36,13 +36,10 @@ const getAccessToken = async () => {
 
         return cachedToken;
     } catch (err) {
-        console.error("There was an error getting a token from Spotify:", err)
+        console.error("There was an error getting a token from Spotify:", err);
         throw err;
     }
 };
-
-
-
 
 /**
  * @desc    Search Spotify for Tracks
@@ -59,7 +56,7 @@ export const searchTracks = async (req, res) => {
                 success: false,
                 error: "Invalid Credentials: search query missing",
                 message: "Search Query is required.",
-            })
+            });
         }
 
         const token = await getAccessToken();
@@ -88,18 +85,17 @@ export const searchTracks = async (req, res) => {
 
         return res.status(200).json({
             success: true,
-            tracks
-            });
+            tracks,
+        });
     } catch (err) {
         console.error("There was an error searching tracks:", err);
         return res.status(500).json({
             success: false,
             error: "Internal Server Error",
-            message: "We're having trouble, please try again."
-        })
+            message: "We're having trouble, please try again.",
+        });
     }
 };
-
 
 /**
  * @desc    Fetch Track Details
@@ -115,8 +111,8 @@ export const fetchTrackDetails = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 error: "Invalid Credentials: track id missing",
-                message: "Track ID is required."
-            })
+                message: "Track ID is required.",
+            });
         }
 
         const token = await getAccessToken();
@@ -142,15 +138,15 @@ export const fetchTrackDetails = async (req, res) => {
         };
         return res.status(200).json({
             success: true,
-            track
-        })
+            track,
+        });
     } catch (err) {
-        console.error("There was an error fetching the details of a track:", err)
+        console.error("There was an error fetching the details of a track:", err);
         return res.status(500).json({
             success: false,
             error: "Internal Server Error",
-            message: "We're having trouble, please try again."
-        })
+            message: "We're having trouble, please try again.",
+        });
     }
 };
 
@@ -168,8 +164,8 @@ export const fetchArtistTopTracks = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 error: "Invalid Credentials: artist ID missing",
-                message: "Oops! Artist ID is required."
-            })
+                message: "Oops! Artist ID is required.",
+            });
         }
 
         const token = await getAccessToken();
@@ -196,18 +192,14 @@ export const fetchArtistTopTracks = async (req, res) => {
 
         return res.status(200).json({
             success: true,
-            tracks
-        })
+            tracks,
+        });
     } catch (err) {
         console.error("There was an error fetching an artist's top tracks:", err);
         return res.status(500).json({
             success: false,
             error: "Internal Server Error",
             message: "We're having trouble, please try again.",
-        })
+        });
     }
 };
-
-
-
-

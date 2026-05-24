@@ -1,6 +1,6 @@
 import config from "../config/config";
 import User from "../models/user.model";
-import validator from "validator"
+import validator from "validator";
 import Room from "../models/room.model";
 
 /**
@@ -17,8 +17,8 @@ export const updateProfile = async (req, res) => {
             return res.status(404).json({
                 success: false,
                 error: "Resource not found",
-                message: "User not found."
-             });
+                message: "User not found.",
+            });
         }
 
         const { username, email } = req.body;
@@ -28,7 +28,7 @@ export const updateProfile = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 error: "Invalid Credentials: one field required",
-                message: "Please provide at least one field to update your account."
+                message: "Please provide at least one field to update your account.",
             });
         }
 
@@ -37,7 +37,7 @@ export const updateProfile = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 error: "Invalid Credentials: invalid email",
-                message: "Please enter a valid email."
+                message: "Please enter a valid email.",
             });
         }
 
@@ -45,8 +45,8 @@ export const updateProfile = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 error: "Invalid Credentials: invalid username length",
-                message: "Username must be between 3 and 20 characters."
-             });
+                message: "Username must be between 3 and 20 characters.",
+            });
         }
 
         if (username && !/^[a-zA-Z0-9_]+$/.test(username)) {
@@ -72,7 +72,8 @@ export const updateProfile = async (req, res) => {
                 return res.status(400).json({
                     success: false,
                     error: "Invalid Credentials: username is taken",
-                    message: "Username is already taken." });
+                    message: "Username is already taken.",
+                });
             }
 
             user.username = trimmedUsername;
@@ -125,11 +126,10 @@ export const updateProfile = async (req, res) => {
         return res.status(500).json({
             success: false,
             error: "Internal Server Error",
-            message: "We had trouble updating your profile. Please try again."
+            message: "We had trouble updating your profile. Please try again.",
         });
     }
 };
-
 
 /**
  * @desc    Update user password
@@ -144,7 +144,7 @@ export const updatePassword = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 error: "Invalid Credentials: missing current or new password",
-                message: "Current password and new password are required."
+                message: "Current password and new password are required.",
             });
         }
 
@@ -152,7 +152,7 @@ export const updatePassword = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 error: "Invalid Credentials: invalid new password length",
-                message: "New password must be at least 8 characters."
+                message: "New password must be at least 8 characters.",
             });
         }
 
@@ -173,7 +173,7 @@ export const updatePassword = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 error: "Invalid Credentials: invalid password",
-                message: "Current password is incorrect."
+                message: "Current password is incorrect.",
             });
         }
 
@@ -183,20 +183,17 @@ export const updatePassword = async (req, res) => {
 
         return res.status(200).json({
             success: true,
-            message: "Password updated successfully."
+            message: "Password updated successfully.",
         });
     } catch (err) {
         console.error("There was an error attempting to update a user's password:", err);
         return res.status(500).json({
             success: false,
             error: "Internal Server Error",
-            message: "Error changing password, please try again soon."
+            message: "Error changing password, please try again soon.",
         });
     }
 };
-
-
-
 
 /**
  * @desc    Get current user profile
@@ -290,53 +287,49 @@ export const deleteAccount = async (req, res) => {
 export const fetchUserActiveRoom = async (req, res) => {
     const { userId } = req.params;
 
-    if(!userId) {
+    if (!userId) {
         return res.status(400).json({
             success: false,
             error: "Invalid Credentials: user ID missing",
-            message: "We're having trouble, please try again."
-        })
+            message: "We're having trouble, please try again.",
+        });
     }
 
     try {
-
         const user = await User.findById(userId);
 
-        if(!user) {
+        if (!user) {
             return res.status(404).json({
                 success: false,
                 error: "Resource not found",
-                message: "User not found."
-            })
+                message: "User not found.",
+            });
         }
 
-        const activeRoom = await Room.findOne({ roomCreator: userId, active: true })
+        const activeRoom = await Room.findOne({ roomCreator: userId, active: true });
 
-        if(!activeRoom) {
+        if (!activeRoom) {
             return res.status(404).json({
                 success: false,
                 error: "Resource not found",
-                message: "User does not currently have any active rooms."
-            })
+                message: "User does not currently have any active rooms.",
+            });
         }
 
         return res.status(200).json({
             success: true,
-            activeRoom
-        })
-
+            activeRoom,
+        });
     } catch (err) {
-        console.error("There was an error fetching a user's active room:", err)
+        console.error("There was an error fetching a user's active room:", err);
 
         return res.status(500).json({
             success: false,
             error: "Internal Server Error",
-            message: "We're having trouble, please try again."
-        })
+            message: "We're having trouble, please try again.",
+        });
     }
-}
-
-
+};
 
 /**
  * @desc    Fetch a User's hasActiveRoom value
@@ -345,34 +338,33 @@ export const fetchUserActiveRoom = async (req, res) => {
  */
 
 export const fetchUserHasActiveRoom = async (req, res) => {
-	const { userId } = req.params;
-	try {
-		const user = await User.findById(userId);
+    const { userId } = req.params;
+    try {
+        const user = await User.findById(userId);
 
-		if (!user) {
+        if (!user) {
             return res.status(404).json({
                 success: false,
                 error: "Resource not found",
-                message: "User not found."
-            })
-		}
+                message: "User not found.",
+            });
+        }
 
-		const hasActiveRoom = user.hasActiveRoom;
+        const hasActiveRoom = user.hasActiveRoom;
 
         return res.status(200).json({
             success: true,
-            hasActiveRoom
+            hasActiveRoom,
         });
-	} catch (err) {
+    } catch (err) {
         console.error("There was an error fetching a user's active room:", err);
         return res.status(500).json({
             success: false,
             error: `Internal Server Error - ${err.message}`,
-            message: "We're having trouble, please try again."
-        })
-	}
+            message: "We're having trouble, please try again.",
+        });
+    }
 };
-
 
 /**
  * @desc    Fetch User Inactive Rooms
@@ -382,38 +374,38 @@ export const fetchUserHasActiveRoom = async (req, res) => {
  */
 
 export const fetchUserInactiveRooms = async (req, res) => {
-	const { userId } = req.params;
+    const { userId } = req.params;
 
-	try {
-		const user = await User.findById(userId);
+    try {
+        const user = await User.findById(userId);
 
-		if (!user) {
+        if (!user) {
             return res.status(404).json({
                 success: false,
                 error: "Resource not found",
-                message: "User not found."
-            })
-		}
+                message: "User not found.",
+            });
+        }
 
-		const inactiveRooms = await Room.find({ roomCreator: userId, active: false });
+        const inactiveRooms = await Room.find({ roomCreator: userId, active: false });
 
-		if (inactiveRooms.length === 0) {
+        if (inactiveRooms.length === 0) {
             return res.status(200).json({
                 success: true,
-                inactiveRooms: []
+                inactiveRooms: [],
             });
-		};
+        }
 
         return res.status(200).json({
             success: true,
-            inactiveRooms
-        })
-	} catch (err) {
-		console.error("There was an error attempting to fetch a user's inactive rooms:", err);
+            inactiveRooms,
+        });
+    } catch (err) {
+        console.error("There was an error attempting to fetch a user's inactive rooms:", err);
         return res.status(500).json({
             success: false,
             error: `Internal Server Error - ${err.message}`,
-            message: "We're having trouble, please try again soon."
-        })
-	}
+            message: "We're having trouble, please try again soon.",
+        });
+    }
 };

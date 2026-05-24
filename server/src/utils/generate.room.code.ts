@@ -1,6 +1,5 @@
 import Room from "../models/room.model";
 
-
 /**
  * @desc    Generate Room Code
  * @returns {string} - Room Code (5 length string composed of randomized chars A-Z0-9)
@@ -27,7 +26,6 @@ export async function getUniqueRoomCode() {
     do {
         code = generateRoomCode();
         existingRoom = await Room.findOne({ roomCode: code });
-
     } while (existingRoom);
     return code;
 }

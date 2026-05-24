@@ -2,7 +2,6 @@ import User from "../models/user.model.js";
 import config from "../config/config.js";
 import formatUptime from "../utils/formatters/format.uptime.js";
 
-
 /**
  * @desc    Fetch Root route
  * @route   GET /
@@ -32,8 +31,8 @@ export const fetchServerHealth = async (req, res) => {
         return res.status(401).json({
             success: false,
             error: "Unauthorized",
-            message: "Unauthorized."
-        })
+            message: "Unauthorized.",
+        });
     }
 
     try {
@@ -44,7 +43,7 @@ export const fetchServerHealth = async (req, res) => {
                 success: false,
                 error: "Forbidden - Not authorized",
                 message: "FORBIDDEN: Not Authorized.",
-            })
+            });
         }
 
         const formattedUptime = formatUptime(process.uptime());
@@ -65,12 +64,12 @@ export const fetchServerHealth = async (req, res) => {
             process_version: process.version,
         });
     } catch (err) {
-        console.error("There was an error fetching server health:", err)
+        console.error("There was an error fetching server health:", err);
         return res.status(500).json({
             success: false,
             error: "Internal Server Error",
-            message: "INTERNAL SERVER ERROR"
-        })
+            message: "INTERNAL SERVER ERROR",
+        });
     }
 };
 

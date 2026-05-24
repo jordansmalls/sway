@@ -85,8 +85,8 @@ POST /api/auth
 
 ```json
 {
-  "email": "user@example.com",
-  "password": "password123"
+    "email": "user@example.com",
+    "password": "password123"
 }
 ```
 
@@ -101,16 +101,16 @@ POST /api/auth
 
 ```json
 {
-  "success": true,
-  "message": "Account created successfully. Welcome to Sway!",
-  "user": {
-    "_id": "6828e5f7a2b4c91e1d9a1f32",
-    "email": "user@example.com",
-    "hasActiveRoom": false,
-    "hasUsername": false,
-    "createdAt": "2026-05-18T15:20:00.000Z",
-    "updatedAt": "2026-05-18T15:20:00.000Z"
-  }
+    "success": true,
+    "message": "Account created successfully. Welcome to Sway!",
+    "user": {
+        "_id": "6828e5f7a2b4c91e1d9a1f32",
+        "email": "user@example.com",
+        "hasActiveRoom": false,
+        "hasUsername": false,
+        "createdAt": "2026-05-18T15:20:00.000Z",
+        "updatedAt": "2026-05-18T15:20:00.000Z"
+    }
 }
 ```
 
@@ -124,9 +124,9 @@ POST /api/auth
 
 ```json
 {
-  "success": false,
-  "error": "Internal Server Error",
-  "message": "Sorry, we're having trouble creating your account. Please try again soon."
+    "success": false,
+    "error": "Internal Server Error",
+    "message": "Sorry, we're having trouble creating your account. Please try again soon."
 }
 ```
 
@@ -150,7 +150,7 @@ POST /api/auth/username
 
 ```json
 {
-  "username": "john"
+    "username": "john"
 }
 ```
 
@@ -158,9 +158,9 @@ POST /api/auth/username
 
 - Username must be between 3 and 20 characters long
 - Username may only contain:
-  - letters
-  - numbers
-  - underscores (`_`)
+    - letters
+    - numbers
+    - underscores (`_`)
 
 Regex:
 
@@ -174,17 +174,17 @@ a-zA-Z0-9_
 
 ```json
 {
-  "success": true,
-  "message": "john has a great ring to it, let's do this.",
-  "user": {
-    "_id": "6828e5f7a2b4c91e1d9a1f32",
-    "username": "john",
-    "email": "user@example.com",
-    "hasActiveRoom": false,
-    "hasUsername": true,
-    "createdAt": "2026-05-18T15:20:00.000Z",
-    "updatedAt": "2026-05-18T15:20:00.000Z"
-  }
+    "success": true,
+    "message": "john has a great ring to it, let's do this.",
+    "user": {
+        "_id": "6828e5f7a2b4c91e1d9a1f32",
+        "username": "john",
+        "email": "user@example.com",
+        "hasActiveRoom": false,
+        "hasUsername": true,
+        "createdAt": "2026-05-18T15:20:00.000Z",
+        "updatedAt": "2026-05-18T15:20:00.000Z"
+    }
 }
 ```
 
@@ -196,9 +196,9 @@ a-zA-Z0-9_
 
 ```json
 {
-  "success": false,
-  "error": "Invalid Credentials: ID missing",
-  "message": "You must be logged in."
+    "success": false,
+    "error": "Invalid Credentials: ID missing",
+    "message": "You must be logged in."
 }
 ```
 
@@ -208,9 +208,9 @@ a-zA-Z0-9_
 
 ```json
 {
-  "success": false,
-  "error": "Resource Not Found",
-  "message": "User not found."
+    "success": false,
+    "error": "Resource Not Found",
+    "message": "User not found."
 }
 ```
 
@@ -220,9 +220,9 @@ a-zA-Z0-9_
 
 ```json
 {
-  "success": false,
-  "error": "Invalid Credentials: user has username",
-  "message": "You have already created a username."
+    "success": false,
+    "error": "Invalid Credentials: user has username",
+    "message": "You have already created a username."
 }
 ```
 
@@ -232,9 +232,9 @@ a-zA-Z0-9_
 
 ```json
 {
-  "success": false,
-  "error": "Invalid Credentials: username length",
-  "message": "Usernames must be between 3 and 20 characters long."
+    "success": false,
+    "error": "Invalid Credentials: username length",
+    "message": "Usernames must be between 3 and 20 characters long."
 }
 ```
 
@@ -244,9 +244,9 @@ a-zA-Z0-9_
 
 ```json
 {
-  "success": false,
-  "error": "Invalid Credentials: invalid username characters",
-  "message": "Usernames can only contain letters, numbers, and underscores."
+    "success": false,
+    "error": "Invalid Credentials: invalid username characters",
+    "message": "Usernames can only contain letters, numbers, and underscores."
 }
 ```
 
@@ -256,9 +256,9 @@ a-zA-Z0-9_
 
 ```json
 {
-  "success": false,
-  "error": "Username taken",
-  "message": "This username is already in use."
+    "success": false,
+    "error": "Username taken",
+    "message": "This username is already in use."
 }
 ```
 
@@ -268,9 +268,9 @@ a-zA-Z0-9_
 
 ```json
 {
-  "success": false,
-  "error": "Internal Server Error",
-  "message": "We're having trouble, please try again."
+    "success": false,
+    "error": "Internal Server Error",
+    "message": "We're having trouble, please try again."
 }
 ```
 
@@ -294,7 +294,7 @@ GET /api/auth/username/:username
 
 ```json
 {
-  "username": "john"
+    "username": "john"
 }
 ```
 
@@ -302,9 +302,9 @@ GET /api/auth/username/:username
 
 - Username must be between 3 and 20 characters long
 - Username may only contain:
-  - letters
-  - numbers
-  - underscores (`_`)
+    - letters
+    - numbers
+    - underscores (`_`)
 
 Regex:
 
@@ -320,9 +320,9 @@ a-zA-Z0-9_
 
 ```json
 {
-  "success": true,
-  "taken": true,
-  "message": "Username is already in use."
+    "success": true,
+    "taken": true,
+    "message": "Username is already in use."
 }
 ```
 
@@ -332,9 +332,9 @@ a-zA-Z0-9_
 
 ```json
 {
-  "success": true,
-  "taken": false,
-  "message": "Username is available."
+    "success": true,
+    "taken": false,
+    "message": "Username is available."
 }
 ```
 
@@ -346,9 +346,9 @@ a-zA-Z0-9_
 
 ```json
 {
-  "success": false,
-  "error": "Invalid Credentials: invalid username characters or length",
-  "message": "Usernames must be between 3 and 20 characters in length, and only contain no special characters."
+    "success": false,
+    "error": "Invalid Credentials: invalid username characters or length",
+    "message": "Usernames must be between 3 and 20 characters in length, and only contain no special characters."
 }
 ```
 
@@ -358,9 +358,9 @@ a-zA-Z0-9_
 
 ```json
 {
-  "success": false,
-  "error": "Internal Server Error",
-  "message": "We're having trouble, please try again soon."
+    "success": false,
+    "error": "Internal Server Error",
+    "message": "We're having trouble, please try again soon."
 }
 ```
 
@@ -384,7 +384,7 @@ GET /api/auth/email/:email
 
 ```json
 {
-  "email": "user@example.com"
+    "email": "user@example.com"
 }
 ```
 
@@ -396,9 +396,9 @@ GET /api/auth/email/:email
 
 ```json
 {
-  "success": true,
-  "taken": true,
-  "message": "Email is already in use."
+    "success": true,
+    "taken": true,
+    "message": "Email is already in use."
 }
 ```
 
@@ -408,9 +408,9 @@ GET /api/auth/email/:email
 
 ```json
 {
-  "success": true,
-  "taken": false,
-  "message": "Email is available!"
+    "success": true,
+    "taken": false,
+    "message": "Email is available!"
 }
 ```
 
@@ -422,9 +422,9 @@ GET /api/auth/email/:email
 
 ```json
 {
-  "success": false,
-  "error": "Invalid Credentials: invalid email",
-  "message": "Oops! Please enter a valid email address."
+    "success": false,
+    "error": "Invalid Credentials: invalid email",
+    "message": "Oops! Please enter a valid email address."
 }
 ```
 
@@ -434,9 +434,9 @@ GET /api/auth/email/:email
 
 ```json
 {
-  "success": false,
-  "error": "Internal Server Error",
-  "message": "We're having trouble, please try again soon."
+    "success": false,
+    "error": "Internal Server Error",
+    "message": "We're having trouble, please try again soon."
 }
 ```
 
@@ -460,16 +460,16 @@ POST /api/auth/login
 
 ```json
 {
-  "identifier": "john",
-  "password": "password123"
+    "identifier": "john",
+    "password": "password123"
 }
 ```
 
 ### Notes
 
 - `identifier` can be either:
-  - email
-  - username
+    - email
+    - username
 
 ### Success Response
 
@@ -477,17 +477,17 @@ POST /api/auth/login
 
 ```json
 {
-  "success": true,
-  "message": "You've been successfully logged in.",
-  "user": {
-    "_id": "6828e5f7a2b4c91e1d9a1f32",
-    "username": "john",
-    "email": "user@example.com",
-    "hasActiveRoom": false,
-    "hasUsername": true,
-    "createdAt": "2026-05-18T15:20:00.000Z",
-    "updatedAt": "2026-05-18T15:20:00.000Z"
-  }
+    "success": true,
+    "message": "You've been successfully logged in.",
+    "user": {
+        "_id": "6828e5f7a2b4c91e1d9a1f32",
+        "username": "john",
+        "email": "user@example.com",
+        "hasActiveRoom": false,
+        "hasUsername": true,
+        "createdAt": "2026-05-18T15:20:00.000Z",
+        "updatedAt": "2026-05-18T15:20:00.000Z"
+    }
 }
 ```
 
@@ -503,9 +503,9 @@ POST /api/auth/login
 
 ```json
 {
-  "success": false,
-  "error": "Invalid Credentials: invalid username/email or password",
-  "message": "We're having trouble logging you in, please try again soon."
+    "success": false,
+    "error": "Invalid Credentials: invalid username/email or password",
+    "message": "We're having trouble logging you in, please try again soon."
 }
 ```
 
@@ -515,9 +515,9 @@ POST /api/auth/login
 
 ```json
 {
-  "success": false,
-  "error": "Internal Server Error",
-  "message": "We're having trouble logging you in, please try again soon."
+    "success": false,
+    "error": "Internal Server Error",
+    "message": "We're having trouble logging you in, please try again soon."
 }
 ```
 
@@ -547,8 +547,8 @@ None
 
 ```json
 {
-  "success": true,
-  "message": "Logged out successfully. Please come back soon."
+    "success": true,
+    "message": "Logged out successfully. Please come back soon."
 }
 ```
 
@@ -562,13 +562,11 @@ None
 
 ```json
 {
-  "success": false,
-  "error": "Internal Server Error",
-  "message": "We're having trouble logging you out, please try again."
+    "success": false,
+    "error": "Internal Server Error",
+    "message": "We're having trouble logging you out, please try again."
 }
 ```
-
-
 
 <!-- TODO: === UPDATE README ROOM AND USER ENDPOINTS === -->
 
@@ -586,7 +584,6 @@ None
  * @route   POST /api/users/password
  * @access  PRIVATE
  */
-
 
 /**
  * @desc    Get current user profile
@@ -619,11 +616,9 @@ None
  * @route   GET /api/users/:userId/inactive
  * @access  PRIVATE
  */
-
 ```
 
 # Room Endpoints
-
 
 Create Room
 
@@ -639,79 +634,76 @@ input
 
 ```json
 {
-	"roomName": "testing room",
-	"roomDescription": "this is a test."
+    "roomName": "testing room",
+    "roomDescription": "this is a test."
 }
 ```
+
 note: only can be accessed while authorized.
 
 output
 
 ```json
 {
-	"success": true,
-	"message": "Success! testing room has been created and is now active.",
-	"newRoom": {
-		"roomName": "testing room",
-		"roomDescription": "this is a test.",
-		"roomCode": "3LBW9",
-		"roomCreator": "6a0b88f356dcc29585f08be0",
-		"active": true,
-		"_id": "6a0b892556dcc29585f08be1",
-		"createdAt": "2026-05-18T21:48:21.283Z",
-		"updatedAt": "2026-05-18T21:48:21.283Z",
-		"__v": 0
-	}
+    "success": true,
+    "message": "Success! testing room has been created and is now active.",
+    "newRoom": {
+        "roomName": "testing room",
+        "roomDescription": "this is a test.",
+        "roomCode": "3LBW9",
+        "roomCreator": "6a0b88f356dcc29585f08be0",
+        "active": true,
+        "_id": "6a0b892556dcc29585f08be1",
+        "createdAt": "2026-05-18T21:48:21.283Z",
+        "updatedAt": "2026-05-18T21:48:21.283Z",
+        "__v": 0
+    }
 }
 ```
 
-
-
 Delete Room
-
 
 input
 
 _DELETE - http://localhost:9999/api/rooms/6a0b892556dcc29585f08be1_
 
 request body
+
 ```json
 {
-	"userId": "6a0b88f356dcc29585f08be0"
+    "userId": "6a0b88f356dcc29585f08be0"
 }
 ```
-
-
 
 output
+
 ```json
 {
-	"success": true,
-	"message": "The testing room room has been successfully deleted.",
-	"room": {
-		"_id": "6a0b892556dcc29585f08be1",
-		"roomName": "testing room",
-		"roomDescription": "this is a test.",
-		"roomCode": "3LBW9",
-		"roomCreator": "6a0b88f356dcc29585f08be0",
-		"active": true,
-		"createdAt": "2026-05-18T21:48:21.283Z",
-		"updatedAt": "2026-05-18T21:48:21.337Z",
-		"__v": 0,
-		"roomQr": "data:image/png;base64,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"
-	}
+    "success": true,
+    "message": "The testing room room has been successfully deleted.",
+    "room": {
+        "_id": "6a0b892556dcc29585f08be1",
+        "roomName": "testing room",
+        "roomDescription": "this is a test.",
+        "roomCode": "3LBW9",
+        "roomCreator": "6a0b88f356dcc29585f08be0",
+        "active": true,
+        "createdAt": "2026-05-18T21:48:21.283Z",
+        "updatedAt": "2026-05-18T21:48:21.337Z",
+        "__v": 0,
+        "roomQr": "data:image/png;base64,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"
+    }
 }
 ```
-
 
 on error:
 
 ```js
 res.status(500).json({
-        success: false,
-        error: "Internal Server Error",
-        message: "We're currently having trouble deleting this room, please try again soon."
-       })
+    success: false,
+    error: "Internal Server Error",
+    message: "We're currently having trouble deleting this room, please try again soon.",
+});
 ```
 
 or
@@ -719,11 +711,6 @@ or
 ```js
 
 ```
-
-
-
-
-
 
 ## Fetch Room Details
 
@@ -739,36 +726,33 @@ or
 on success returns
 
 ```js
-            const roomDetails = {
-                _id: room._id,
-                roomName: room.roomName,
-                roomDescription: room.roomDescription,
-                roomCode: room.roomCode,
-                roomQr: room.roomQr,
-                createdAt: room.createdAt,
-                updatedAt: room.updatedAt,
-                active: room.active,
-            };
+const roomDetails = {
+    _id: room._id,
+    roomName: room.roomName,
+    roomDescription: room.roomDescription,
+    roomCode: room.roomCode,
+    roomQr: room.roomQr,
+    createdAt: room.createdAt,
+    updatedAt: room.updatedAt,
+    active: room.active,
+};
 
-            return res.status(200).json({
-                success: true,
-                message: `Success! Here's ${room.roomName}'s details.`,
-                roomDetails
-            })
+return res.status(200).json({
+    success: true,
+    message: `Success! Here's ${room.roomName}'s details.`,
+    roomDetails,
+});
 ```
 
 on error returns
 
 ```js
 res.status(500).json({
-        success: false,
-        error: "Internal Server Error",
-        message: "We're having trouble, please try again."
-       })
+    success: false,
+    error: "Internal Server Error",
+    message: "We're having trouble, please try again.",
+});
 ```
-
-
-
 
 # Spotify Endpoints
 
@@ -786,40 +770,39 @@ on success:
 
 ```js
 const tracks = response.data.tracks.items.map((track) => ({
-            id: track.id,
-            name: track.name,
-            artist: track.artists.map((artist) => artist.name).join(", "),
-            duration_ms: track.duration_ms,
-            albumImage: track.album.images[track.album.images.length - 1]?.url,
-            uri: track.uri,
-        }));
+    id: track.id,
+    name: track.name,
+    artist: track.artists.map((artist) => artist.name).join(", "),
+    duration_ms: track.duration_ms,
+    albumImage: track.album.images[track.album.images.length - 1]?.url,
+    uri: track.uri,
+}));
 
-        return res.status(200).json({
-            success: true,
-            tracks
-            });
+return res.status(200).json({
+    success: true,
+    tracks,
+});
 ```
 
 on error:
 
 ```js
 res.status(400).json({
-                success: false,
-                error: "Invalid Credentials: search query missing",
-                message: "Search Query is required.",
-            })
+    success: false,
+    error: "Invalid Credentials: search query missing",
+    message: "Search Query is required.",
+});
 ```
+
 OR
 
 ```js
 res.status(500).json({
-            success: false,
-            error: "Internal Server Error",
-            message: "We're having trouble, please try again."
-        })
+    success: false,
+    error: "Internal Server Error",
+    message: "We're having trouble, please try again.",
+});
 ```
-
-
 
 Fetch Track Details
 
@@ -835,48 +818,41 @@ on success:
 
 ```js
 const track = {
-            id: response.data.id,
-            name: response.data.name,
-            artist: response.data.artists.map((artist) => artist.name).join(", "),
-            album: response.data.album.name,
-            duration_ms: response.data.duration_ms,
-            popularity: response.data.popularity,
-            albumImage: response.data.album.images[0]?.url,
-            previewUrl: response.data.preview_url,
-            uri: response.data.uri,
-        };
-        return res.status(200).json({
-            success: true,
-            track
-        })
+    id: response.data.id,
+    name: response.data.name,
+    artist: response.data.artists.map((artist) => artist.name).join(", "),
+    album: response.data.album.name,
+    duration_ms: response.data.duration_ms,
+    popularity: response.data.popularity,
+    albumImage: response.data.album.images[0]?.url,
+    previewUrl: response.data.preview_url,
+    uri: response.data.uri,
+};
+return res.status(200).json({
+    success: true,
+    track,
+});
 ```
 
 on error:
 
 ```js
 res.status(400).json({
-                success: false,
-                error: "Invalid Credentials: track id missing",
-                message: "Track ID is required."
-            })
+    success: false,
+    error: "Invalid Credentials: track id missing",
+    message: "Track ID is required.",
+});
 ```
 
 or
 
 ```js
 res.status(500).json({
-            success: false,
-            error: "Internal Server Error",
-            message: "We're having trouble, please try again."
-        })
+    success: false,
+    error: "Internal Server Error",
+    message: "We're having trouble, please try again.",
+});
 ```
-
-
-
-
-
-
-
 
 Fetch an Artist's Top Tracks
 
@@ -886,43 +862,42 @@ Fetch an Artist's Top Tracks
  * @route   GET /api/spotify/artists/:id/top-tracks
  * @access  PUBLIC
  */
- ```
+```
 
 on success:
 
 ```js
 const tracks = response.data.tracks.map((track) => ({
-            id: track.id,
-            name: track.name,
-            album: track.album.name,
-            duration_ms: track.duration_ms,
-            albumImage: track.album.images[track.album.images.length - 1]?.url,
-            uri: track.uri,
-        }));
+    id: track.id,
+    name: track.name,
+    album: track.album.name,
+    duration_ms: track.duration_ms,
+    albumImage: track.album.images[track.album.images.length - 1]?.url,
+    uri: track.uri,
+}));
 
-        return res.status(200).json({
-            success: true,
-            tracks
-        })
+return res.status(200).json({
+    success: true,
+    tracks,
+});
 ```
 
 on error:
 
 ```js
 res.status(400).json({
-                success: false,
-                error: "Invalid Credentials: artist ID missing",
-                message: "Oops! Artist ID is required."
-            })
+    success: false,
+    error: "Invalid Credentials: artist ID missing",
+    message: "Oops! Artist ID is required.",
+});
 ```
-
 
 OR
 
- ```js
+```js
 res.status(500).json({
-            success: false,
-            error: "Internal Server Error",
-            message: "We're having trouble, please try again.",
-        })
- ```
+    success: false,
+    error: "Internal Server Error",
+    message: "We're having trouble, please try again.",
+});
+```

@@ -1,11 +1,8 @@
-import express from "express"
+import express from "express";
 import { protect } from "../middlewares/auth.middleware";
-import {
-    fetchRootRoute,
-    fetchServerHealth,
- } from "../controllers/health.controller";
+import { fetchRootRoute, fetchServerHealth } from "../controllers/health.controller";
 
-const router = express.Router()
+const router = express.Router();
 
 /**
  * @desc    Fetch Root route
@@ -13,8 +10,7 @@ const router = express.Router()
  * @access  PUBLIC
  */
 
-router.get("/", fetchRootRoute)
-
+router.get("/", fetchRootRoute);
 
 /**
  * @desc    Fetch server health
@@ -22,7 +18,6 @@ router.get("/", fetchRootRoute)
  * @access  PRIVATE
  */
 
-router.get("/server/health/admin", protect, fetchServerHealth)
-
+router.get("/server/health/admin", protect, fetchServerHealth);
 
 export default router;

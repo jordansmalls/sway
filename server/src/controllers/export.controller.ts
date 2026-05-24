@@ -12,18 +12,16 @@ import { pad, truncate } from "../utils/formatters/plaintext-helpers.js";
  */
 
 export const exportTracklistJson = async (req, res) => {
-
     const { roomId } = req.params;
 
     try {
-
-        if(!roomId) {
+        if (!roomId) {
             return res.status(400).json({
                 success: false,
                 error: "Invalid Credentials: room ID missing",
                 message: "Room ID is required.",
             });
-        };
+        }
 
         const room = await Room.findById(roomId);
 
@@ -31,18 +29,17 @@ export const exportTracklistJson = async (req, res) => {
             return res.status(404).json({
                 success: false,
                 error: "Resource not found",
-                message: "Room not found."
+                message: "Room not found.",
             });
-        };
+        }
 
         if (room.active == true) {
-
             return res.status(400).json({
                 success: false,
                 error: "Invalid Credentials: room is active",
-                message: "A room must be inactive to export the tracklist."
+                message: "A room must be inactive to export the tracklist.",
             });
-        };
+        }
 
         const user = req.user._id;
 
@@ -66,19 +63,17 @@ export const exportTracklistJson = async (req, res) => {
         return res.status(200).json({
             success: true,
             message: "Tracklist exported successfully.",
-            tracklist
-        })
-
+            tracklist,
+        });
     } catch (err) {
-        console.error("There was an error attempting to export a tracklist as JSON:", err)
+        console.error("There was an error attempting to export a tracklist as JSON:", err);
         return res.status(500).json({
             success: false,
             error: "Internal Server Error",
-            message: "We're having trouble, please try again."
+            message: "We're having trouble, please try again.",
         });
-    };
+    }
 };
-
 
 /**
  * @desc    Export Room Tracklist CSV (Played songs only)
@@ -87,122 +82,27 @@ export const exportTracklistJson = async (req, res) => {
  * @feats   Allows authorized users to export the tracklist as CSV for a room, once it's over.
  */
 export const exportTracklistCsv = async (req, res) => {
-	const { roomId } = req.params;
+    const { roomId } = req.params;
 
+    // TODO: REMOVE DEBUGGING CONSOLE LOGS
+    console.log("=== CSV EXPORT DEBUG ===");
+    console.log("Full URL:", req.originalUrl);
+    console.log("req.params:", req.params);
+    console.log("req.params.roomId:", req.params.roomId);
+    console.log("typeof req.params.roomId:", typeof req.params.roomId);
 
-	// TODO: REMOVE DEBUGGING CONSOLE LOGS
-  console.log("=== CSV EXPORT DEBUG ===");
-  console.log("Full URL:", req.originalUrl);
-  console.log("req.params:", req.params);
-  console.log("req.params.roomId:", req.params.roomId);
-  console.log("typeof req.params.roomId:", typeof req.params.roomId);
+    console.log("Extracted roomId:", roomId);
 
-  console.log("Extracted roomId:", roomId);
-
-  if (!roomId) {
-    console.log("❌ roomId is falsy!");
-    return res.status(400).json({
-        success: false,
-        error: "Invalid Credentials: room ID missing",
-        message: "Room ID is required.",
-    });
-  };
-
-	try {
-		const room = await Room.findById(roomId);
-
-		if (!room) {
-            return res.status(404).json({
-                success: false,
-                error: "Resource not found",
-                message: "Room not found.",
-            });
-		};
-
-		if (room.active) {
-            return res.status(400).json({
-                success: false,
-                error: "Invalid Credentials: room is active",
-                message: "A room must be inactive to export the tracklist.",
-            });
-		};
-
-		const user = req.user._id;
-		if (room.roomCreator.toString() !== user.toString()) {
-			return res.status(403).json({
-                success: false,
-                error: "Forbidden - not authorized",
-                message: "You are not authorized to export tracklists for rooms you did not create.",
-            });
-		}
-
-		const playedSongs = await Request.find({ roomId, status: "played" }).populate("track");
-
-		if (!playedSongs.length) {
-            return res.status(404).json({
-                success: false,
-                error: "Resource not found",
-                message: "Could not find any played songs for this room.",
-            });
-		};
-
-		// --- Prepare rows --- \\
-		const rows = playedSongs.map(request => ({
-			title: request.track.title,
-			artist: request.track.artist,
-			playedAt: formatTo12HourTime(request.playedAt),
-		}));
-
-		// --- CSV writer --- \\
-		const csvStringifier = createObjectCsvStringifier({
-			header: [
-				{ id: 'title', title: 'Title' },
-				{ id: 'artist', title: 'Artist' },
-				{ id: 'playedAt', title: 'Played At' },
-			],
-		});
-
-		const csvHeader = csvStringifier.getHeaderString();
-		const csvBody = csvStringifier.stringifyRecords(rows);
-
-		// ----- Stream response ------------------------------------------------
-		res.setHeader('Content-Type', 'text/csv');
-		res.setHeader('Content-Disposition', `attachment; filename="tracklist-${room.roomCode || roomId}.csv"`);
-		res.write(csvHeader);
-		res.write(csvBody);
-		res.end();
-
-	} catch (err) {
-        console.error("There was an error attempting to export a tracklist as CSV:", err)
-        return res.status(500).json({
+    if (!roomId) {
+        console.log("❌ roomId is falsy!");
+        return res.status(400).json({
             success: false,
-            error: "Internal Server Error",
-            message: "We're having trouble exporting the CSV, please try again.",
+            error: "Invalid Credentials: room ID missing",
+            message: "Room ID is required.",
         });
-	};
-};
+    }
 
-
-
-/**
- * @desc    Export Room Tracklist Plain text (Played songs only)
- * @route   GET /api/exports/:roomId/tracklist/txt
- * @access  PRIVATE
- * @feats   Allows auth'd users to export the tracklist as txt for a room, once it's over.
- */
-export const exportTracklistTxt = async (req, res) => {
-	const { roomId } = req.params;
-
-	try {
-        if (!roomId) {
-            return res.status(400).json({
-                success: false,
-                error: "Invalid Credentials: room ID missing",
-                message: "Room ID is required.",
-            });
-        }
-
-
+    try {
         const room = await Room.findById(roomId);
 
         if (!room) {
@@ -211,7 +111,7 @@ export const exportTracklistTxt = async (req, res) => {
                 error: "Resource not found",
                 message: "Room not found.",
             });
-        };
+        }
 
         if (room.active) {
             return res.status(400).json({
@@ -219,7 +119,7 @@ export const exportTracklistTxt = async (req, res) => {
                 error: "Invalid Credentials: room is active",
                 message: "A room must be inactive to export the tracklist.",
             });
-        };
+        }
 
         const user = req.user._id;
         if (room.roomCreator.toString() !== user.toString()) {
@@ -229,7 +129,7 @@ export const exportTracklistTxt = async (req, res) => {
                 message:
                     "You are not authorized to export tracklists for rooms you did not create.",
             });
-        };
+        }
 
         const playedSongs = await Request.find({ roomId, status: "played" }).populate("track");
 
@@ -239,7 +139,101 @@ export const exportTracklistTxt = async (req, res) => {
                 error: "Resource not found",
                 message: "Could not find any played songs for this room.",
             });
-        };
+        }
+
+        // --- Prepare rows --- \\
+        const rows = playedSongs.map((request) => ({
+            title: request.track.title,
+            artist: request.track.artist,
+            playedAt: formatTo12HourTime(request.playedAt),
+        }));
+
+        // --- CSV writer --- \\
+        const csvStringifier = createObjectCsvStringifier({
+            header: [
+                { id: "title", title: "Title" },
+                { id: "artist", title: "Artist" },
+                { id: "playedAt", title: "Played At" },
+            ],
+        });
+
+        const csvHeader = csvStringifier.getHeaderString();
+        const csvBody = csvStringifier.stringifyRecords(rows);
+
+        // ----- Stream response ------------------------------------------------
+        res.setHeader("Content-Type", "text/csv");
+        res.setHeader(
+            "Content-Disposition",
+            `attachment; filename="tracklist-${room.roomCode || roomId}.csv"`,
+        );
+        res.write(csvHeader);
+        res.write(csvBody);
+        res.end();
+    } catch (err) {
+        console.error("There was an error attempting to export a tracklist as CSV:", err);
+        return res.status(500).json({
+            success: false,
+            error: "Internal Server Error",
+            message: "We're having trouble exporting the CSV, please try again.",
+        });
+    }
+};
+
+/**
+ * @desc    Export Room Tracklist Plain text (Played songs only)
+ * @route   GET /api/exports/:roomId/tracklist/txt
+ * @access  PRIVATE
+ * @feats   Allows auth'd users to export the tracklist as txt for a room, once it's over.
+ */
+export const exportTracklistTxt = async (req, res) => {
+    const { roomId } = req.params;
+
+    try {
+        if (!roomId) {
+            return res.status(400).json({
+                success: false,
+                error: "Invalid Credentials: room ID missing",
+                message: "Room ID is required.",
+            });
+        }
+
+        const room = await Room.findById(roomId);
+
+        if (!room) {
+            return res.status(404).json({
+                success: false,
+                error: "Resource not found",
+                message: "Room not found.",
+            });
+        }
+
+        if (room.active) {
+            return res.status(400).json({
+                success: false,
+                error: "Invalid Credentials: room is active",
+                message: "A room must be inactive to export the tracklist.",
+            });
+        }
+
+        const user = req.user._id;
+        if (room.roomCreator.toString() !== user.toString()) {
+            return res.status(403).json({
+                success: false,
+                error: "Forbidden - not authorized",
+                message:
+                    "You are not authorized to export tracklists for rooms you did not create.",
+            });
+        }
+
+        const playedSongs = await Request.find({ roomId, status: "played" }).populate("track");
+
+        if (!playedSongs.length) {
+            return res.status(404).json({
+                success: false,
+                error: "Resource not found",
+                message: "Could not find any played songs for this room.",
+            });
+        }
 
         // --- Build a nice table --- \\
         const header = [pad("Title", 35), pad("Artist", 30), pad("Played At", 12)].join(" | ");
@@ -266,17 +260,14 @@ export const exportTracklistTxt = async (req, res) => {
         );
         res.send(txt);
     } catch (err) {
-        console.error("There was an error attempting to export a tracklist as plaintext:", err)
+        console.error("There was an error attempting to export a tracklist as plaintext:", err);
         return res.status(500).json({
             success: false,
-            error:  "Internal Server Error",
-            message: "We're having trouble exporting your plaintext file, please try again."
+            error: "Internal Server Error",
+            message: "We're having trouble exporting your plaintext file, please try again.",
         });
-	};
+    }
 };
-
-
-
 
 /**
  * @desc    Exporting a Room's Requests as JSON
@@ -286,51 +277,49 @@ export const exportTracklistTxt = async (req, res) => {
  */
 
 export const exportRoomRequestsJson = async (req, res) => {
-	const { roomCode } = req.params;
+    const { roomCode } = req.params;
 
-	if(!roomCode) {
+    if (!roomCode) {
         return res.status(400).json({
             success: false,
             error: "Invalid Credentials: room code missing",
             message: "Room code is required.",
         });
-	};
+    }
 
-	try {
+    try {
+        const room = await Room.findOne({ roomCode });
 
-		const room = await Room.findOne({ roomCode })
-
-
-		// check if room exists
-		if(!room) {
+        // check if room exists
+        if (!room) {
             return res.status(404).json({
                 success: false,
                 error: "Resource not found",
                 message: "Room does not exist.",
             });
-		};
+        }
 
-		// rooms must inactive before exporting requests
-		if(room.active) {
+        // rooms must inactive before exporting requests
+        if (room.active) {
             return res.status(400).json({
                 success: false,
                 error: "Invalid Credentials: room is active",
-                message: "Room must be over before exporting requests."
+                message: "Room must be over before exporting requests.",
             });
-		};
+        }
 
-		// find requests
-		const requests = await Request.find({ roomId: room._id })
+        // find requests
+        const requests = await Request.find({ roomId: room._id });
 
-		if (!requests.length) {
+        if (!requests.length) {
             return res.status(404).json({
                 success: false,
                 error: "Resource not found",
                 message: "Could not find any requests for this room.",
             });
-        };
+        }
 
-		const data = requests.map((req) => ({
+        const data = requests.map((req) => ({
             title: req.track.title,
             artist: req.track.artist,
             votes: req.votes,
@@ -346,18 +335,15 @@ export const exportRoomRequestsJson = async (req, res) => {
             message: "Requests exported successfully.",
             data,
         });
-
-	} catch (err) {
-		console.error("There was an error exporting a room's requests as JSON:", err);
+    } catch (err) {
+        console.error("There was an error exporting a room's requests as JSON:", err);
         return res.status(500).json({
             success: false,
             error: "Internal Server Error",
             message: "We're having trouble exporting the requests of the room, please try again.",
         });
-	}
-}
-
-
+    }
+};
 
 /**
  * @desc    Exporting a Room's Requests as CSV
@@ -367,97 +353,92 @@ export const exportRoomRequestsJson = async (req, res) => {
  */
 
 export const exportRoomRequestsCsv = async (req, res) => {
-	const { roomCode } = req.params;
+    const { roomCode } = req.params;
 
-	if(!roomCode) {
+    if (!roomCode) {
         return res.status(400).json({
             success: false,
             error: "Invalid Credentials: room code missing",
-            message: "Room code is required."
+            message: "Room code is required.",
         });
-	};
+    }
 
-	try {
+    try {
+        const room = await Room.findOne({ roomCode });
 
-		const room = await Room.findOne({ roomCode })
-
-		if(!room) {
+        if (!room) {
             return res.status(404).json({
                 success: false,
                 error: "Resource not found",
                 message: "Room does not exist.",
             });
-		};
+        }
 
-		if(room.active) {
+        if (room.active) {
             return res.status(400).json({
                 success: false,
                 error: "Invalid Credentials: room is active",
-                message: "Room must be over before exporting requests."
+                message: "Room must be over before exporting requests.",
             });
-		};
+        }
 
         // TODO: test with and without populate
-		// const requests = await Request.find({ roomId: room._id });
+        // const requests = await Request.find({ roomId: room._id });
         const requests = await Request.find({ roomId: room._id }).populate("track");
 
-
-		if(!requests.length) {
+        if (!requests.length) {
             return res.status(404).json({
                 success: false,
                 error: "Resource not found",
                 message: "Could not find any requests for this room.",
             });
-		};
+        }
 
-		// --- Prepare rows --- \\
+        // --- Prepare rows --- \\
 
-		const rows = requests.map(r => ({
-      		title: r.track.title,
-      		artist: r.track.artist,
-      		votes: r.votes,
-      		status: r.status,
-      		// playedAt: r.playedAt ? formatTo12HourTime(r.playedAt) : '',
+        const rows = requests.map((r) => ({
+            title: r.track.title,
+            artist: r.track.artist,
+            votes: r.votes,
+            status: r.status,
+            // playedAt: r.playedAt ? formatTo12HourTime(r.playedAt) : '',
             playedAt: r.playedAt ? formatTo12HourTime(r.playedAt) : "",
-      		requestedAt: formatToFullDate12Hour(r.createdAt),
-      		requestedBy: r.requestedBy,
-    	}));
+            requestedAt: formatToFullDate12Hour(r.createdAt),
+            requestedBy: r.requestedBy,
+        }));
 
-		// --- CSV writer --- \\
+        // --- CSV writer --- \\
 
-		const csvStringifier = createObjectCsvStringifier({
-      header: [
-        { id: 'title', title: 'Title' },
-        { id: 'artist', title: 'Artist' },
-        { id: 'votes', title: 'Votes' },
-        { id: 'status', title: 'Status' },
-        { id: 'playedAt', title: 'Played At' },
-        { id: 'requestedAt', title: 'Requested At' },
-        { id: 'requestedBy', title: 'Requested By' },
-      ],
-    });
+        const csvStringifier = createObjectCsvStringifier({
+            header: [
+                { id: "title", title: "Title" },
+                { id: "artist", title: "Artist" },
+                { id: "votes", title: "Votes" },
+                { id: "status", title: "Status" },
+                { id: "playedAt", title: "Played At" },
+                { id: "requestedAt", title: "Requested At" },
+                { id: "requestedBy", title: "Requested By" },
+            ],
+        });
 
+        const csvHeader = csvStringifier.getHeaderString();
+        const csvBody = csvStringifier.stringifyRecords(rows);
 
-	const csvHeader = csvStringifier.getHeaderString();
-	const csvBody   = csvStringifier.stringifyRecords(rows);
-
-	// ----- Stream response ------------------------------------------------
-    res.setHeader('Content-Type', 'text/csv');
-    res.setHeader('Content-Disposition', `attachment; filename="requests-${roomCode}.csv"`);
-    res.write(csvHeader);
-    res.write(csvBody);
-    res.end();
-
-	} catch (err) {
+        // ----- Stream response ------------------------------------------------
+        res.setHeader("Content-Type", "text/csv");
+        res.setHeader("Content-Disposition", `attachment; filename="requests-${roomCode}.csv"`);
+        res.write(csvHeader);
+        res.write(csvBody);
+        res.end();
+    } catch (err) {
         console.error("There was an error attempting to export a room's requests as CSV:", err);
         return res.status(500).json({
             success: false,
             error: "Internal Server Error",
-            message: "We're having trouble exporting the CSV, please try again."
+            message: "We're having trouble exporting the CSV, please try again.",
         });
-	};
+    }
 };
-
 
 /**
  * @desc    Exporting a Room's Requests as Plain text
@@ -467,94 +448,88 @@ export const exportRoomRequestsCsv = async (req, res) => {
  */
 
 export const exportRoomRequestsTxt = async (req, res) => {
-	const { roomCode } = req.params;
+    const { roomCode } = req.params;
 
-	if(!roomCode) {
+    if (!roomCode) {
         return res.status(400).json({
             success: false,
             error: "Invalid Credentials: room code missing",
             message: "Room code is required.",
         });
-	};
+    }
 
-	try {
+    try {
+        const room = await Room.findOne({ roomCode });
 
-		const room = await Room.findOne({ roomCode })
-
-		if(!room) {
+        if (!room) {
             return res.status(404).json({
                 success: false,
                 error: "Resource not found",
                 message: "Room does not exist.",
             });
-		};
+        }
 
-
-		if(room.active) {
+        if (room.active) {
             return res.status(400).json({
                 success: false,
                 error: "Invalid Credentials: room is active",
                 message: "Room must be over before exporting requests.",
             });
-		};
-
+        }
 
         // TODO: test
-		// const requests = await Request.find({ roomId: room._id })
+        // const requests = await Request.find({ roomId: room._id })
         const requests = await Request.find({ roomId: room._id }).populate("track");
 
-		if(!requests.length) {
+        if (!requests.length) {
             return res.status(404).json({
                 success: false,
                 error: "Resource not found",
                 message: "Could not find any requests for this room.",
             });
-		};
+        }
 
-		// --- Build a nice table --- \\
+        // --- Build a nice table --- \\
 
-		const header = [
-      pad('Title', 30),
-      pad('Artist', 25),
-      pad('Votes', 6),
-      pad('Status', 10),
-      pad('Played At', 12),
-      pad('Requested At', 20),
-      pad('Requested By', 20),
-    ].join(' | ');
+        const header = [
+            pad("Title", 30),
+            pad("Artist", 25),
+            pad("Votes", 6),
+            pad("Status", 10),
+            pad("Played At", 12),
+            pad("Requested At", 20),
+            pad("Requested By", 20),
+        ].join(" | ");
 
+        const separator = "-".repeat(header.length);
 
-		const separator = '-'.repeat(header.length);
+        const lines = [header, separator];
 
-		const lines = [header, separator];
+        for (const r of requests) {
+            const line = [
+                pad(truncate(r.track.title, 30), 30),
+                pad(truncate(r.track.artist, 25), 25),
+                pad(String(r.votes), 6),
+                pad(r.status, 10),
+                pad(r.playedAt ? formatTo12HourTime(r.playedAt) : "", 12),
+                pad(formatToFullDate12Hour(r.createdAt), 20),
+                pad(r.requestedBy, 20),
+            ].join(" | ");
+            lines.push(line);
+        }
 
-		for (const r of requests) {
-      const line = [
-          pad(truncate(r.track.title, 30), 30),
-          pad(truncate(r.track.artist, 25), 25),
-          pad(String(r.votes), 6),
-          pad(r.status, 10),
-          pad(r.playedAt ? formatTo12HourTime(r.playedAt) : "", 12),
-          pad(formatToFullDate12Hour(r.createdAt), 20),
-          pad(r.requestedBy, 20),
-      ].join(" | ");
-      lines.push(line);
-    }
+        const txt = lines.join("\n");
 
-	const txt = lines.join('\n');
-
-
-	// ----- Stream response ------------------------------------------------
-    res.setHeader('Content-Type', 'text/plain');
-    res.setHeader('Content-Disposition', `attachment; filename="requests-${roomCode}.txt"`);
-    res.send(txt);
-
-	} catch (err) {
-		console.error("There was an error exporting requests as plaintext:", err);
+        // ----- Stream response ------------------------------------------------
+        res.setHeader("Content-Type", "text/plain");
+        res.setHeader("Content-Disposition", `attachment; filename="requests-${roomCode}.txt"`);
+        res.send(txt);
+    } catch (err) {
+        console.error("There was an error exporting requests as plaintext:", err);
         return res.status(500).json({
             success: false,
             error: "Internal Server Error",
             message: "We're having trouble exporting the plain text file, please try again.",
         });
-	};
+    }
 };

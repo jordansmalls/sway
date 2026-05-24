@@ -444,7 +444,7 @@ export const fetchRoomRequests = async (req, res) => {
             error: "Invalid Credentials: missing room code",
             message: "Room Code is required.",
         });
-    };
+    }
 
     try {
         const room = await Room.findOne({ roomCode });
@@ -453,9 +453,9 @@ export const fetchRoomRequests = async (req, res) => {
             return res.status(404).json({
                 success: false,
                 error: "Resource not found",
-                message: "Room does not exist."
+                message: "Room does not exist.",
             });
-        };
+        }
 
         const requests = await Request.find({ roomId: room._id });
 
@@ -476,9 +476,8 @@ export const fetchRoomRequests = async (req, res) => {
         return res.status(200).json({
             success: true,
             message: "Requests loaded.",
-            data
-        })
-
+            data,
+        });
     } catch (err) {
         console.error("There was an error fetching a room's requests:", err);
         return res.status(500).json({
@@ -486,10 +485,8 @@ export const fetchRoomRequests = async (req, res) => {
             error: "Internal Server Error",
             message: "We're having trouble, please try again. Thank you.",
         });
-    };
+    }
 };
-
-
 
 /**
  * @desc	Fetch a Room's Played Requests (with Spotify Links + URIs)
@@ -498,31 +495,33 @@ export const fetchRoomRequests = async (req, res) => {
  */
 
 export const fetchRoomPlayedRequests = async (req, res) => {
-	const { roomCode } = req.params;
+    const { roomCode } = req.params;
 
-	if (!roomCode) {
+    if (!roomCode) {
         return res.status(400).json({
             success: false,
             error: "Invalid Credentials: room code missing",
-            message: "Room code is required."
+            message: "Room code is required.",
         });
-	};
+    }
 
-	try {
-		const room = await Room.findOne({ roomCode });
+    try {
+        const room = await Room.findOne({ roomCode });
 
-		if (!room) {
+        if (!room) {
             return res.status(404).json({
                 success: false,
                 error: "Resource not found",
-                message: "Room does not exist."
+                message: "Room does not exist.",
             });
-		};
+        }
 
-		// find only played requests
-		const requests = await Request.find({ roomId: room._id, status: "played" }).populate("track")
+        // find only played requests
+        const requests = await Request.find({ roomId: room._id, status: "played" }).populate(
+            "track",
+        );
 
-		const data = requests.map((req) => ({
+        const data = requests.map((req) => ({
             id: req._id,
             title: req.track.title,
             artist: req.track.artist,
@@ -536,14 +535,14 @@ export const fetchRoomPlayedRequests = async (req, res) => {
             playedAt: req.playedAt ? formatTo12HourTime(req.playedAt) : "",
         }));
 
-		return res.json(data);
-	} catch (err) {
-		console.error(
-			"There was an error fetching a room's played requests with spotify information:",
-			err
-		);
-		return res
-			.status(500)
-			.json({ message: "We're having trouble, please try again. Thank you." });
-	}
+        return res.json(data);
+    } catch (err) {
+        console.error(
+            "There was an error fetching a room's played requests with spotify information:",
+            err,
+        );
+        return res
+            .status(500)
+            .json({ message: "We're having trouble, please try again. Thank you." });
+    }
 };

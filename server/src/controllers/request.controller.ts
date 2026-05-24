@@ -42,9 +42,6 @@ export const emitRoomUpdated = (roomId, updatedData) => {
     emitToRoom(roomId, "room:updated", payload);
 };
 
-
-
-
 /**
  * @desc    Create a Song Request
  * @route   POST /api/requests
@@ -55,12 +52,11 @@ export const createRequest = async (req, res) => {
 
     // Validate required fields
     if (!track || !roomId) {
-
         return res.status(400).json({
             success: false,
             error: "Invalid Credentials: missing fields",
-            message: "Please provide all required fields."
-        })
+            message: "Please provide all required fields.",
+        });
     }
 
     const { id: spotifyTrackId, name: title, artist, albumImage: albumArtUrl } = track;
@@ -70,8 +66,8 @@ export const createRequest = async (req, res) => {
         return res.status(400).json({
             success: false,
             error: "Invalid Credentials: missing required track details",
-            message: "Please provide all required track details."
-        })
+            message: "Please provide all required track details.",
+        });
     }
 
     // Check if room exists
@@ -81,7 +77,7 @@ export const createRequest = async (req, res) => {
             success: false,
             error: "Resource not found",
             message: "Room does not exist!",
-        })
+        });
     }
 
     try {
@@ -106,23 +102,22 @@ export const createRequest = async (req, res) => {
             return res.status(201).json({
                 success: true,
                 message: `Success! ${request.track.title} has been added to the queue.`,
-                request
-            })
+                request,
+            });
         } else {
-
             return res.status(400).json({
                 success: false,
                 error: "Invalid Credentials: missing request data",
-                message: "Oops! Invalid request data."
-            })
+                message: "Oops! Invalid request data.",
+            });
         }
     } catch (err) {
         console.error("There was a database error while attempting to create a request:", err);
         return res.status(500).json({
             success: false,
             error: "Internal Server Error - database error",
-            message: "We had trouble submitting your request, please try again."
-        })
+            message: "We had trouble submitting your request, please try again.",
+        });
     }
 };
 
@@ -153,19 +148,18 @@ export const upvoteRequest = async (req, res) => {
 
         // await request.save();
 
-
         const request = await Request.findByIdAndUpdate(
             requestId,
             { $inc: { votes: 1 } },
             { new: true },
         );
 
-        if(!request) {
+        if (!request) {
             return res.status(404).json({
                 success: false,
                 error: "Resource not found",
-                message: "Request not found!"
-            })
+                message: "Request not found!",
+            });
         }
 
         // Emit socket event for upvote
@@ -181,8 +175,8 @@ export const upvoteRequest = async (req, res) => {
         return res.status(500).json({
             success: false,
             error: "Internal Server Error",
-            message: "We're having trouble, please try again soon."
-        })
+            message: "We're having trouble, please try again soon.",
+        });
     }
 };
 
@@ -216,7 +210,7 @@ export const markRequestPlaying = async (req, res) => {
         }
 
         request.status = "playing";
-        request.playedAt = new Date;
+        request.playedAt = new Date();
 
         await request.save();
 
@@ -269,7 +263,7 @@ export const markRequestPlayed = async (req, res) => {
         }
 
         request.status = "played";
-        request.completedAt = new Date;
+        request.completedAt = new Date();
 
         await request.save();
 
@@ -297,7 +291,7 @@ export const markRequestPlayed = async (req, res) => {
  * @access  PRIVATE
  */
 export const deleteRequest = async (req, res) => {
-        const { requestId } = req.body;
+    const { requestId } = req.body;
 
     try {
         const request = await Request.findById(requestId);
@@ -371,12 +365,12 @@ export const fetchRoomRequests = async (req, res) => {
             requests,
         });
     } catch (err) {
-        console.error("There was an error while fetching the requests for a room:", err)
+        console.error("There was an error while fetching the requests for a room:", err);
         return res.status(500).json({
             success: false,
             error: "Internal Server Error",
-            message: "We're having trouble, please try again."
-        })
+            message: "We're having trouble, please try again.",
+        });
     }
 };
 
@@ -403,7 +397,7 @@ export const fetchRequestDetails = async (req, res) => {
             request,
         });
     } catch (err) {
-        console.error("There was an error attempting to fetch request details:", err)
+        console.error("There was an error attempting to fetch request details:", err);
         return res.status(500).json({
             success: false,
             error: "Internal Server Error",
@@ -418,8 +412,8 @@ export const fetchRequestDetails = async (req, res) => {
  * @access  PUBLIC
  */
 export const filterRequests = async (req, res) => {
-        const { roomId } = req.params;
-        const { status } = req.query;
+    const { roomId } = req.params;
+    const { status } = req.query;
 
     try {
         // Validate status
@@ -462,4 +456,4 @@ export const filterRequests = async (req, res) => {
             message: "We're having trouble, please try again.",
         });
     }
-}
+};
