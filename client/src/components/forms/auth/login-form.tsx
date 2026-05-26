@@ -3,11 +3,16 @@ import { Button } from '@/components/ui/button';
 import {
   Field,
   FieldDescription,
+  FieldError,
   FieldGroup,
   FieldLabel,
 } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+
+import { getApiErrorMessage } from '@/api/client';
+import { useLoginMutation } from '@/api/auth';
 
 export function LoginForm({
   className,
@@ -16,9 +21,24 @@ export function LoginForm({
 
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
+  const [formError, setFormError] = useState("");
+  const loginMutation = useLoginMutation();
+  const navigate = useNavigate();
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setFormError("");
+
+    try {
+      const { user } = await loginMutation.mutateAsync({ identifier, password });
+      navigate(user.hasUsername ? "/dashboard" : "/username");
+    } catch (error) {
+      setFormError(getApiErrorMessage(error, "Unable to log you in."));
+    }
+  }
 
   return (
-    <form className={cn('flex flex-col gap-6', className)} {...props}>
+    <form className={cn('flex flex-col gap-6', className)} onSubmit={handleSubmit} {...props}>
       <FieldGroup>
         <div className="flex flex-col items-center gap-1 text-center">
           <h1 className="text-2xl font-bold">Welcome Back!</h1>
@@ -41,14 +61,17 @@ export function LoginForm({
 
         {/* submit button */}
         <Field>
-          <Button type="submit">Login</Button>
+          <Button type="submit" disabled={loginMutation.isPending}>
+            {loginMutation.isPending ? 'Logging in...' : 'Login'}
+          </Button>
+          <FieldError>{formError}</FieldError>
         </Field>
         <Field>
           <FieldDescription className="text-center">
             Don&apos;t have an account?{' '}
-            <a href="/signup" className="underline underline-offset-4">
+            <Link to="/signup" className="underline underline-offset-4">
               Sign up
-            </a>
+            </Link>
           </FieldDescription>
         </Field>
       </FieldGroup>
