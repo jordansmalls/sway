@@ -1,14 +1,22 @@
 import { GalleryVerticalEnd } from 'lucide-react';
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
   Field,
   FieldDescription,
+  FieldError,
   FieldGroup,
 } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
+import { getApiErrorMessage } from '@/api/client';
+import {
+  useCreateUsernameMutation,
+  useUsernameAvailabilityQuery,
+} from '@/api/auth';
+import { useDebouncedValue } from '@/hooks/use-debounced-value';
 
 
 
@@ -18,10 +26,45 @@ export function CreateUsernameForm({
 }: React.ComponentProps<'div'>) {
 
   const [username, setUsername] = useState("");
+  const [formError, setFormError] = useState("");
+  const navigate = useNavigate();
+  const createUsernameMutation = useCreateUsernameMutation();
+  const debouncedUsername = useDebouncedValue(username);
+  const usernameIsValid = /^[a-zA-Z0-9_]{3,20}$/.test(debouncedUsername);
+  const usernameAvailabilityQuery = useUsernameAvailabilityQuery(
+    usernameIsValid ? debouncedUsername : ''
+  );
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setFormError("");
+
+    if (!/^[a-zA-Z0-9_]{3,20}$/.test(username)) {
+      setFormError("Username must be 3-20 characters and can only contain letters, numbers, and underscores.");
+      return;
+    }
+
+    if (usernameAvailabilityQuery.data?.taken) {
+      setFormError("Username is already in use.");
+      return;
+    }
+
+    try {
+      await createUsernameMutation.mutateAsync({ username });
+      navigate("/");
+    } catch (error) {
+      setFormError(getApiErrorMessage(error, "Unable to create your username."));
+    }
+  }
+
+  const usernameMessage =
+    usernameIsValid && usernameAvailabilityQuery.isFetching
+      ? 'Checking username...'
+      : usernameAvailabilityQuery.data?.message;
 
   return (
     <div className={cn('flex flex-col gap-6', className)} {...props}>
-      <form>
+      <form onSubmit={handleSubmit}>
         <FieldGroup>
           <div className="flex flex-col items-center gap-2 text-center">
             <a
@@ -53,13 +96,26 @@ export function CreateUsernameForm({
               maxLength={20}
               autoComplete="username"
             />
+            {usernameMessage ? (
+              <FieldDescription
+                className={cn(
+                  'text-xs',
+                  usernameAvailabilityQuery.data?.taken && 'text-destructive'
+                )}
+              >
+                {usernameMessage}
+              </FieldDescription>
+            ) : null}
           </Field>
           <FieldDescription className="px-6 text-center text-xs">
             Usernames must be 3-20 characters long and can only contain letters,
             numbers, and underscores.
           </FieldDescription>
           <Field>
-            <Button type="submit">Next</Button>
+            <Button type="submit" disabled={createUsernameMutation.isPending}>
+              {createUsernameMutation.isPending ? 'Saving...' : 'Next'}
+            </Button>
+            <FieldError>{formError}</FieldError>
           </Field>
         </FieldGroup>
       </form>
