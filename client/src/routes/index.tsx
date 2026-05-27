@@ -21,6 +21,7 @@ import Signup from "../pages/auth/Signup"
 // protected routes
 import CreateUsername from "../pages/auth/CreateUsername"
 import Dashboard from "@/pages/Dashboard"
+import Settings from '../pages/auth/Settings';
 import CreateRoom from "../pages/rooms/CreateRoom"
 
 
@@ -45,6 +46,7 @@ export const router = createBrowserRouter(
         <Route index path="/dashboard" element={<Dashboard />} />
         <Route path="/username" element={<CreateUsername />} />
         <Route path="/create-room" element={<CreateRoom />} />
+        <Route path="/settings" element={<Settings />} />
       </Route>
     </Route>
   )
