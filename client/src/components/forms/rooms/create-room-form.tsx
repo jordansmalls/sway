@@ -15,17 +15,44 @@ import {
 } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '../../ui/textarea';
-
-
+import { toast } from 'sonner';
 import { useState } from 'react';
+import { useCreateRoomMutation } from '@/api/rooms';
+import { useNavigate } from 'react-router-dom';
 
 export function CreateRoomForm({
   className,
   ...props
 }: React.ComponentProps<'div'>) {
-
-  const [roomName, setRoomName] = useState("")
+  const [roomName, setRoomName] = useState('');
   const [roomDescription, setRoomDescription] = useState('');
+
+  const createRoom = useCreateRoomMutation();
+  const navigate = useNavigate();
+
+  const handleCreateRoom = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    createRoom.mutate(
+      { roomName, roomDescription },
+      {
+        onSuccess: (data) => {
+          console.log('Create room response:', data);
+          toast.success("Success!",{ description: `The ${data.newRoom.roomName} room has been created and is now active.` })
+          setRoomName('');
+          setRoomDescription('');
+          setTimeout(() => {
+            navigate(`/room/admin/${data.newRoom.roomCode}`);
+          }, 1500);
+        },
+        onError: () => {
+          toast.error('You already have an active room!', { description: "You must end your active room before creating another." });
+
+          // navigate("/dashboard")
+        },
+      }
+    );
+  };
 
   return (
     <div className={cn('flex flex-col gap-6', className)} {...props}>
@@ -39,7 +66,7 @@ export function CreateRoomForm({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form>
+          <form onSubmit={handleCreateRoom}>
             <FieldGroup>
               <Field>
                 <FieldLabel htmlFor="roomName">Room Name</FieldLabel>
@@ -52,9 +79,10 @@ export function CreateRoomForm({
                   onChange={(e) => setRoomName(e.target.value)}
                 />
               </Field>
-
               <Field>
-                <FieldLabel htmlFor="roomDescription">Room Description</FieldLabel>
+                <FieldLabel htmlFor="roomDescription">
+                  Room Description
+                </FieldLabel>
                 <Textarea
                   id="roomDescription"
                   placeholder="Come join us in celebrating John turning big 30!"
@@ -65,11 +93,13 @@ export function CreateRoomForm({
                   onChange={(e) => setRoomDescription(e.target.value)}
                 />
               </Field>
-
               <Field>
-                <Button type="submit">Create</Button>
+                <Button type="submit" disabled={createRoom.isPending}>
+                  {createRoom.isPending ? 'Creating...' : 'Create'}
+                </Button>
                 <FieldDescription className="text-center">
-                  The room name and description will be visible to everyone who joins your room.
+                  The room name and description will be visible to everyone who
+                  joins your room.
                 </FieldDescription>
               </Field>
             </FieldGroup>
