@@ -407,6 +407,7 @@ export const fetchRoomDetails = async (req, res) => {
                 roomName: room.roomName,
                 roomDescription: room.roomDescription,
                 roomCode: room.roomCode,
+                roomCreator: room.roomCreator,
                 roomQr: room.roomQr,
                 createdAt: room.createdAt,
                 updatedAt: room.updatedAt,
