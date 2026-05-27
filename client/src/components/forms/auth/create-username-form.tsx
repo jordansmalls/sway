@@ -17,6 +17,7 @@ import {
   useUsernameAvailabilityQuery,
 } from '@/api/auth';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
+import { toast } from 'sonner';
 
 
 
@@ -51,9 +52,11 @@ export function CreateUsernameForm({
 
     try {
       await createUsernameMutation.mutateAsync({ username });
+      toast.success(`${username} has a nice ring to it.`, { description: "Welcome to Sway, let's get this party started." })
       navigate("/");
-    } catch (error) {
-      setFormError(getApiErrorMessage(error, "Unable to create your username."));
+    } catch (err) {
+      toast.error("Oops! Something went wrong.", { description: "We were unable to create your username, please try again." })
+      setFormError(getApiErrorMessage(err, "Unable to create your username."));
     }
   }
 

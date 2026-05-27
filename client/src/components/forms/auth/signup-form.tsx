@@ -17,6 +17,7 @@ import {
   useSignupMutation,
 } from '@/api/auth';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
+import { toast } from 'sonner';
 
 export function SignupForm({
   className,
@@ -56,8 +57,10 @@ export function SignupForm({
 
     try {
       const { user } = await signupMutation.mutateAsync({ email, password });
+      toast.success("Welcome!", { description: "We're excited to get you started." })
       navigate(user.hasUsername ? '/' : '/username');
     } catch (error) {
+      toast.error("Oops! Something went wrong.", { description: "We were unable to create your account. Please try again." })
       setFormError(getApiErrorMessage(error, 'Unable to create your account.'));
     }
   }
@@ -66,7 +69,7 @@ export function SignupForm({
     canCheckEmail && emailAvailabilityQuery.isFetching
       ? 'Checking email...'
       : emailAvailabilityQuery.data?.message;
-  
+
   return (
     <form className={cn('flex flex-col gap-6', className)} onSubmit={handleSubmit} {...props}>
       <FieldGroup>
@@ -111,7 +114,7 @@ export function SignupForm({
           </Button>
           <FieldError>{formError}</FieldError>
         </Field>
-        
+
         <Field>
           <FieldDescription className="text-center">
             Already have an account?{' '}

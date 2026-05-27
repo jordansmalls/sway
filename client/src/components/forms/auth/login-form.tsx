@@ -10,6 +10,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 
 import { getApiErrorMessage } from '@/api/client';
 import { useLoginMutation } from '@/api/auth';
@@ -31,8 +32,10 @@ export function LoginForm({
 
     try {
       const { user } = await loginMutation.mutateAsync({ identifier, password });
+      toast.success(`Welome back ${user.username}!`, { description: "Let's get back to it." })
       navigate(user.hasUsername ? "/dashboard" : "/username");
     } catch (error) {
+      toast.error("Oops! Something went wrong.", { description: "We were unable to log you in, please try again." })
       setFormError(getApiErrorMessage(error, "Unable to log you in."));
     }
   }
