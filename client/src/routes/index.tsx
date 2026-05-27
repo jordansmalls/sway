@@ -24,6 +24,7 @@ import Dashboard from "@/pages/Dashboard"
 import Settings from '../pages/auth/Settings';
 import CreateRoom from "../pages/rooms/CreateRoom"
 import RoomAdmin from "../pages/rooms/RoomAdmin"
+import NotRoomOwner from "../pages/def/NotRoomOwner"
 
 
 import Home from "../pages/Home"
@@ -48,6 +49,7 @@ export const router = createBrowserRouter(
         <Route path="/username" element={<CreateUsername />} />
         <Route path="/create-room" element={<CreateRoom />} />
         <Route path="/settings" element={<Settings />} />
+        <Route path="/not-room-owner" element={<NotRoomOwner />} />
         <Route path="/room/admin/:roomCode" element={<RoomAdmin />} />
       </Route>
     </Route>

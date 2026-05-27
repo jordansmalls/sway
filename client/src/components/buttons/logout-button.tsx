@@ -39,6 +39,7 @@ export default function LogoutButton() {
       onClick={handleLogout}
       isLoading={isLocalLoading}
       loadingText="Please wait..."
+      variant={"destructive"}
     >
       Logout
     </SpinnerButton>
