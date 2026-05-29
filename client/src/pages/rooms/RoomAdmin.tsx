@@ -1,6 +1,8 @@
 import { useRoomDetailsQuery } from '../../api';
 import { useCurrentUserQuery } from '../../api/users';
 import { useParams, Navigate } from 'react-router-dom';
+import { ShareDialog } from '../../components/dialogs/share-dialog';
+
 
 const RoomAdmin = () => {
   const { roomCode: rawRoomCode } = useParams<{ roomCode: string }>();
@@ -54,6 +56,11 @@ const RoomAdmin = () => {
           alt="Room QR Code"
           className="w-48 h-48 rounded-lg border"
         />
+      </div>
+
+      {/* share button w/ dialog  */}
+      <div className='w-1/2'>
+        <ShareDialog roomCode={rawRoomCode || ''} roomData={room} />
       </div>
     </div>
   );
