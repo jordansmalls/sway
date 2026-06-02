@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -50,8 +50,8 @@ export function SettingsForm() {
   const deleteAccountMutation = useDeleteAccountMutation();
 
   // Profile state
-  const [username, setUsername] = useState('');
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState<string | null>(null);
+  const [email, setEmail] = useState<string | null>(null);
   const [profileErrors, setProfileErrors] = useState<ProfileErrors>({});
 
   // Password state
@@ -64,23 +64,18 @@ export function SettingsForm() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
 
-  // Initialize form with user data
-  useEffect(() => {
-    if (userData?.user) {
-      setUsername(userData.user.username);
-      setEmail(userData.user.email);
-    }
-  }, [userData]);
+  const usernameValue = username ?? userData?.user.username ?? '';
+  const emailValue = email ?? userData?.user.email ?? '';
 
   function validateProfile(): boolean {
     const errors: ProfileErrors = {};
 
-    if (!username || username.length < 2) {
+    if (!usernameValue || usernameValue.length < 2) {
       errors.username = 'Username must be at least 2 characters';
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!email || !emailRegex.test(email)) {
+    if (!emailValue || !emailRegex.test(emailValue)) {
       errors.email = 'Please enter a valid email';
     }
 
@@ -114,7 +109,10 @@ export function SettingsForm() {
 
     if (!validateProfile()) return;
 
-    const input: UpdateProfileInput = { username, email };
+    const input: UpdateProfileInput = {
+      username: usernameValue,
+      email: emailValue,
+    };
 
     try {
       await updateProfileMutation.mutateAsync(input);
@@ -164,8 +162,8 @@ export function SettingsForm() {
   }
 
   const hasProfileChanges =
-    username !== (userData?.user.username ?? '') ||
-    email !== (userData?.user.email ?? '');
+    usernameValue !== (userData?.user.username ?? '') ||
+    emailValue !== (userData?.user.email ?? '');
 
   if (isLoadingUser) {
     return (
@@ -200,7 +198,7 @@ export function SettingsForm() {
               <Label htmlFor="username">Username</Label>
               <Input
                 id="username"
-                value={username}
+                value={usernameValue}
                 onChange={(e) => {
                   setUsername(e.target.value);
                   if (profileErrors.username) {
@@ -223,7 +221,7 @@ export function SettingsForm() {
               <Input
                 id="email"
                 type="email"
-                value={email}
+                value={emailValue}
                 onChange={(e) => {
                   setEmail(e.target.value);
                   if (profileErrors.email) {

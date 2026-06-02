@@ -1,12 +1,23 @@
-import { useRoomDetailsQuery } from '../../api';
+import { useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { roomKeys, useRoomDetailsQuery } from '../../api';
 import { useCurrentUserQuery } from '../../api/users';
-import { useParams, Navigate } from 'react-router-dom';
+import { useParams, Navigate, useNavigate } from 'react-router-dom';
 import { ShareDialog } from '../../components/dialogs/share-dialog';
+import { EditRoomDialog } from '../../components/dialogs/edit-room-dialog';
+import EndRoomDialog from '../../components/dialogs/end-room-dialog';
+import RequestDialogAdmin from '../../components/dialogs/request-dialog-admin';
+import RequestListAdmin from '../../components/rooms/request-list-admin';
+import { joinRoom, onRoomEnded, onRoomUpdated } from '@/lib/socket';
+import { toast } from 'sonner';
+
 
 
 const RoomAdmin = () => {
   const { roomCode: rawRoomCode } = useParams<{ roomCode: string }>();
   const roomCode = rawRoomCode?.toUpperCase() ?? '';
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const {
     data: roomData,
@@ -19,17 +30,47 @@ const RoomAdmin = () => {
     isError: userError,
   } = useCurrentUserQuery();
 
+  const room = roomData?.roomDetails;
+  const user = userData?.user;
+
+  useEffect(() => {
+    if (!room?._id) return;
+
+    const leaveRoom = joinRoom(room._id);
+
+    const unsubscribeUpdated = onRoomUpdated(({ roomId }) => {
+      if (roomId !== room._id) return;
+
+      queryClient.invalidateQueries({ queryKey: roomKeys.detail(roomCode) });
+    });
+
+    const unsubscribeEnded = onRoomEnded(({ roomId }) => {
+      if (roomId !== room._id) return;
+      toast.info("Party's over.", { description: 'This room is now over, feel free to check out the tracklist.',  });
+      queryClient.invalidateQueries({ queryKey: roomKeys.detail(roomCode) });
+      navigate('/dashboard');
+    });
+
+    return () => {
+      leaveRoom();
+      unsubscribeUpdated();
+      unsubscribeEnded();
+    };
+  }, [navigate, queryClient, room?._id, roomCode]);
+
   if (roomLoading || userLoading)
     return <p className="p-8 text-muted-foreground">Loading...</p>;
   if (roomError || userError)
     return <p className="p-8 text-destructive">Something went wrong.</p>;
-  if (!roomData || !userData)
+  if (!room || !user)
     return <p className="p-8 text-muted-foreground">Loading...</p>;
 
-  const room = roomData.roomDetails;
-  const user = userData.user;
+  const roomCreatorId =
+    typeof room.roomCreator === 'string'
+      ? room.roomCreator
+      : room.roomCreator?._id;
 
-  if (room.roomCreator?.toString() !== user._id?.toString()) {
+  if (roomCreatorId !== user._id) {
     return <Navigate to="/not-room-owner" replace />;
   }
 
@@ -58,9 +99,35 @@ const RoomAdmin = () => {
         />
       </div>
 
+      {/* edit room dialog */}
+      <div>
+        <EditRoomDialog variant="default" roomData={room} />
+      </div>
+
       {/* share button w/ dialog  */}
-      <div className='w-1/2'>
+      <div className="w-1/2">
         <ShareDialog roomCode={rawRoomCode || ''} roomData={room} />
+      </div>
+
+      {/* end room dialog */}
+      <EndRoomDialog
+        variant="destructive"
+        roomId={roomData.roomDetails._id}
+        loadingText="Please wait"
+      />
+
+      {/* spotify search */}
+      <div>
+        <RequestDialogAdmin
+          roomId={room._id}
+          triggerText="Add Song to Request List"
+          requestedBy={user.username ?? user.email}
+        />
+      </div>
+
+      {/*  request list admin */}
+      <div>
+        <RequestListAdmin />
       </div>
     </div>
   );

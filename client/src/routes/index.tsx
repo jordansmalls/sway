@@ -10,7 +10,10 @@ import ProtectedRoute from "./protected-route"
 import PublicOnlyRoute from "./public-only-route"
 import { PrivacyPolicy } from "../pages/def/PrivacyPolicy"
 import { TermsAndConditions } from "../pages/def/TermsAndConditions"
-
+import Room from "../pages/rooms/Room"
+import JoinRoom from "../pages/rooms/JoinRoom"
+import Tracklist from "../pages/rooms/Tracklist"
+import RoomEnded from "../pages/rooms/RoomEnded"
 
 // auth
 import Login from "../pages/auth/Login"
@@ -28,14 +31,23 @@ import NotRoomOwner from "../pages/def/NotRoomOwner"
 
 
 import Home from "../pages/Home"
+import NotFound from "../pages/def/NotFound"
 
 
 
 export const router = createBrowserRouter(
   createRoutesFromElements(
     <Route path="/" element={<App />}>
+      <Route path="*" element={<NotFound />} />
       <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
       <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+
+      <Route path="/room/:roomCode" element={<Room />} />
+      <Route path="/join-room" element={<JoinRoom />} />
+
+
+      <Route path="/room-ended" element={<RoomEnded />} />
+      <Route path="/:roomCode/tracklist" element={<Tracklist />} />
 
       <Route element={<PublicOnlyRoute />}>
         <Route index element={<Home />} />

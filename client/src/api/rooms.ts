@@ -153,7 +153,12 @@ export function useUpdateRoomMutation() {
 
   return useMutation({
     mutationFn: updateRoom,
-    onSuccess: () => {
+    onSuccess: (data) => {
+      queryClient.setQueryData(roomKeys.detail(data.updatedRoom.roomCode), {
+        success: true,
+        message: data.message,
+        roomDetails: data.updatedRoom,
+      })
       queryClient.invalidateQueries({ queryKey: roomKeys.all })
       queryClient.invalidateQueries({ queryKey: userKeys.all })
     },

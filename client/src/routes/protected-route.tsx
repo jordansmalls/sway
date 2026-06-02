@@ -3,7 +3,7 @@ import { Navigate, Outlet, useLocation } from "react-router-dom"
 
 import { useCurrentUserQuery } from "@/api/users"
 import { useAuthStore } from "@/stores/auth-store"
-import { GalleryVerticalEnd } from "lucide-react"
+import { Asterisk } from 'lucide-react';
 import { Spinner } from "../components/ui/spinner"
 
 export default function ProtectedRoute() {
@@ -27,7 +27,7 @@ export default function ProtectedRoute() {
         <div className="flex w-full max-w-sm flex-col items-center justify-center gap-8 text-center">
           <div className="flex items-center gap-2 font-medium text-muted-foreground">
             <div className="flex size-6 items-center justify-center rounded-md bg-primary text-primary-foreground">
-              <GalleryVerticalEnd className="size-4" />
+              <Asterisk className="size-4" />
             </div>
             <span>Sway</span>
           </div>
@@ -48,8 +48,6 @@ export default function ProtectedRoute() {
     return <Navigate to="/login" replace />
   }
 
-  // 🔄 NEW TRAFFIC CONTROL LOGIC
-  // If they don't have a username, and they aren't ALREADY on the username page, send them there.
   if (!data.user.hasUsername && location.pathname !== "/username") {
     return <Navigate to="/username" replace />
   }

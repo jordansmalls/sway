@@ -17,7 +17,12 @@ export default defineConfig({
       "/api": {
         target: "http://localhost:9999",
         changeOrigin: true,
-      }
-    }
-  }
+      },
+      "/socket.io": {
+        target: "http://localhost:9999",
+        changeOrigin: true,
+        ws: true,
+      },
+    },
+  },
 });

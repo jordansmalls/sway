@@ -1,4 +1,4 @@
-import { GalleryVerticalEnd } from 'lucide-react';
+import { Asterisk } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -75,9 +75,9 @@ export function CreateUsernameForm({
               className="flex flex-col items-center gap-2 font-medium"
             >
               <div className="flex size-8 items-center justify-center rounded-md">
-                <GalleryVerticalEnd className="size-6" />
+                <Asterisk className="size-6" />
               </div>
-              <span className="sr-only">Acme Inc.</span>
+              <span className="sr-only">Sway</span>
             </a>
             <h1 className="text-xl font-bold">
               You're in. Let's pick your handle.

@@ -109,7 +109,7 @@ export function CreateRoomForm({
       <FieldDescription className="px-6 text-center">
         By clicking create, you agree to our{' '}
         <a href="/terms-and-conditions" target="_blank">
-          Terms of Service
+          Terms and Conditions
         </a>{' '}
         and{' '}
         <a href="/privacy-policy" target="_blank">

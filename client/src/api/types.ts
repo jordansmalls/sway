@@ -38,6 +38,15 @@ export type RequestTrack = {
   spotifyURI: string
 }
 
+export type CreateRequestTrack = RequestTrack & {
+  id: string
+  name: string
+  albumImage?: string
+  uri: string
+  spotifyUri: string
+  duration_ms?: number
+}
+
 export type SongRequest = {
   _id: string
   roomId: string | Room

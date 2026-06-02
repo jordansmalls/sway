@@ -22,13 +22,6 @@ const router = express.Router();
 router.post("/", protect, generalLimiter, createRoom);
 
 /**
- * @desc    Update Room Details
- * @route   PUT /api/rooms/:roomId
- * @access  PRIVATE
- */
-router.put("/:roomId", protect, updateRoom);
-
-/**
  * @desc    Join a Room
  * @route   POST /api/rooms/join
  * @access  PUBLIC
@@ -41,6 +34,13 @@ router.post("/join", joinRoom);
  * @access  PRIVATE
  */
 router.put("/end", protect, endRoom);
+
+/**
+ * @desc    Update Room Details
+ * @route   PUT /api/rooms/:roomId
+ * @access  PRIVATE
+ */
+router.put("/:roomId", protect, updateRoom);
 
 /**
  * @desc    Delete a room

@@ -43,9 +43,6 @@ const RoomQrCodeAdmin: React.FC<RoomQrCodeProps> = ({
     };
   };
 
-  const logoSize = size * 0.3;
-  const whiteBgSize = logoSize + 10;
-
   return (
     <div style={{ textAlign: 'center' }}>
       <div
@@ -55,6 +52,7 @@ const RoomQrCodeAdmin: React.FC<RoomQrCodeProps> = ({
           height: `${size}px`,
           margin: '0 auto 1rem',
         }}
+        className="rounded-lg border"
       >
         {/* this image is used both for display and for downloading (only clean version is used for download) */}
         <img

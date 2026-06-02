@@ -12,12 +12,13 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import RoomQrCodeAdmin from './room-qr-code-admin';
-
+import type { Room } from '@/api/types';
+import { Share } from 'lucide-react';
 
 
 interface ShareDialogProps {
   roomCode: string;
-  roomData: object;
+  roomData: Room;
 }
 
 export function ShareDialog({ roomCode, roomData }: ShareDialogProps) {
@@ -28,15 +29,16 @@ export function ShareDialog({ roomCode, roomData }: ShareDialogProps) {
     <Dialog>
       <DialogTrigger asChild>
         <Button variant="outline" className="transition ease-in">
-          Share
+          {/* Share */}
+          <Share />
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Share link</DialogTitle>
+          <DialogTitle>Share Link to Room</DialogTitle>
           <DialogDescription>
-            Anyone who has this link will be able to join this room. Scan the QR
-            live or download it to share easily.
+            Anyone who has this link will be able to join this room. You can
+            also scan the QR live or download it to share easily.
           </DialogDescription>
         </DialogHeader>
         <div className="flex items-center gap-2">
@@ -47,14 +49,18 @@ export function ShareDialog({ roomCode, roomData }: ShareDialogProps) {
             <Input id="link" defaultValue={shareLink} readOnly />
           </div>
         </div>
+
         <div>
-          <RoomQrCodeAdmin
-            size={250}
-            qrDataUrl={roomData?.roomQr}
-            filename={`${roomData?.roomName}-QR-Code`}
-          />
+          {roomData.roomQr ? (
+            <RoomQrCodeAdmin
+              size={250}
+              qrDataUrl={roomData.roomQr}
+              filename={`${roomData.roomName}-QR-Code`}
+            />
+          ) : null}
         </div>
-        <DialogFooter className="sm:justify-start">
+
+        <DialogFooter className="sm:justify-center">
           <DialogClose asChild>
             <Button
               type="button"

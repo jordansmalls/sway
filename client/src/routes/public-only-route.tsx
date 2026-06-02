@@ -3,7 +3,7 @@ import { Navigate, Outlet } from "react-router-dom"
 
 import { useCurrentUserQuery } from "@/api/users"
 import { useAuthStore } from "@/stores/auth-store"
-import { GalleryVerticalEnd } from "lucide-react"
+import { Asterisk } from "lucide-react"
 import { Spinner } from "../components/ui/spinner"
 
 export default function PublicOnlyRoute() {
@@ -26,7 +26,7 @@ export default function PublicOnlyRoute() {
         <div className="flex w-full max-w-sm flex-col items-center justify-center gap-8 text-center">
           <div className="flex items-center gap-2 font-medium text-muted-foreground">
             <div className="flex size-6 items-center justify-center rounded-md bg-primary text-primary-foreground">
-              <GalleryVerticalEnd className="size-4" />
+              <Asterisk className="size-4" />
             </div>
             <span>Sway</span>
           </div>

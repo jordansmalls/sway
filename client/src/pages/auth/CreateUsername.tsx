@@ -1,12 +1,10 @@
-import { useEffect } from "react"
-import { Navigate, useNavigate } from "react-router-dom"
+import { Navigate } from "react-router-dom"
 
 import { useCurrentUserQuery } from "@/api/users"
 import { CreateUsernameForm } from '../../components/forms/auth/create-username-form'
 
 export default function CreateUsername() {
   const { data, isLoading } = useCurrentUserQuery()
-  const navigate = useNavigate()
 
   // Guard clause: Wait for user data to load
   if (isLoading) {
