@@ -255,29 +255,16 @@ export const joinRoom = async (req, res) => {
  */
 
 export const endRoom = async (req, res) => {
-    // TODO: remove debug console logs
-    console.log("🔥 END ROOM FUNCTION CALLED");
 
     const { roomId } = req.body;
     const userId = req.user._id;
 
-    console.log("Room ID:", roomId);
-    console.log("User ID:", userId);
-
     try {
-        console.log("📍 Step 1: Setting room inactive...");
+
         await setRoomInactive(roomId, userId);
-        console.log("✅ Room set inactive successfully");
-
-        console.log("📍 Step 2: Setting user active room status...");
         await setActiveRoomStatus(userId, false);
-        console.log("✅ User active room status updated");
 
-        console.log("📍 Step 3: Emitting room ended event...");
         emitRoomEnded(roomId);
-        console.log("✅ Room ended event emitted");
-
-        console.log("🎉 All steps completed successfully");
 
         return res.status(200).json({
             success: true,
@@ -306,7 +293,6 @@ export const deleteRoom = async (req, res) => {
         const { roomId } = req.params;
 
         // get user ID from request body
-        // const { userId }  = req.body;
         const { userId } = req.body;
 
         if (!roomId) {
