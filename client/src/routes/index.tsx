@@ -28,6 +28,7 @@ import Settings from '../pages/auth/Settings';
 import CreateRoom from "../pages/rooms/CreateRoom"
 import RoomAdmin from "../pages/rooms/RoomAdmin"
 import NotRoomOwner from "../pages/def/NotRoomOwner"
+import PastRooms from "../pages/rooms/PastRooms"
 
 
 import Home from "../pages/Home"
@@ -63,6 +64,7 @@ export const router = createBrowserRouter(
         <Route path="/settings" element={<Settings />} />
         <Route path="/not-room-owner" element={<NotRoomOwner />} />
         <Route path="/room/admin/:roomCode" element={<RoomAdmin />} />
+        <Route path="/past-rooms" element={<PastRooms />} />
       </Route>
     </Route>
   )

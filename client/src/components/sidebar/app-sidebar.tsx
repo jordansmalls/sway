@@ -4,13 +4,12 @@ import * as React from 'react';
 import {
   BookOpen,
   Bot,
-  Command,
+  CircleQuestionMark,
   Frame,
   LifeBuoy,
   Map,
   PieChart,
   Send,
-  Settings2,
   SquareTerminal,
   Asterisk
 } from 'lucide-react';
@@ -99,35 +98,35 @@ const data = {
         },
       ],
     },
-    {
-      title: 'Settings',
-      url: '#',
-      icon: Settings2,
-      items: [
-        {
-          title: 'General',
-          url: '#',
-        },
-        {
-          title: 'Team',
-          url: '#',
-        },
-        {
-          title: 'Billing',
-          url: '#',
-        },
-        {
-          title: 'Limits',
-          url: '#',
-        },
-      ],
-    },
+    // {
+    //   title: 'Settings',
+    //   url: '#',
+    //   icon: Settings2,
+    //   items: [
+    //     {
+    //       title: 'General',
+    //       url: '#',
+    //     },
+    //     {
+    //       title: 'Team',
+    //       url: '#',
+    //     },
+    //     {
+    //       title: 'Billing',
+    //       url: '#',
+    //     },
+    //     {
+    //       title: 'Limits',
+    //       url: '#',
+    //     },
+    //   ],
+    // },
   ],
   navSecondary: [
     {
       title: 'Support',
       url: "mailto:hi@jsmalls.net?subject=Sway%20-%20I'm%20Having%20an%20Issue",
-      icon: LifeBuoy,
+      icon: CircleQuestionMark,
     },
     {
       title: 'Feedback',

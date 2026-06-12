@@ -38,7 +38,7 @@ export async function exportTracklistJson(roomId: string) {
   const { data } = await apiClient.get<TracklistJsonResponse>(
     `/api/exports/${encodeURIComponent(roomId)}/tracklist/json`
   )
-  return data
+  return data.tracklist
 }
 
 export async function exportTracklistFile(
@@ -56,7 +56,7 @@ export async function exportRequestsJson(roomCode: string) {
   const { data } = await apiClient.get<RequestsJsonResponse>(
     `/api/exports/${encodeURIComponent(roomCode)}/export/json`
   )
-  return data
+  return data.data
 }
 
 export async function exportRequestsFile(
