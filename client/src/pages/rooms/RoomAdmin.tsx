@@ -12,6 +12,11 @@ import { joinRoom, onRoomEnded, onRoomUpdated } from '@/lib/socket';
 import { toast } from 'sonner';
 
 
+import { AppSidebar } from '../../components/sidebar/app-sidebar';
+import { Breadcrumb, BreadcrumbItem, BreadcrumbList, BreadcrumbPage } from '../../components/ui/breadcrumb';
+import { Separator } from '../../components/ui/separator';
+import { SidebarInset, SidebarProvider, SidebarTrigger } from '../../components/ui/sidebar';
+
 
 const RoomAdmin = () => {
   const { roomCode: rawRoomCode } = useParams<{ roomCode: string }>();
@@ -75,61 +80,84 @@ const RoomAdmin = () => {
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-6 py-10 flex flex-col gap-8">
-      <div>
-        <h1 className="text-3xl font-medium tracking-tight">{room.roomName}</h1>
-        <p className="text-muted-foreground mt-1">{room.roomDescription}</p>
-      </div>
+    <SidebarProvider>
+      <AppSidebar user={user} />
+      <SidebarInset>
+        <header className="flex h-16 shrink-0 items-center gap-2">
+          <div className="flex items-center gap-2 px-4">
+            <SidebarTrigger className="-ml-1" />
+            <Separator
+              orientation="vertical"
+              className="mr-2 data-[orientation=vertical]:h-4"
+            />
+            <Breadcrumb>
+              <BreadcrumbList>
+                <BreadcrumbItem>
+                  <BreadcrumbPage>{room.roomName}</BreadcrumbPage>
+                </BreadcrumbItem>
+              </BreadcrumbList>
+            </Breadcrumb>
+          </div>
+        </header>
+        <div className="max-w-2xl mx-auto px-6 py-10 flex flex-col gap-8">
+          <div>
+            <h1 className="text-3xl font-medium tracking-tight">
+              {room.roomName}
+            </h1>
+            <p className="text-muted-foreground mt-1">{room.roomDescription}</p>
+          </div>
 
-      <div className="flex flex-col gap-1">
-        <span className="text-xs uppercase tracking-widest text-muted-foreground">
-          Room code
-        </span>
-        <span className="font-mono text-lg">{room.roomCode}</span>
-      </div>
+          <div className="flex flex-col gap-1">
+            <span className="text-xs uppercase tracking-widest text-muted-foreground">
+              Room code
+            </span>
+            <span className="font-mono text-lg">{room.roomCode}</span>
+          </div>
 
-      <div className="flex flex-col gap-2">
-        <span className="text-xs uppercase tracking-widest text-muted-foreground">
-          QR code
-        </span>
-        <img
-          src={room.roomQr}
-          alt="Room QR Code"
-          className="w-48 h-48 rounded-lg border"
-        />
-      </div>
+          <div className="flex flex-col gap-2">
+            <span className="text-xs uppercase tracking-widest text-muted-foreground">
+              QR code
+            </span>
+            <img
+              src={room.roomQr}
+              alt="Room QR Code"
+              className="w-48 h-48 rounded-lg border"
+            />
+          </div>
 
-      {/* edit room dialog */}
-      <div>
-        <EditRoomDialog variant="default" roomData={room} />
-      </div>
+          {/* edit room dialog */}
+          <div>
+            <EditRoomDialog variant="default" roomData={room} />
+          </div>
 
-      {/* share button w/ dialog  */}
-      <div className="w-1/2">
-        <ShareDialog roomCode={rawRoomCode || ''} roomData={room} />
-      </div>
+          {/* share button w/ dialog  */}
+          <div className="w-1/2">
+            <ShareDialog roomCode={rawRoomCode || ''} roomData={room} />
+          </div>
 
-      {/* end room dialog */}
-      <EndRoomDialog
-        variant="destructive"
-        roomId={roomData.roomDetails._id}
-        loadingText="Please wait"
-      />
+          {/* end room dialog */}
+          <EndRoomDialog
+            variant="destructive"
+            roomId={roomData.roomDetails._id}
+            loadingText="Please wait"
+          />
 
-      {/* spotify search */}
-      <div>
-        <RequestDialogAdmin
-          roomId={room._id}
-          triggerText="Add Song to Request List"
-          requestedBy={user.username ?? user.email}
-        />
-      </div>
+          {/* spotify search */}
+          <div>
+            <RequestDialogAdmin
+              roomId={room._id}
+              triggerText="Add Song to Request List"
+              requestedBy={user.username ?? user.email}
+            />
+          </div>
 
-      {/*  request list admin */}
-      <div>
-        <RequestListAdmin />
-      </div>
-    </div>
+          {/*  request list admin */}
+          <div>
+            <RequestListAdmin />
+          </div>
+        </div>
+      </SidebarInset>
+    </SidebarProvider>
   );
 };
 
