@@ -8,6 +8,7 @@ import {
     fetchUserActiveRoom,
     fetchUserHasActiveRoom,
     fetchUserInactiveRooms,
+    fetchUserId,
 } from "../controllers/user.controller";
 import generalLimiter from "../middlewares/rate-limiters/general.limiter";
 
@@ -63,5 +64,13 @@ router.get("/:userId/has-active-room", protect, fetchUserHasActiveRoom);
  * @access  PRIVATE
  */
 router.get("/:userId/inactive", protect, fetchUserInactiveRooms);
+
+
+/**
+ * @desc    Fetch User ID
+ * @route   GET /api/users/:username/id
+ * @access  PUBLIC
+ */
+router.get("/:username/id", fetchUserId);
 
 export default router;

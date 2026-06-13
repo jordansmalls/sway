@@ -409,3 +409,39 @@ export const fetchUserInactiveRooms = async (req, res) => {
         });
     }
 };
+
+
+/**
+ * @desc    Fetch User ID
+ * @route   GET /api/users/:username/id
+ * @access  PUBLIC
+ */
+
+export const fetchUserId = async (req, res) => {
+    const { username } = req.params;
+
+    try {
+
+        const user = await User.findOne({ username });
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                error: "Resource not found",
+                message: "User not found.",
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            userId: user._id,
+        });
+    } catch (err) {
+        console.error("There was an error attempting to fetch a user's ID:", err);
+        return res.status(500).json({
+            success: false,
+            error: `Internal Server Error`,
+            message: "We're having trouble, please try again soon.",
+        });
+    }
+};

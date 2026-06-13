@@ -605,6 +605,25 @@ res.status(200).json({
 
 ---
 
+### Fetch User ID
+
+```
+GET /api/users/:username/id
+```
+
+**Access:** Public
+
+**Success Response:**
+
+```js
+res.status(200).json({
+  success: true,
+  userId: user._id,
+})
+```
+
+---
+
 ## Rooms
 
 ### Create Room
