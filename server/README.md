@@ -18,6 +18,7 @@ A robust web API built with Bun, Express, and MongoDB.
 - [Spotify](#spotify)
 - [Requests](#requests)
 - [Exports](#exports)
+- [Analytics](#analytics)
 - [Server Health](#server-health)
 - [Contact](#contact)
 
@@ -1073,6 +1074,191 @@ GET /api/requests/:roomId/filter?status={status}
 res.status(200).json({
   success: true,
   requests,
+});
+```
+
+---
+
+## Analytics
+
+### Total Rooms Hosted
+
+```
+GET /api/analytics/:userId/total-rooms-hosted
+```
+
+**Access:** Public
+
+**Success Response:**
+
+```js
+res.status(200).json({
+  success: true,
+  roomsHosted,
+});
+```
+
+---
+
+### Total Requests Received
+
+```
+GET /api/analytics/:userId/total-requests-received
+```
+
+**Access:** Public
+
+**Success Response:**
+
+```js
+res.status(200).json({
+  success: true,
+  requestsReceived,
+});
+```
+
+---
+
+### Total Requests Played
+
+```
+GET /api/analytics/:userId/total-requests-played
+```
+
+**Access:** Public
+
+**Success Response:**
+
+```js
+res.status(200).json({
+  success: true,
+  requestsPlayed,
+});
+```
+
+---
+
+### Most Played Artists
+
+```
+GET /api/analytics/:userId/most-played-artists
+```
+
+**Access:** Public
+
+**Success Response:**
+
+```js
+res.status(200).json({
+  success: true,
+  artists: [
+    {
+      artist: "Artist Name",
+      playCount: 12,
+    },
+  ],
+});
+```
+
+---
+
+### Most Requested Songs
+
+```
+GET /api/analytics/:userId/most-requested-songs
+```
+
+**Access:** Private
+
+> Returns up to 10 songs grouped by Spotify track ID and sorted by request count.
+
+**Success Response:**
+
+```js
+res.status(200).json({
+  success: true,
+  songs: [
+    {
+      spotifyTrackId: "spotify-track-id",
+      title: "Song Title",
+      artist: "Artist Name",
+      albumArtUrl: "https://...",
+      spotifyLink: "https://open.spotify.com/track/{id}",
+      spotifyURI: "spotify:track:{id}",
+      requestCount: 8,
+      totalVotes: 21,
+      latestRequestedAt: "2024-01-15T10:30:00.000Z",
+      latestPlayedAt: null,
+    },
+  ],
+});
+```
+
+---
+
+### Most Played Songs
+
+```
+GET /api/analytics/:userId/most-played-songs
+```
+
+**Access:** Private
+
+> Returns up to 10 played songs grouped by Spotify track ID and sorted by play count.
+
+**Success Response:**
+
+```js
+res.status(200).json({
+  success: true,
+  songs: [
+    {
+      spotifyTrackId: "spotify-track-id",
+      title: "Song Title",
+      artist: "Artist Name",
+      albumArtUrl: "https://...",
+      spotifyLink: "https://open.spotify.com/track/{id}",
+      spotifyURI: "spotify:track:{id}",
+      requestCount: 5,
+      totalVotes: 14,
+      latestRequestedAt: "2024-01-15T10:30:00.000Z",
+      latestPlayedAt: "2024-01-15T11:05:00.000Z",
+    },
+  ],
+});
+```
+
+---
+
+### Most Upvoted Songs
+
+```
+GET /api/analytics/:userId/most-upvoted-songs
+```
+
+**Access:** Private
+
+> Returns up to 10 songs grouped by Spotify track ID and sorted by total votes.
+
+**Success Response:**
+
+```js
+res.status(200).json({
+  success: true,
+  songs: [
+    {
+      spotifyTrackId: "spotify-track-id",
+      title: "Song Title",
+      artist: "Artist Name",
+      albumArtUrl: "https://...",
+      spotifyLink: "https://open.spotify.com/track/{id}",
+      spotifyURI: "spotify:track:{id}",
+      requestCount: 4,
+      totalVotes: 32,
+      latestRequestedAt: "2024-01-15T10:30:00.000Z",
+      latestPlayedAt: "2024-01-15T11:05:00.000Z",
+    },
+  ],
 });
 ```
 
