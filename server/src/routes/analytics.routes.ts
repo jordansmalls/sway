@@ -1,5 +1,4 @@
 import express from "express";
-import { protect } from "../middlewares/auth.middleware";
 import generalLimiter from "../middlewares/rate-limiters/general.limiter";
 import {
     mostPlayedArtists,
@@ -48,22 +47,22 @@ router.get("/:userId/most-played-artists", mostPlayedArtists);
 /**
  * @desc    10 Most Requested Songs
  * @route   GET /api/analytics/:userId/most-requested-songs
- * @access  PRIVATE
+ * @access  PUBLIC
  */
-router.get("/:userId/most-requested-songs", protect, mostRequestedSongs);
+router.get("/:userId/most-requested-songs", mostRequestedSongs);
 
 /**
  * @desc    10 Most Played Songs
  * @route   GET /api/analytics/:userId/most-played-songs
- * @access  PRIVATE
+ * @access  PUBLIC
  */
-router.get("/:userId/most-played-songs", protect, mostPlayedSongs);
+router.get("/:userId/most-played-songs", mostPlayedSongs);
 
 /**
  * @desc    10 Most Upvoted Songs
  * @route   GET /api/analytics/:userId/most-upvoted-songs
- * @access  PRIVATE
+ * @access  PUBLIC
  */
-router.get("/:userId/most-upvoted-songs", protect, mostUpvotedSongs);
+router.get("/:userId/most-upvoted-songs", mostUpvotedSongs);
 
 export default router;

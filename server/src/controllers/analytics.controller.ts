@@ -3,7 +3,7 @@ import User from "../models/user.model";
 import Room from "../models/room.model";
 import Request from "../models/request.model";
 
-const validateAnalyticsUser = async (req: any, userId: string): Promise<any> => {
+const validateAnalyticsUser = async (userId: string): Promise<any> => {
     if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
         return {
             status: 400,
@@ -11,17 +11,6 @@ const validateAnalyticsUser = async (req: any, userId: string): Promise<any> => 
                 success: false,
                 error: "Invalid Credentials: invalid user ID",
                 message: "We're having trouble, please try again.",
-            },
-        };
-    }
-
-    if (req.user?._id?.toString() !== userId.toString()) {
-        return {
-            status: 403,
-            body: {
-                success: false,
-                error: "Forbidden: not authorized",
-                message: "Unauthorized to view these analytics.",
             },
         };
     }
@@ -102,14 +91,14 @@ const aggregateSongsForUser = async (userId: any, match: any, sort: any): Promis
 /**
  * @desc    10 Most Requested Songs
  * @route   GET /api/analytics/:userId/most-requested-songs
- * @access  PRIVATE
+ * @access  PUBLIC
  */
 
 export const mostRequestedSongs = async (req: any, res: any) => {
     const { userId } = req.params;
 
     try {
-        const validation = await validateAnalyticsUser(req, userId);
+        const validation = await validateAnalyticsUser(userId);
 
         if (validation.status) {
             return res.status(validation.status).json(validation.body);
@@ -138,14 +127,14 @@ export const mostRequestedSongs = async (req: any, res: any) => {
 /**
  * @desc    10 Most Played Songs
  * @route   GET /api/analytics/:userId/most-played-songs
- * @access  PRIVATE
+ * @access  PUBLIC
  */
 
 export const mostPlayedSongs = async (req: any, res: any) => {
     const { userId } = req.params;
 
     try {
-        const validation = await validateAnalyticsUser(req, userId);
+        const validation = await validateAnalyticsUser(userId);
 
         if (validation.status) {
             return res.status(validation.status).json(validation.body);
@@ -174,14 +163,14 @@ export const mostPlayedSongs = async (req: any, res: any) => {
 /**
  * @desc    10 Most Upvoted Songs
  * @route   GET /api/analytics/:userId/most-upvoted-songs
- * @access  PRIVATE
+ * @access  PUBLIC
  */
 
 export const mostUpvotedSongs = async (req: any, res: any) => {
     const { userId } = req.params;
 
     try {
-        const validation = await validateAnalyticsUser(req, userId);
+        const validation = await validateAnalyticsUser(userId);
 
         if (validation.status) {
             return res.status(validation.status).json(validation.body);
