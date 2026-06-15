@@ -1,3 +1,4 @@
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -14,23 +15,34 @@ import { Label } from '@/components/ui/label';
 import RoomQrCodeAdmin from './room-qr-code-admin';
 import type { Room } from '@/api/types';
 import { Share } from 'lucide-react';
+import { Send } from 'lucide-react';
 
 
 interface ShareDialogProps {
   roomCode: string;
   roomData: Room;
+  triggerClassName?: string;
 }
 
-export function ShareDialog({ roomCode, roomData }: ShareDialogProps) {
+export function ShareDialog({
+  roomCode,
+  roomData,
+  triggerClassName,
+}: ShareDialogProps) {
   //! change for prod
   // let shareLink = `https://www.app.sway.onl/room/${roomCode}`
-  const shareLink = `http://localhost:4321/room/${roomCode}`;
+  const shareLink = `http://localhost:3000/room/${roomCode}`;
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button variant="outline" className="transition ease-in">
-          {/* Share */}
-          <Share />
+        <Button
+          variant="outline"
+          size="sm"
+          className={cn('shrink-0 text-xs transition ease-in', triggerClassName)}
+        >
+          <Send />
+          <span className="hidden sm:inline">Share</span>
+          <span className="sr-only sm:hidden">Share</span>
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
@@ -38,7 +50,7 @@ export function ShareDialog({ roomCode, roomData }: ShareDialogProps) {
           <DialogTitle>Share Link to Room</DialogTitle>
           <DialogDescription>
             Anyone who has this link will be able to join this room. You can
-            also scan the QR live or download it to share easily.
+            also have them scan this QR live or download it to share easily.
           </DialogDescription>
         </DialogHeader>
         <div className="flex items-center gap-2">
@@ -50,6 +62,11 @@ export function ShareDialog({ roomCode, roomData }: ShareDialogProps) {
           </div>
         </div>
 
+        <div className="text-center">
+          <h2 className='text-lg tracking-tight'>
+            Room Code: <span className='font-bold'>{roomCode}</span>
+          </h2>
+        </div>
         <div>
           {roomData.roomQr ? (
             <RoomQrCodeAdmin
@@ -59,7 +76,6 @@ export function ShareDialog({ roomCode, roomData }: ShareDialogProps) {
             />
           ) : null}
         </div>
-
         <DialogFooter className="sm:justify-center">
           <DialogClose asChild>
             <Button

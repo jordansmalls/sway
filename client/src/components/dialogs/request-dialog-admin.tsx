@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -24,12 +25,14 @@ interface RequestDialogProps {
   roomId: string;
   triggerText: string;
   requestedBy: string;
+  triggerClassName?: string;
 }
 
 const RequestDialogAdmin = ({
   roomId,
   triggerText,
   requestedBy,
+  triggerClassName,
 }: RequestDialogProps) => {
   const [selectedTrack, setSelectedTrack] = useState<SpotifySearchTrack | null>(null);
   const [isOpen, setIsOpen] = useState(false);
@@ -82,10 +85,17 @@ const RequestDialogAdmin = ({
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         {/* <Button variant="default">Make Request</Button> */}
-        <Button variant="default">{triggerText}</Button>
+        <Button
+          variant="default"
+          size="sm"
+          className={cn('shrink-0 text-xs', triggerClassName)}
+        >
+          <span className="sm:hidden">Add Song</span>
+          <span className="hidden sm:inline">{triggerText}</span>
+        </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} className='tracking-tight'>
           <DialogHeader>
             <DialogTitle>Request a Track</DialogTitle>
             <DialogDescription>
@@ -98,7 +108,7 @@ const RequestDialogAdmin = ({
               <Label>Search for a Song</Label>
               <SpotifySearch onTrackSelect={handleTrackSelect} />
               {selectedTrack && (
-                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border">
+                <div className="flex items-center gap-3 p-3 bg-background/40 rounded-lg border">
                   <img
                     src={selectedTrack.albumImage}
                     alt={`Album art for ${selectedTrack.name}`}
@@ -108,7 +118,7 @@ const RequestDialogAdmin = ({
                     <div className="font-medium truncate">
                       {selectedTrack.name}
                     </div>
-                    <div className="text-sm text-gray-600 truncate">
+                    <div className="text-sm text-muted-foreground truncate">
                       {selectedTrack.artist}
                     </div>
                   </div>

@@ -10,6 +10,9 @@ import RequestDialogAdmin from '../../components/dialogs/request-dialog-admin';
 import RequestListAdmin from '../../components/rooms/request-list-admin';
 import { joinRoom, onRoomEnded, onRoomUpdated } from '@/lib/socket';
 import { toast } from 'sonner';
+import { Button } from '../../components/ui/button';
+import { SquareArrowOutUpRight } from 'lucide-react';
+
 
 
 import { AppSidebar } from '../../components/sidebar/app-sidebar';
@@ -17,6 +20,7 @@ import { Breadcrumb, BreadcrumbItem, BreadcrumbList, BreadcrumbPage } from '../.
 import { Separator } from '../../components/ui/separator';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '../../components/ui/sidebar';
 import NotFound from '../def/NotFound';
+import RoomStatusBadge from '../../components/rooms/room-status-badge';
 
 
 const RoomAdmin = () => {
@@ -64,6 +68,10 @@ const RoomAdmin = () => {
     };
   }, [navigate, queryClient, room?._id, roomCode]);
 
+  const guestClick = () => {
+    navigate(`/room/${roomCode}`)
+  }
+
   if (roomLoading || userLoading)
     return <p className="p-8 text-muted-foreground">Loading...</p>;
   if (roomError || userError)
@@ -85,79 +93,51 @@ const RoomAdmin = () => {
   return (
     <SidebarProvider>
       <AppSidebar user={user} />
-      <SidebarInset>
+      <SidebarInset className="min-w-0">
         <header className="flex h-16 shrink-0 items-center gap-2">
-          <div className="flex items-center gap-2 px-4">
-            <SidebarTrigger className="-ml-1" />
-            <Separator
-              orientation="vertical"
-            />
-            <Breadcrumb>
+          <div className="flex min-w-0 items-center gap-2 px-4">
+            <SidebarTrigger className="-ml-1 shrink-0" />
+            <Separator orientation="vertical" className="shrink-0" />
+            <Breadcrumb className="min-w-0">
               <BreadcrumbList>
-                <BreadcrumbItem>
-                  <BreadcrumbPage>{room.roomName}</BreadcrumbPage>
+                <BreadcrumbItem className="flex min-w-0 items-center gap-2">
+                  <BreadcrumbPage className="truncate font-bold tracking-tight lg:text-2xl">
+                    {room.roomName}
+                  </BreadcrumbPage>
+                  <RoomStatusBadge active={room.active} />
                 </BreadcrumbItem>
               </BreadcrumbList>
             </Breadcrumb>
           </div>
         </header>
-        <div className="max-w-2xl mx-auto px-6 py-10 flex flex-col gap-8">
-          <div>
-            <h1 className="text-3xl font-medium tracking-tight">
-              {room.roomName}
-            </h1>
-            <p className="text-muted-foreground mt-1">{room.roomDescription}</p>
-          </div>
 
-          <div className="flex flex-col gap-1">
-            <span className="text-xs uppercase tracking-widest text-muted-foreground">
-              Room code
-            </span>
-            <span className="font-mono text-lg">{room.roomCode}</span>
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <span className="text-xs uppercase tracking-widest text-muted-foreground">
-              QR code
-            </span>
-            <img
-              src={room.roomQr}
-              alt="Room QR Code"
-              className="w-48 h-48 rounded-lg border"
-            />
-          </div>
-
-          {/* edit room dialog */}
-          <div>
-            <EditRoomDialog variant="default" roomData={room} />
-          </div>
-
-          {/* share button w/ dialog  */}
-          <div className="w-1/2">
+        <section className="flex w-full min-w-0 max-w-5xl flex-col gap-4 px-4 py-2 sm:px-6">
+          <div className="flex w-full flex-wrap items-center gap-2">
+            <EditRoomDialog variant="outline" roomData={room} />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={guestClick}
+              className="shrink-0 text-xs"
+            >
+              <SquareArrowOutUpRight />
+              <span className="hidden sm:inline">View Room</span>
+              <span className="sr-only sm:hidden">View Room</span>
+            </Button>
             <ShareDialog roomCode={rawRoomCode || ''} roomData={room} />
-          </div>
-
-          {/* end room dialog */}
-          <EndRoomDialog
-            variant="destructive"
-            roomId={roomData.roomDetails._id}
-            loadingText="Please wait"
-          />
-
-          {/* spotify search */}
-          <div>
+            <EndRoomDialog
+              variant="destructive"
+              roomId={roomData.roomDetails._id}
+              loadingText="Please wait"
+            />
             <RequestDialogAdmin
               roomId={room._id}
               triggerText="Add Song to Request List"
               requestedBy={user.username ?? user.email}
             />
           </div>
-
-          {/*  request list admin */}
-          <div>
-            <RequestListAdmin />
-          </div>
-        </div>
+          <RequestListAdmin />
+        </section>
       </SidebarInset>
     </SidebarProvider>
   );

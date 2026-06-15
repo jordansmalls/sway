@@ -1,5 +1,7 @@
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { SpinnerButton } from '../buttons/spinner-button';
+import { SquarePen } from 'lucide-react';
 import {
   Dialog,
   DialogClose,
@@ -21,9 +23,14 @@ import { useAuthStore } from '@/stores/auth-store';
 interface EditRoomDialogProps {
   variant: React.ComponentProps<typeof Button>['variant'];
   roomData: Room;
+  triggerClassName?: string;
 }
 
-export function EditRoomDialog({ variant, roomData }: EditRoomDialogProps) {
+export function EditRoomDialog({
+  variant,
+  roomData,
+  triggerClassName,
+}: EditRoomDialogProps) {
   const [open, setOpen] = useState(false);
   const [roomName, setRoomName] = useState(roomData.roomName);
   const [roomDescription, setRoomDescription] = useState(
@@ -88,8 +95,14 @@ export function EditRoomDialog({ variant, roomData }: EditRoomDialogProps) {
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button variant={variant} className="transition ease-in">
-          Edit Room
+        <Button
+          variant={variant}
+          size="sm"
+          className={cn('shrink-0 text-xs transition ease-in', triggerClassName)}
+        >
+          <SquarePen />
+          <span className="hidden sm:inline">Edit Room</span>
+          <span className="sr-only sm:hidden">Edit Room</span>
         </Button>
       </DialogTrigger>
 
