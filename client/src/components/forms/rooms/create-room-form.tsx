@@ -117,6 +117,9 @@ export function CreateRoomForm({
         </a>
         .
       </FieldDescription>
+      <FieldDescription className="text-center">
+        <a href="/dashboard">Back to Dashboard</a>
+      </FieldDescription>
     </div>
   );
 }

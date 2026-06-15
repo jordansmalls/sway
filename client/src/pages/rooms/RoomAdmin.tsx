@@ -16,6 +16,7 @@ import { AppSidebar } from '../../components/sidebar/app-sidebar';
 import { Breadcrumb, BreadcrumbItem, BreadcrumbList, BreadcrumbPage } from '../../components/ui/breadcrumb';
 import { Separator } from '../../components/ui/separator';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '../../components/ui/sidebar';
+import NotFound from '../def/NotFound';
 
 
 const RoomAdmin = () => {
@@ -66,7 +67,9 @@ const RoomAdmin = () => {
   if (roomLoading || userLoading)
     return <p className="p-8 text-muted-foreground">Loading...</p>;
   if (roomError || userError)
-    return <p className="p-8 text-destructive">Something went wrong.</p>;
+  return (
+    <NotFound />
+  )
   if (!room || !user)
     return <p className="p-8 text-muted-foreground">Loading...</p>;
 
@@ -88,7 +91,6 @@ const RoomAdmin = () => {
             <SidebarTrigger className="-ml-1" />
             <Separator
               orientation="vertical"
-              className="mr-2 data-[orientation=vertical]:h-4"
             />
             <Breadcrumb>
               <BreadcrumbList>

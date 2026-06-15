@@ -5,12 +5,16 @@ import {
   BookOpen,
   Bot,
   CircleQuestionMark,
-  Frame,
+
   Map,
   PieChart,
   Send,
   SquareTerminal,
-  Asterisk
+  Asterisk,
+  House,
+  ChartSpline,
+  LayoutGrid,
+  Settings
 } from 'lucide-react';
 
 import { NavMain } from './nav-main';
@@ -28,10 +32,13 @@ import {
   SidebarMenuItem,
 } from '@/components/ui/sidebar';
 
+
+import CreateRoomButton from '../buttons/create-room-button';
+
 const data = {
   user: {
-    name: 'shadcn',
-    email: 'm@example.com',
+    name: 'user',
+    email: 'john@doe.com',
     avatar: '/avatars/shadcn.jpg',
   },
   navMain: [
@@ -135,19 +142,19 @@ const data = {
   ],
   projects: [
     {
-      name: 'Design Engineering',
-      url: '#',
-      icon: Frame,
+      name: 'Dashboard',
+      url: '/dashboard',
+      icon: ChartSpline,
     },
     {
-      name: 'Sales & Marketing',
-      url: '#',
-      icon: PieChart,
+      name: 'Past Rooms',
+      url: '/past-rooms',
+      icon: LayoutGrid,
     },
     {
-      name: 'Travel',
-      url: '#',
-      icon: Map,
+      name: 'Settings',
+      url: '/settings',
+      icon: Settings,
     },
   ],
 };
@@ -164,13 +171,17 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
-              <a href="#">
+              <a href="/dashboard">
                 <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
                   <Asterisk className="size-4" />
                 </div>
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-medium tracking-tighter">Sway</span>
-                  <span className="truncate text-xs tracking-tighter opacity-70">Basic Plan</span>
+                  <span className="truncate font-medium tracking-tighter">
+                    Sway
+                  </span>
+                  <span className="truncate text-[.6rem] tracking-tighter opacity-70">
+                    Basic Plan
+                  </span>
                 </div>
               </a>
             </SidebarMenuButton>
@@ -178,7 +189,11 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={data.navMain} />
+        {/* <NavMain items={data.navMain} /> */}
+
+
+          <CreateRoomButton />
+
         <NavProjects projects={data.projects} />
         <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>
