@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import {
-  BadgeCheck,
-  Cog,
   ChevronsUpDown,
   Sun,
   LogOut,
-  Sparkles,
   Moon,
   Monitor,
+  Coins,
+  User,
+  Settings,
 } from 'lucide-react';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -46,22 +46,19 @@ type NavUserInfo = {
   avatar?: string;
 } | null;
 
-export function NavUser({
-  user,
-}: {
-  user?: NavUserInfo;
-}) {
+export function NavUser({ user }: { user?: NavUserInfo }) {
   const { isMobile } = useSidebar();
   const { setTheme } = useTheme();
   const displayName = user?.username || user?.name || 'User';
   const displayEmail = user?.email || '';
-  const initials = displayName
-    .split(/\s+/)
-    .filter(Boolean)
-    .map((part) => part[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase() || 'U';
+  const initials =
+    displayName
+      .split(/\s+/)
+      .filter(Boolean)
+      .map((part) => part[0])
+      .join('')
+      .slice(0, 2)
+      .toUpperCase() || 'U';
 
   const navigate = useNavigate();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -88,11 +85,11 @@ export function NavUser({
   };
 
   const handleSettings = () => {
-    navigate("/settings")
-  }
+    navigate('/settings');
+  };
 
   const handleProfile = () => {
-    navigate(`/@${user?.username}`);
+    navigate(`/${user?.username}`);
   };
 
   return (
@@ -111,7 +108,23 @@ export function NavUser({
                 </AvatarFallback>
               </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-medium">{displayName}</span>
+                <div className="flex items-center gap-[.1rem]">
+                  <span className="truncate font-medium">{displayName}</span>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="dodgerblue"
+                    stroke="white"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z" />
+                    <path d="m9 12 2 2 4-4" />
+                  </svg>
+                </div>
                 {displayEmail ? (
                   <span className="truncate text-xs">{displayEmail}</span>
                 ) : null}
@@ -134,7 +147,23 @@ export function NavUser({
                   </AvatarFallback>
                 </Avatar>
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-medium">{displayName}</span>
+                  <div className="flex items-center gap-[.1rem]">
+                    <span className="truncate font-medium">{displayName}</span>
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="dodgerblue"
+                      stroke="white"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z" />
+                      <path d="m9 12 2 2 4-4" />
+                    </svg>
+                  </div>
                   {displayEmail ? (
                     <span className="truncate text-xs">{displayEmail}</span>
                   ) : null}
@@ -144,15 +173,19 @@ export function NavUser({
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
               <DropdownMenuItem disabled>
-                <Sparkles />
+                <Coins />
                 Upgrade to Pro
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
               <DropdownMenuItem onClick={handleProfile}>
-                <BadgeCheck />
+                <User />
                 Profile
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleSettings}>
+                <Settings />
+                Settings
               </DropdownMenuItem>
               {/* Theme Toggle Submenu */}
               <DropdownMenuSub>
@@ -179,10 +212,7 @@ export function NavUser({
                 </DropdownMenuPortal>
               </DropdownMenuSub>
             </DropdownMenuGroup>
-            <DropdownMenuItem onClick={handleSettings}>
-              <Cog />
-              Settings
-            </DropdownMenuItem>
+
             <DropdownMenuSeparator />
             <DropdownMenuItem
               disabled={isLoggingOut}
