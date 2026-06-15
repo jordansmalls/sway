@@ -14,6 +14,7 @@ import Room from "../pages/rooms/Room"
 import JoinRoom from "../pages/rooms/JoinRoom"
 import Tracklist from "../pages/rooms/Tracklist"
 import RoomEnded from "../pages/rooms/RoomEnded"
+import Profile from "../pages/Profile"
 
 // auth
 import Login from "../pages/auth/Login"
@@ -46,9 +47,9 @@ export const router = createBrowserRouter(
       <Route path="/room/:roomCode" element={<Room />} />
       <Route path="/join-room" element={<JoinRoom />} />
 
-
       <Route path="/room-ended" element={<RoomEnded />} />
       <Route path="/:roomCode/tracklist" element={<Tracklist />} />
+      <Route path="/:username" element={<Profile />} />
 
       <Route element={<PublicOnlyRoute />}>
         <Route index element={<Home />} />

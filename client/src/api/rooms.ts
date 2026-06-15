@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
+import { analyticsKeys } from "@/api/analytics"
 import { apiClient } from "@/api/client"
 import type { ApiMessageResponse, QueueRequest, Room } from "@/api/types"
 import { userKeys } from "@/api/users"
@@ -142,6 +143,7 @@ export function useCreateRoomMutation() {
   return useMutation({
     mutationFn: createRoom,
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: analyticsKeys.all })
       queryClient.invalidateQueries({ queryKey: roomKeys.all })
       queryClient.invalidateQueries({ queryKey: userKeys.all })
     },
@@ -159,6 +161,7 @@ export function useUpdateRoomMutation() {
         message: data.message,
         roomDetails: data.updatedRoom,
       })
+      queryClient.invalidateQueries({ queryKey: analyticsKeys.all })
       queryClient.invalidateQueries({ queryKey: roomKeys.all })
       queryClient.invalidateQueries({ queryKey: userKeys.all })
     },
@@ -177,6 +180,7 @@ export function useEndRoomMutation() {
   return useMutation({
     mutationFn: endRoom,
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: analyticsKeys.all })
       queryClient.invalidateQueries({ queryKey: roomKeys.all })
       queryClient.invalidateQueries({ queryKey: userKeys.all })
     },
@@ -189,6 +193,7 @@ export function useDeleteRoomMutation() {
   return useMutation({
     mutationFn: deleteRoom,
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: analyticsKeys.all })
       queryClient.invalidateQueries({ queryKey: roomKeys.all })
       queryClient.invalidateQueries({ queryKey: userKeys.all })
     },

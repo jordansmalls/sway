@@ -29,6 +29,11 @@ type InactiveRoomsResponse = {
   inactiveRooms: Room[]
 }
 
+type fetchUserIdResponse = {
+  success: true
+  userId: string
+}
+
 export type UpdateProfileInput = {
   username?: string
   email?: string
@@ -44,6 +49,7 @@ export const userKeys = {
   me: () => [...userKeys.all, "me"] as const,
   activeRoom: (userId: string) =>
     [...userKeys.all, userId, "rooms", "active"] as const,
+  userId: (username: string) => [...userKeys.all, username, "id"] as const,
   activeRoomStatus: (userId: string) =>
     [...userKeys.all, userId, "has-active-room"] as const,
   inactiveRooms: (userId: string) =>
@@ -95,6 +101,13 @@ export async function getActiveRoomStatus(userId: string) {
 export async function getInactiveRooms(userId: string) {
   const { data } = await apiClient.get<InactiveRoomsResponse>(
     `/api/users/${encodeURIComponent(userId)}/inactive`
+  )
+  return data
+}
+
+export async function fetchUserId(username: string) {
+  const { data } = await apiClient.get<fetchUserIdResponse>(
+    `/api/users/${encodeURIComponent(username)}/id`
   )
   return data
 }
@@ -155,5 +168,13 @@ export function useInactiveRoomsQuery(userId: string) {
     queryKey: userKeys.inactiveRooms(userId),
     queryFn: () => getInactiveRooms(userId),
     enabled: userId.length > 0,
+  })
+}
+
+export function useFetchUserIdQuery(username: string) {
+  return useQuery({
+    queryKey: userKeys.userId(username),
+    queryFn: () => fetchUserId(username),
+    enabled: username.length > 0,
   })
 }

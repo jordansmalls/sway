@@ -5,6 +5,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query"
 
+import { analyticsKeys } from "@/api/analytics"
 import { apiClient } from "@/api/client"
 import { roomKeys } from "@/api/rooms"
 import type {
@@ -188,6 +189,7 @@ function useInvalidateRequests() {
   const queryClient = useQueryClient()
 
   return () => {
+    queryClient.invalidateQueries({ queryKey: analyticsKeys.all })
     queryClient.invalidateQueries({ queryKey: requestKeys.all })
     queryClient.invalidateQueries({ queryKey: roomKeys.all })
   }
