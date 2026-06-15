@@ -32,7 +32,7 @@ const SpotifySearch = ({ onTrackSelect }: SpotifySearchTestProps) => {
   };
 
   return (
-    <div className="w-full">
+    <div className="w-full tracking-tight">
       <div className="relative">
         <div className="relative">
           <Input
@@ -46,7 +46,7 @@ const SpotifySearch = ({ onTrackSelect }: SpotifySearchTestProps) => {
         </div>
 
         {searchQuery.isFetching && (
-          <div className="absolute w-full bg-white mt-1 rounded-lg shadow-lg border p-4 text-center z-50">
+          <div className="absolute w-full bg-background mt-1 rounded-lg shadow-lg border p-4 text-center z-50">
             <div className="flex flex-row items-center gap-4">
               <Spinner className="w-5 h-5" />
               <span>Loading</span>
@@ -55,19 +55,19 @@ const SpotifySearch = ({ onTrackSelect }: SpotifySearchTestProps) => {
         )}
 
         {searchQuery.isError && (
-          <div className="absolute w-full bg-white mt-1 rounded-lg shadow-lg border p-4 text-center text-red-500 z-50">
+          <div className="absolute w-full bg-background mt-1 rounded-lg shadow-lg border p-4 text-center text-red-500 z-50">
             Failed to fetch tracks. Please try again.
           </div>
         )}
 
         {!searchQuery.isFetching && results.length > 0 && (
-          <div className="absolute w-full bg-white mt-1 rounded-lg shadow-lg border max-h-96 overflow-y-auto z-50">
+          <div className="absolute w-full bg-background mt-1 rounded-lg shadow-lg border max-h-96 overflow-y-auto z-50">
             {results.map((track) => (
               <button
                 type="button"
                 key={track.id}
                 onClick={() => handleSelect(track)}
-                className="w-full p-2 text-left hover:bg-gray-100 flex items-center"
+                className="w-full p-2 text-left hover:bg-muted flex items-center"
               >
                 {/* Album Art */}
                 <img
@@ -78,10 +78,10 @@ const SpotifySearch = ({ onTrackSelect }: SpotifySearchTestProps) => {
                 {/* Track Details */}
                 <div className="flex-1">
                   <div className="font-medium">{track.name}</div>
-                  <div className="text-sm text-gray-600">{track.artist}</div>
+                  <div className="text-sm text-muted-foreground">{track.artist}</div>
                 </div>
                 {/* Track Duration */}
-                <div className="text-sm text-gray-500">
+                <div className="text-sm text-muted-foreground">
                   {Math.floor(track.duration_ms / 60000)}:
                   {((track.duration_ms % 60000) / 1000)
                     .toFixed(0)

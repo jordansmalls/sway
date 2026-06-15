@@ -16,6 +16,7 @@ import { useNavigate } from 'react-router-dom';
 import { getApiErrorMessage } from '@/api/client';
 import { useEndRoomMutation, useRoomDetailsQuery } from '@/api/rooms';
 import { OctagonX } from 'lucide-react';
+import { cn } from '../../lib/utils';
 
 interface EndRoomDialogProps {
   roomCode?: string;
@@ -42,7 +43,7 @@ const EndRoomDialog: React.FC<EndRoomDialogProps> = ({
   onRoomEnded,
   variant = 'destructive',
   triggerClassName,
-  triggerChildren = 'End Room',
+  triggerChildren,
   loadingText = 'Ending...',
   redirectAfterEnd,
   title = 'Are you sure you want to end this room?',
@@ -108,9 +109,18 @@ const EndRoomDialog: React.FC<EndRoomDialogProps> = ({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant={variant} className={triggerClassName}>
+        <Button
+          variant={variant}
+          size="sm"
+          className={cn('shrink-0 text-xs', triggerClassName)}
+        >
           <OctagonX />
-          {triggerChildren}
+          {triggerChildren ?? (
+            <>
+              <span className="hidden sm:inline">End Room</span>
+              <span className="sr-only sm:hidden">End Room</span>
+            </>
+          )}
         </Button>
       </DialogTrigger>
 

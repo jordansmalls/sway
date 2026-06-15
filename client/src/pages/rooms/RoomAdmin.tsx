@@ -93,15 +93,15 @@ const RoomAdmin = () => {
   return (
     <SidebarProvider>
       <AppSidebar user={user} />
-      <SidebarInset>
+      <SidebarInset className="min-w-0">
         <header className="flex h-16 shrink-0 items-center gap-2">
-          <div className="flex items-center gap-2 px-4">
-            <SidebarTrigger className="-ml-1" />
-            <Separator orientation="vertical" />
-            <Breadcrumb>
+          <div className="flex min-w-0 items-center gap-2 px-4">
+            <SidebarTrigger className="-ml-1 shrink-0" />
+            <Separator orientation="vertical" className="shrink-0" />
+            <Breadcrumb className="min-w-0">
               <BreadcrumbList>
-                <BreadcrumbItem>
-                  <BreadcrumbPage className="font-bold lg:font-bold lg:text-2xl tracking-tight">
+                <BreadcrumbItem className="flex min-w-0 items-center gap-2">
+                  <BreadcrumbPage className="truncate font-bold tracking-tight lg:text-2xl">
                     {room.roomName}
                   </BreadcrumbPage>
                   <RoomStatusBadge active={room.active} />
@@ -111,43 +111,30 @@ const RoomAdmin = () => {
           </div>
         </header>
 
-        {/* <section className="max-w-2xl px-6 py-10 flex flex-col gap-2"> */}
-          <section className="max-w-2xl px-6 py-2 flex flex-col gap-2">
-          {/* <div>
-            <h1 className="font-medium tracking-tighter text-lg">
-              {room.roomName}
-            </h1>
-            <p className="text-muted-foregroundn tracking-tight">
-              {room.roomDescription}
-            </p>
-          </div> */}
-
-          <div className="flex gap-2">
-            <div>
-              <EditRoomDialog variant="outline" roomData={room} />
-            </div>
+        <section className="flex w-full min-w-0 max-w-5xl flex-col gap-4 px-4 py-2 sm:px-6">
+          <div className="flex w-full flex-wrap items-center gap-2">
+            <EditRoomDialog variant="outline" roomData={room} />
             <Button
-              variant={'outline'}
+              variant="outline"
+              size="sm"
               onClick={guestClick}
-              className="text-xs transition ease-in"
+              className="shrink-0 text-xs"
             >
               <SquareArrowOutUpRight />
-              View Room
+              <span className="hidden sm:inline">View Room</span>
+              <span className="sr-only sm:hidden">View Room</span>
             </Button>
             <ShareDialog roomCode={rawRoomCode || ''} roomData={room} />
             <EndRoomDialog
               variant="destructive"
               roomId={roomData.roomDetails._id}
               loadingText="Please wait"
-              triggerClassName="text-xs"
             />
-            <div>
-              <RequestDialogAdmin
-                roomId={room._id}
-                triggerText="Add Song to Request List"
-                requestedBy={user.username ?? user.email}
-              />
-            </div>
+            <RequestDialogAdmin
+              roomId={room._id}
+              triggerText="Add Song to Request List"
+              requestedBy={user.username ?? user.email}
+            />
           </div>
           <RequestListAdmin />
         </section>

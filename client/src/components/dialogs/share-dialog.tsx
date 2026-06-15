@@ -1,3 +1,4 @@
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -20,19 +21,28 @@ import { Send } from 'lucide-react';
 interface ShareDialogProps {
   roomCode: string;
   roomData: Room;
+  triggerClassName?: string;
 }
 
-export function ShareDialog({ roomCode, roomData }: ShareDialogProps) {
+export function ShareDialog({
+  roomCode,
+  roomData,
+  triggerClassName,
+}: ShareDialogProps) {
   //! change for prod
   // let shareLink = `https://www.app.sway.onl/room/${roomCode}`
   const shareLink = `http://localhost:3000/room/${roomCode}`;
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button variant="outline" className="transition ease-in text-xs">
-          {/* Share */}
+        <Button
+          variant="outline"
+          size="sm"
+          className={cn('shrink-0 text-xs transition ease-in', triggerClassName)}
+        >
           <Send />
-          Share
+          <span className="hidden sm:inline">Share</span>
+          <span className="sr-only sm:hidden">Share</span>
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
