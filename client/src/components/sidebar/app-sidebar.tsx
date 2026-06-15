@@ -6,7 +6,6 @@ import {
   Bot,
   CircleQuestionMark,
   Frame,
-  LifeBuoy,
   Map,
   PieChart,
   Send,
@@ -170,8 +169,8 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
                   <Asterisk className="size-4" />
                 </div>
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-medium">Sway</span>
-                  <span className="truncate text-xs">Free Plan</span>
+                  <span className="truncate font-medium tracking-tighter">Sway</span>
+                  <span className="truncate text-xs tracking-tighter opacity-70">Basic Plan</span>
                 </div>
               </a>
             </SidebarMenuButton>

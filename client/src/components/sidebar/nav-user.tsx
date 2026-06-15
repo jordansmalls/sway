@@ -5,7 +5,6 @@ import {
   LogOut,
   Moon,
   Monitor,
-  Coins,
   User,
   Settings,
 } from 'lucide-react';
@@ -19,6 +18,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuShortcut
 } from '@/components/ui/dropdown-menu';
 
 import {
@@ -93,7 +93,7 @@ export function NavUser({ user }: { user?: NavUserInfo }) {
   };
 
   return (
-    <SidebarMenu>
+    <SidebarMenu className='!text-tighter'>
       <SidebarMenuItem>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -173,8 +173,10 @@ export function NavUser({ user }: { user?: NavUserInfo }) {
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
               <DropdownMenuItem disabled>
-                <Coins />
                 Upgrade to Pro
+                <DropdownMenuShortcut className="tracking-tight">
+                  Coming Soon
+                </DropdownMenuShortcut>
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
