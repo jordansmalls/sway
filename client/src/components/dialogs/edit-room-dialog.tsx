@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { SpinnerButton } from '../buttons/spinner-button';
+import { SquarePen } from 'lucide-react';
 import {
   Dialog,
   DialogClose,
@@ -88,7 +89,8 @@ export function EditRoomDialog({ variant, roomData }: EditRoomDialogProps) {
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button variant={variant} className="transition ease-in">
+        <Button variant={variant} className="transition ease-in text-xs">
+          <SquarePen />
           Edit Room
         </Button>
       </DialogTrigger>

@@ -15,6 +15,7 @@ import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { getApiErrorMessage } from '@/api/client';
 import { useEndRoomMutation, useRoomDetailsQuery } from '@/api/rooms';
+import { OctagonX } from 'lucide-react';
 
 interface EndRoomDialogProps {
   roomCode?: string;
@@ -108,6 +109,7 @@ const EndRoomDialog: React.FC<EndRoomDialogProps> = ({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant={variant} className={triggerClassName}>
+          <OctagonX />
           {triggerChildren}
         </Button>
       </DialogTrigger>

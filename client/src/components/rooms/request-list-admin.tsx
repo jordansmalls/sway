@@ -141,12 +141,12 @@ const RequestListAdmin: React.FC = () => {
     <div className="p-4">
       <h3 className="text-lg font-semibold mb-4">Admin Request Queue</h3>
       {requests.length === 0 ? (
-        <div className="flex flex-col items-center justify-center p-8 text-gray-500">
+        <div className="flex flex-col items-center justify-center p-8 text-muted-foreground">
           <Music className="w-12 h-12 mb-2" />
           <p>No requests found in this room.</p>
         </div>
       ) : (
-        <ScrollArea className="h-136 w-full rounded-md border">
+        <ScrollArea className="h-136 w-full rounded-md border tracking-tighter">
           <div className="p-2">
             <table className="w-full">
               <thead>
@@ -159,7 +159,7 @@ const RequestListAdmin: React.FC = () => {
               </thead>
               <tbody>
                 {requests.map((request) => (
-                  <tr key={request._id} className="border-b hover:bg-gray-50">
+                  <tr key={request._id} className="border-b hover:bg-muted">
                     <td className="p-2">
                       <div className="flex items-center">
                         <img
@@ -171,11 +171,11 @@ const RequestListAdmin: React.FC = () => {
                           <div className="font-medium text-sm leading-tight">
                             {request.track.title}
                           </div>
-                          <div className="text-xs text-gray-500">
+                          <div className="text-xs text-muted-foreground">
                             {request.track.artist}
                           </div>
                           {request.requestedBy && (
-                            <div className="text-xs italic text-gray-400">
+                            <div className="text-xs italic text-muted-foreground opacity-70">
                               Requested by {request.requestedBy}
                             </div>
                           )}

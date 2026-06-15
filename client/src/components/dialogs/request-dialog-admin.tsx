@@ -82,7 +82,7 @@ const RequestDialogAdmin = ({
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         {/* <Button variant="default">Make Request</Button> */}
-        <Button variant="default">{triggerText}</Button>
+        <Button variant="default" className='text-xs'>{triggerText}</Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <form onSubmit={handleSubmit}>
