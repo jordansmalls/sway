@@ -14,10 +14,7 @@ export const initSocketIO = (socketIO) => {
 const emitToRoom = (roomId, event, data) => {
     if (io) {
         io.to(`room-${roomId}`).emit(event, data);
-        //?
-        console.log(`🔊 emitToRoom -> event: ${event}, room-${roomId}`, data);
     } else {
-        //?
         console.warn("emitToRoom called but io is not initialized");
     }
 };

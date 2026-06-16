@@ -153,12 +153,6 @@ export const updateRoom = async (req, res) => {
             });
         }
 
-        // TODO: remove debug console log
-        // log results to the console and emit event
-        console.log(`✏️ Room ${roomId} updated by ${userId}`, {
-            roomName: updatedRoom.roomName,
-            roomDescription: updatedRoom.roomDescription,
-        });
 
         try {
             // emit the live event update to all connected clients in the room
@@ -173,7 +167,7 @@ export const updateRoom = async (req, res) => {
             updatedRoom,
         });
     } catch (err) {
-        console.log("There was an error attempting to update the details of a room:", err);
+        console.error("There was an error attempting to update the details of a room:", err);
         return res.status(500).json({
             success: false,
             error: "Internal Server Error",

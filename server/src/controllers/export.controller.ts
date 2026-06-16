@@ -84,17 +84,8 @@ export const exportTracklistJson = async (req, res) => {
 export const exportTracklistCsv = async (req, res) => {
     const { roomId } = req.params;
 
-    // TODO: REMOVE DEBUGGING CONSOLE LOGS
-    console.log("=== CSV EXPORT DEBUG ===");
-    console.log("Full URL:", req.originalUrl);
-    console.log("req.params:", req.params);
-    console.log("req.params.roomId:", req.params.roomId);
-    console.log("typeof req.params.roomId:", typeof req.params.roomId);
-
-    console.log("Extracted roomId:", roomId);
 
     if (!roomId) {
-        console.log("❌ roomId is falsy!");
         return res.status(400).json({
             success: false,
             error: "Invalid Credentials: room ID missing",
