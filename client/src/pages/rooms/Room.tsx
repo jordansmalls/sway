@@ -92,7 +92,7 @@ const Room: React.FC = () => {
   }, [queryClient, roomCode, roomId]);
 
   if (roomEnded || roomData?.active === false) {
-    return <RoomEnded roomCode={roomCode} />;
+    return <RoomEnded roomCode={roomCode} roomName={roomData?.roomName} />;
   }
 
   if (roomQuery.isLoading) {
