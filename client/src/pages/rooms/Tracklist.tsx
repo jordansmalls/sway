@@ -1,6 +1,6 @@
 import { useParams } from 'react-router-dom';
 import { Button } from '../../components/ui/button';
-import { usePlayedSpotifyRequestsQuery } from '@/api/rooms';
+import { usePlayedSpotifyRequestsQuery, useRoomDetailsQuery } from '@/api/rooms';
 import type { QueueRequest } from '@/api/types';
 import { Music, Loader2 } from 'lucide-react';
 import Footer from '../../components/footer';
@@ -24,13 +24,18 @@ const Tracklist = () => {
   const { roomCode: rawRoomCode } = useParams();
   const roomCode = rawRoomCode ? rawRoomCode.toUpperCase() : '';
   const tracklistQuery = usePlayedSpotifyRequestsQuery(roomCode);
+  const roomDetailsQuery = useRoomDetailsQuery(roomCode);
+
   const tracklistData = [...(tracklistQuery.data?.data ?? [])].sort((a, b) =>
     sortByTime(a.playedAt ?? '', b.playedAt ?? '')
   );
 
-  if (tracklistQuery.isLoading) {
+  const roomName = roomDetailsQuery.data?.roomDetails?.roomName ?? '';
+  const isLoading = tracklistQuery.isLoading || roomDetailsQuery.isLoading;
+
+  if (isLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center px-4">
+      <div className="min-h-screen bg-muted flex items-center justify-center px-4">
         <div className="text-center space-y-3">
           <Loader2 className="h-10 w-10 animate-spin mx-auto text-primary" />
           <p className="text-muted-foreground text-sm tracking-widest uppercase font-mono">
@@ -43,7 +48,7 @@ const Tracklist = () => {
 
   if (tracklistQuery.isError || !roomCode) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center px-4">
+      <div className="min-h-screen bg-muted flex items-center justify-center px-4">
         <div className="text-center space-y-2">
           <p className="text-muted-foreground text-sm tracking-widest uppercase font-mono">
             Room {roomCode}
@@ -57,16 +62,16 @@ const Tracklist = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-muted text-foreground">
       {/* Header */}
-      <div className="border-b border-border bg-background/80 sticky top-0 z-10 backdrop-blur-sm">
+      <div className="border-b border-border bg-muted/80 sticky top-0 z-10 backdrop-blur-sm">
         <div className="max-w-2xl mx-auto px-4 py-4 flex items-center justify-between gap-4">
           <div>
             <h1 className="text-xl font-bold tracking-tighter leading-none">
               Room Recap
             </h1>
-            <p className="text-xs text-muted-foreground font-mono tracking-widest mt-0.5 uppercase">
-              #{roomCode}
+            <p className="text-xs text-muted-foreground mt-1 font-medium">
+              {roomName || `#${roomCode}`}
             </p>
           </div>
           {tracklistData.length > 0 && (
