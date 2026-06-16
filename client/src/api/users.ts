@@ -147,11 +147,14 @@ export function useDeleteAccountMutation() {
   })
 }
 
-export function useActiveRoomQuery(userId: string) {
+export function useActiveRoomQuery(
+  userId: string,
+  options?: { enabled?: boolean }
+) {
   return useQuery({
     queryKey: userKeys.activeRoom(userId),
     queryFn: () => getActiveRoom(userId),
-    enabled: userId.length > 0,
+    enabled: (options?.enabled ?? true) && userId.length > 0,
   })
 }
 

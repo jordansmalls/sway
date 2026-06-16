@@ -2,7 +2,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
-import { useActiveRoomQuery } from "@/api/users";
+import { useActiveRoomQuery, useActiveRoomStatusQuery } from "@/api/users";
 import { useAuthStore } from "@/stores/auth-store";
 import { Button } from "../ui/button";
 import { SpinnerButton } from "./spinner-button";
@@ -12,10 +12,16 @@ const CreateRoomButton = () => {
   const user = useAuthStore((state) => state.user);
   const userId = user?._id ?? "";
 
-  const { data: activeRoomData, isLoading } = useActiveRoomQuery(userId);
+  const { data: statusData, isLoading: isStatusLoading } = useActiveRoomStatusQuery(userId);
+  const userHasActiveRoom = statusData?.hasActiveRoom ?? false;
+
+  const { data: activeRoomData, isLoading: isRoomLoading } = useActiveRoomQuery(
+    userId,
+    { enabled: userHasActiveRoom }
+  );
 
   const activeRoom = activeRoomData?.activeRoom ?? null;
-  const userHasActiveRoom = Boolean(activeRoom);
+  const isLoading = isStatusLoading || (userHasActiveRoom && isRoomLoading);
 
   const handleClickJoin = (e: React.MouseEvent<HTMLButtonElement>) => {
     try {

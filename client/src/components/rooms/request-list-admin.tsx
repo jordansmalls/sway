@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo } from 'react';
-import { Play, Check, Trash2, Music, ArrowUp } from 'lucide-react';
+import { Play, Check, Trash2, Music, ArrowUp, PackageOpen } from 'lucide-react';
 import { useParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { roomKeys, useRoomDetailsQuery } from '@/api/rooms';
@@ -93,11 +94,20 @@ const AdminRequestRow = ({
     </span>
 
     {request.track.albumArtUrl ? (
-      <img
-        src={request.track.albumArtUrl}
-        alt={`Album art for ${request.track.title}`}
-        className="size-11 shrink-0 rounded-md object-cover"
-      />
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <a href={request.track.spotifyLink} target="_blank">
+            <img
+              src={request.track.albumArtUrl}
+              alt={`Album art for ${request.track.title}`}
+              className="size-11 shrink-0 rounded-md object-cover"
+            />
+          </a>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>Open in Spotify</p>
+        </TooltipContent>
+      </Tooltip>
     ) : (
       <div className="flex size-11 shrink-0 items-center justify-center rounded-md bg-muted">
         <Music className="size-5 text-muted-foreground" />
@@ -105,7 +115,9 @@ const AdminRequestRow = ({
     )}
 
     <div className="min-w-0 flex-1">
-      <div className="truncate text-sm font-semibold">{request.track.title}</div>
+      <div className="truncate text-sm font-semibold">
+        {request.track.title}
+      </div>
       <div className="truncate text-sm text-muted-foreground">
         {request.track.artist}
       </div>
@@ -133,36 +145,57 @@ const AdminRequestRow = ({
 
     <div className="flex shrink-0 items-center gap-1">
       {request.status !== 'playing' && (
-        <Button
-          variant="outline"
-          size="icon-sm"
-          onClick={() => onMarkAsPlaying(request._id)}
-          title="Mark as playing"
-          className="rounded-lg text-green-600 hover:bg-green-50 hover:text-green-700"
-        >
-          <Play className="size-4" />
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="outline"
+              size="icon-sm"
+              onClick={() => onMarkAsPlaying(request._id)}
+              aria-label="Mark as Playing"
+              className="rounded-lg text-green-600 hover:bg-green-50 hover:text-green-700"
+            >
+              <Play className="size-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Mark as Playing</p>
+          </TooltipContent>
+        </Tooltip>
       )}
       {request.status !== 'played' && (
-        <Button
-          variant="outline"
-          size="icon-sm"
-          onClick={() => onMarkAsPlayed(request._id)}
-          title="Mark as played"
-          className="rounded-lg text-blue-600 hover:bg-blue-50 hover:text-blue-700"
-        >
-          <Check className="size-4" />
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="outline"
+              size="icon-sm"
+              onClick={() => onMarkAsPlayed(request._id)}
+              aria-label="Mark as Played"
+              className="rounded-lg text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+            >
+              <Check className="size-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Mark as Played</p>
+          </TooltipContent>
+        </Tooltip>
       )}
-      <Button
-        variant="outline"
-        size="icon-sm"
-        onClick={() => onDeleteRequest(request._id)}
-        title="Remove request"
-        className="rounded-lg text-red-600 hover:bg-red-50 hover:text-red-700"
-      >
-        <Trash2 className="size-4" />
-      </Button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="outline"
+            size="icon-sm"
+            onClick={() => onDeleteRequest(request._id)}
+            aria-label="Remove Request"
+            className="rounded-lg text-red-600 hover:bg-red-50 hover:text-red-700"
+          >
+            <Trash2 className="size-4" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>Remove Request</p>
+        </TooltipContent>
+      </Tooltip>
     </div>
   </div>
 );
@@ -288,29 +321,50 @@ const RequestListAdmin: React.FC = () => {
   }
 
   return (
-    <div className="w-full mt-[2rem]">
-      <h3 className="mb-4 text-lg font-medium tracking-tighter">Request Queue</h3>
+    <div className="w-full mt-8">
       {requests.length === 0 ? (
-        <div className="flex flex-col items-center justify-center p-8 text-muted-foreground">
-          <Music className="mb-2 size-12" />
-          <p>No requests found in this room.</p>
+        <div className="flex h-[500px] flex-col items-center justify-center rounded-xl border border-border/50 bg-card">
+          {/* Illustration */}
+
+          <div className="relative mb-8">
+            <div className="absolute inset-0 scale-125 rounded-full bg-primary/5 blur-xl" />
+
+            <div className="relative flex size-28 items-center justify-center rounded-full border border-border bg-background">
+              <PackageOpen className="size-12 text-muted-foreground" />
+            </div>
+          </div>
+
+          {/* Content */}
+
+          <div className="max-w-md text-center">
+            <h4 className="mb-2 text-3xl font-semibold tracking-tight">
+              The Queue is Empty!
+            </h4>
+
+            <p className="mb-8 text-foreground/70 tracking-tight font-normal">
+              When guests add songs to the request list, they'll appear here for
+              you to manage.
+            </p>
+          </div>
         </div>
       ) : (
-        <ScrollArea className="h-136 lg:w-full w-full rounded-md bg-background">
-          <div>
-            {requests.map((request, index) => (
-              <AdminRequestRow
-                key={request._id}
-                request={request}
-                index={index}
-                statusLabel={getQueueStatusLabel(request, requests)}
-                onMarkAsPlaying={handleMarkAsPlaying}
-                onMarkAsPlayed={handleMarkAsPlayed}
-                onDeleteRequest={handleDeleteRequest}
-              />
-            ))}
-          </div>
-        </ScrollArea>
+        <>
+          <ScrollArea className="h-[700px] w-full rounded-xl border bg-background">
+            <div>
+              {requests.map((request, index) => (
+                <AdminRequestRow
+                  key={request._id}
+                  request={request}
+                  index={index}
+                  statusLabel={getQueueStatusLabel(request, requests)}
+                  onMarkAsPlaying={handleMarkAsPlaying}
+                  onMarkAsPlayed={handleMarkAsPlayed}
+                  onDeleteRequest={handleDeleteRequest}
+                />
+              ))}
+            </div>
+          </ScrollArea>
+        </>
       )}
     </div>
   );

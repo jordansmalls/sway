@@ -1,5 +1,6 @@
 import { Outlet } from "react-router-dom"
-import { Toaster } from "sonner"
+// import { Toaster } from "sonner"
+import { Toaster } from "./components/theme/toaster";
 import { TooltipProvider } from "./components/ui/tooltip"
 import { ThemeProvider } from "./components/theme/theme-provider";
 
