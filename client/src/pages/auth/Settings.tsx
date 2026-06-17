@@ -56,7 +56,7 @@ export default function Settings() {
             </div>
           </div> */}
           <div className="bg-background flex min-h-svh flex-col items-center justify-center gap-6 p-6 md:p-10">
-            <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
+            <h1 className="text-3xl font-bold tracking-tight">Account Settings</h1>
             <p className="text-muted-foreground">
               Manage your account settings and preferences.
             </p>

@@ -97,10 +97,9 @@ const InactiveRoomsTable = () => {
 
   return (
     <div className="p-6">
-      <h1 className="text-2xl font-medium tracking-tighter mb-6 text-center mt-[4rem]">Inactive Rooms</h1>
 
       {inactiveRooms.length === 0 ? (
-        <p className="text-muted-foreground">You currently have no inactive rooms.</p>
+        <p className="text-muted-foreground text-center">You currently have no inactive rooms!</p>
       ) : (
         <div className="overflow-x-auto">
           <table className="min-w-full border border-border rounded-lg">

@@ -121,19 +121,19 @@ export const TermsAndConditions: React.FC = () => {
     <div className="max-w-6xl mx-auto px-4 py-12 font-sans text-gray-800">
       {/* Header */}
       <div className="text-center border-b border-gray-200 pb-8 mb-12">
-        <h1 className="text-4xl font-extrabold tracking-tight text-gray-900 sm:text-5xl">
+        <h1 className="text-4xl font-extrabold tracking-tighter text-foreground sm:text-5xl">
           Terms and Conditions
         </h1>
-        <p className="mt-4 text-base text-gray-500">
+        <p className="mt-4 text-base text-muted-foreground">
           Welcome to Sway. Please read these terms carefully before using our
           platform.
         </p>
-        <p className="mt-2 text-sm text-gray-400">
+        <p className="mt-2 text-sm text-muted-foreground/70">
           Last Updated: {lastUpdated}
         </p>
       </div>
 
-      <div className="flex flex-col md:flex-row gap-12">
+      <div className="flex flex-col md:flex-row gap-12 tracking-tight">
         {/* Sidebar Navigation */}
         <aside className="md:w-1/4 sticky top-6 h-fit hidden md:block">
           <nav className="space-y-1 border-l border-gray-200 pl-4">
@@ -141,7 +141,7 @@ export const TermsAndConditions: React.FC = () => {
               <button
                 key={section.id}
                 onClick={() => scrollToSection(section.id)}
-                className="block w-full text-left text-sm text-gray-600 hover:text-indigo-600 hover:font-medium py-1.5 transition-colors duration-150"
+                className="block w-full text-left text-sm text-muted-foreground hover:text-primary hover:font-medium py-1.5 transition-colors duration-300 hover:cursor-pointer"
               >
                 {section.title}
               </button>
@@ -150,9 +150,9 @@ export const TermsAndConditions: React.FC = () => {
         </aside>
 
         {/* Legal Content */}
-        <main className="md:w-3/4 space-y-10">
-          <section className="prose max-w-none text-gray-600 leading-relaxed">
-            <p className="text-lg font-medium text-gray-900">
+        <main className="md:w-3/4 space-y-10 tracking-tight">
+          <section className="prose max-w-none text-muted-foreground leading-relaxed">
+            <p className="text-lg font-medium text-muted-foreground">
               Please read these Terms and Conditions ("Terms", "Terms and
               Conditions") carefully before using the Sway platform (the
               "Service") operated by Sway ("us", "we", or "our").
@@ -165,28 +165,28 @@ export const TermsAndConditions: React.FC = () => {
               id={section.id}
               className="scroll-mt-6 border-b border-gray-100 pb-8 last:border-0"
             >
-              <h2 className="text-xl font-bold text-gray-900 mb-4">
+              <h2 className="text-xl font-bold text-foreground mb-4">
                 {section.title}
               </h2>
-              <div className="text-gray-600 leading-relaxed space-y-3">
+              <div className="text-foreground/90 leading-relaxed space-y-3">
                 {section.content}
               </div>
             </section>
           ))}
 
           {/* Contact Section */}
-          <section className="bg-gray-50 rounded-2xl p-6 mt-12 border border-gray-100">
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+          <section className="bg-card rounded-2xl p-6 mt-12 border border-b-accent tracking-tight">
+            <h3 className="text-lg font-semibold text-foreground mb-2">
               Questions or Concerns?
             </h3>
-            <p className="text-sm text-gray-600">
-              If you have any questions about these Terms, please contact our
-              legal team at{' '}
+            <p className="text-sm text-muted-foreground">
+              If you have any questions about these Terms, please send an email to our
+              creator at{' '}
               <a
                 href="mailto:legal@sway.com"
-                className="text-indigo-600 hover:underline font-medium"
+                className="text-primary hover:underline font-medium transition duration-300"
               >
-                legal@sway.com
+                hi@jsmalls.net
               </a>
               .
             </p>

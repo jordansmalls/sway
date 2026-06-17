@@ -74,7 +74,7 @@ export function SignupForm({
     <form className={cn('flex flex-col gap-6', className)} onSubmit={handleSubmit} {...props}>
       <FieldGroup>
         <div className="flex flex-col items-center gap-1 text-center">
-          <h1 className="text-2xl font-bold">Create your account</h1>
+          <h1 className="text-2xl font-bold">Create Account</h1>
           <p className="text-sm text-balance text-muted-foreground">
             Join us and start taking live song requests, engaging your crowd, and keeping the dancefloor packed.
           </p>
