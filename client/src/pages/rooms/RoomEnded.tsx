@@ -20,7 +20,7 @@ const RoomEnded: React.FC<RoomEndedProps> = ({ roomCode, roomName }) => {
           className="flex items-center gap-2 self-center font-medium"
           target="_blank"
         >
-          <div className="flex size-6 items-center justify-center rounded-md bg-[dodgerblue] text-primary-foreground">
+          <div className="flex size-6 items-center justify-center rounded-md bg-primary text-primary-foreground">
             <Asterisk className="size-4" />
           </div>
           Sway
@@ -32,14 +32,14 @@ const RoomEnded: React.FC<RoomEndedProps> = ({ roomCode, roomName }) => {
           <Button
             onClick={() => navigate(`/${tracklistRoomCode}/tracklist`)}
             disabled={!tracklistRoomCode}
-            className="hover:bg-[dodgerblue] transition duration-300 px-3 py-5 w-full text-lg tracking-tight font-normal"
+            className="transition duration-300 px-3 py-5 w-full text-lg tracking-tight font-normal"
           >
             View Tracklist
           </Button>
           <div className="mt-4 text-center">
              <button
                onClick={() => navigate('/join-room')}
-               className="text-sm text-foreground/80 transition duration-300 hover:text-[dodgerblue] hover:cursor-pointer"
+               className="text-sm text-foreground/80 transition duration-300 hover:text-primary hover:cursor-pointer"
              >
                Join Another Room?
              </button>

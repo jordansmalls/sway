@@ -99,7 +99,7 @@ const RequestDialog = ({ roomId, triggerText, classes }: RequestDialogProps) => 
               <Label>Search for a Song</Label>
               <SpotifySearch onTrackSelect={handleTrackSelect} />
               {selectedTrack && (
-                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border">
+                <div className="flex items-center gap-3 p-3 bg-background rounded-lg border">
                   <img
                     src={selectedTrack.albumImage}
                     alt={`Album art for ${selectedTrack.name}`}
@@ -109,7 +109,7 @@ const RequestDialog = ({ roomId, triggerText, classes }: RequestDialogProps) => 
                     <div className="font-medium truncate">
                       {selectedTrack.name}
                     </div>
-                    <div className="text-sm text-gray-600 truncate">
+                    <div className="text-sm text-muted-foreground truncate">
                       {selectedTrack.artist}
                     </div>
                   </div>

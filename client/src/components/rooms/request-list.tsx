@@ -40,7 +40,7 @@ const RequestList: React.FC<Props> = ({ roomId }) => {
 
         {/* <h3 className="font-medium text-lg mb-2 tracking-tighter">Up Next</h3> */}
         {pending.length === 0 ? (
-          <p className="text-primary/60 mb-4 text-center tracking-tight font-normal">Be the first to make a request!</p>
+          <p className="text-primary/60 mb-4 text-center tracking-tight font-normal">The request queue is empty, be the first to make a request!</p>
         ) : (
           <ul className="lg:space-y-2 md:space-y-2 space-y-[.2rem] mb-2">
             {pending.map((r) => (
@@ -100,10 +100,10 @@ const RequestItem = ({
         <div className="font-semibold text-xs leading-4 tracking-tight">
           {request.track.title}
         </div>
-        <div className="text-xs text-gray-600 tracking-tight">
+        <div className="text-xs text-foreground tracking-tight">
           {request.track.artist}
         </div>
-        <div className="text-xs tracking-tight text-gray-500 mr-1">
+        <div className="text-xs tracking-tight text-foreground/80 mr-1">
           {request.requestedBy}
         </div>
       </div>
