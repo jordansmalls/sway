@@ -107,8 +107,8 @@ const Room: React.FC = () => {
     <>
 
       <header className="flex flex-col place-items-center my-[1rem] mb-[2rem]">
-        <Asterisk />
-        <span className="font-black">sway</span>
+        <Asterisk className='text-primary' />
+        <span className="tracking-tight">Sway</span>
       </header>
 
 
@@ -127,12 +127,12 @@ const Room: React.FC = () => {
 
       {/* Room code info */}
       <section className="flex flex-col items-center justify-center mt-3">
-        <p className="font-medium opacity-60 text-[.6rem] lg:text-[.8rem] mb-1">
+        <p className="font-medium opacity-60 text-[.45rem] lg:text-[.67rem] mb-1">
           ROOM CODE
         </p>
 
-        <div className="flex">
-          <h2 className="text-4xl font-semibold tracking-widest text-[dodgerblue]">
+        <div className="flex items-center">
+          <h2 className="text-4xl font-semibold tracking-wide text-primary mr-2">
             {roomData.roomCode}
           </h2>
           <ShareDialog roomCode={roomData.roomCode} roomData={roomData} />

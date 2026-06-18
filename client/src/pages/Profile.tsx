@@ -10,6 +10,7 @@ import {
   type AnalyticsSong,
 } from '@/api/analytics';
 import { useFetchUserIdQuery } from '@/api/users';
+import NotFound from './def/NotFound';
 
 
 // ─── Skeleton ────────────────────────────────────────────────────────────────
@@ -170,17 +171,12 @@ const Profile = () => {
   const totals = totalsQuery.data;
   const artists = artistsQuery.data?.artists ?? [];
 
+
+
   if (userIdQuery.isError) {
     return (
-      <div className="min-h-screen w-full bg-muted flex items-center justify-center px-4">
-        <div className="text-center space-y-2">
-          <p className="text-muted-foreground text-sm tracking-tight">
-            @{username}
-          </p>
-          <p className="text-destructive text-sm tracking-tight">
-            User not found.
-          </p>
-        </div>
+      <div>
+        <NotFound />
       </div>
     );
   }

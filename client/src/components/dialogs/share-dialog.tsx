@@ -42,7 +42,7 @@ export function ShareDialog({
         >
           <Send />
           <span className="hidden sm:inline">Share</span>
-          <span className="sr-only sm:hidden">Share</span>
+          {/* <span className="sr-only sm:hidden">Share</span> */}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
