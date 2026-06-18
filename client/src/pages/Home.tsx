@@ -1,11 +1,7 @@
-import { useNavigate } from "react-router-dom"
+import { Navigate } from "react-router-dom"
 
 export default function Home(){
-    const navigate = useNavigate()
-    navigate("/dashboard")
     return (
-        <>
-            <h1>Home.</h1>
-        </>
+        <Navigate to="/dashboard" replace />
     )
 }
