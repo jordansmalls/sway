@@ -17,8 +17,9 @@ A robust web API built with Bun, Express, and MongoDB.
 - [Rooms](#rooms)
 - [Spotify](#spotify)
 - [Requests](#requests)
-- [Exports](#exports)
 - [Analytics](#analytics)
+- [Global](#global)
+- [Exports](#exports)
 - [Server Health](#server-health)
 - [Contact](#contact)
 
@@ -1283,6 +1284,87 @@ res.status(200).json({
 
 ---
 
+## Global
+
+### Top 10 Most Requested Tracks on Sway
+
+```
+GET /api/global/tracks
+```
+
+**Access:** Public
+
+***Success Response:**
+
+```js
+return res.status(200).json({
+            success: true,
+            cached: false,
+            data: topTracks,
+        });
+```
+---
+
+### Top 10 Most Requested Artists on Sway
+
+```
+GET /api/global/artists
+```
+
+**Access:** Public
+
+***Success Response:**
+
+```js
+return res.status(200).json({
+            success: true,
+            cached: false,
+            data: topArtists,
+        });
+```
+---
+
+
+
+### Total Number of Requests Given on Sway
+
+```
+GET /api/global/requests
+```
+
+**Access:** Public
+
+***Success Response:**
+
+```js
+ return res.status(200).json({
+                success: true,
+                message: `There have been ${totalRequests} songs requested on Sway.`,
+                totalRequests: totalRequests,
+            });
+```
+---
+
+
+### Total Number of Rooms Created on Sway
+
+```
+GET /api/global/rooms
+```
+
+**Access:** Public
+
+***Success Response:**
+
+```js
+return res.status(200).json({
+            success: true,
+            message: `There have been ${totalRooms} created on Sway.`,
+            totalRooms: totalRooms,
+        })
+```
+---
+
 ## Exports
 
 ### Export Tracklist — JSON
@@ -1478,4 +1560,4 @@ res.status(404).json({
 
 # Contact
 
-I'd love to talk about Sway. Feel free to message me on [twitter](https://www.x.com/@jsmallsdev), or send me an [email](mailto:jsmallsdev@gmail.com).
+I'd love to talk about Sway. Feel free to message me on [twitter](https://www.x.com/@jsmallsdev), or send me an [email](mailto:hi@jsmalls.net).
