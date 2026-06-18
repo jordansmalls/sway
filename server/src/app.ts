@@ -15,6 +15,7 @@ import spotifyRouter from "./routes/spotify.routes";
 import requestRouter from "./routes/request.routes";
 import exportRouter from "./routes/export.routes";
 import analyticsRouter from "./routes/analytics.routes";
+import globalRouter from "./routes/global.routes"
 
 export const app = express();
 
@@ -31,6 +32,7 @@ app.use("/api/spotify", spotifyRouter);
 app.use("/api/requests", requestRouter);
 app.use("/api/exports", exportRouter);
 app.use("/api/analytics", analyticsRouter);
+app.use("/api/global", globalRouter)
 app.use(notFound);
 
 app.use(errorHandler);
