@@ -27,6 +27,24 @@ type AnalyticsSongsResponse = {
   songs: AnalyticsSong[]
 }
 
+type GlobalTopItemsResponse<T> = {
+  success: true
+  cached: boolean
+  data: T[]
+}
+
+type GlobalRequestsResponse = {
+  success: true
+  message: string
+  totalRequests: number
+}
+
+type GlobalRoomsResponse = {
+  success: true
+  message: string
+  totalRooms: number
+}
+
 export type AnalyticsArtist = {
   artist: string
   playCount: number
@@ -51,8 +69,45 @@ export type AnalyticsTotals = {
   requestsPlayed: number
 }
 
+export type GlobalTrack = {
+  _id?: string | { title?: string; artist?: string; spotifyTrackId?: string }
+  spotifyTrackId?: string
+  title?: string
+  name?: string
+  artist?: string
+  albumArtUrl?: string
+  spotifyLink?: string
+  requestCount?: number
+  totalVotes?: number
+  totalRequests?: number
+  totalSongRequests?: number
+  count?: number
+}
+
+export type GlobalArtist = {
+  _id?: string
+  artist?: string
+  name?: string
+  requestCount?: number
+  totalVotes?: number
+  totalRequests?: number
+  totalSongRequests?: number
+  count?: number
+}
+
+export type GlobalTotals = {
+  totalRequests: number
+  totalRooms: number
+}
+
 export const analyticsKeys = {
   all: ["analytics"] as const,
+  global: () => [...analyticsKeys.all, "global"] as const,
+  globalTracks: () => [...analyticsKeys.global(), "tracks"] as const,
+  globalArtists: () => [...analyticsKeys.global(), "artists"] as const,
+  globalRequests: () => [...analyticsKeys.global(), "requests"] as const,
+  globalRooms: () => [...analyticsKeys.global(), "rooms"] as const,
+  globalTotals: () => [...analyticsKeys.global(), "totals"] as const,
   byUser: (userId: string) => [...analyticsKeys.all, userId] as const,
   totalRoomsHosted: (userId: string) =>
     [...analyticsKeys.byUser(userId), "total-rooms-hosted"] as const,
@@ -73,6 +128,46 @@ export const analyticsKeys = {
 
 function analyticsPath(userId: string, endpoint: string) {
   return `/api/analytics/${encodeURIComponent(userId)}/${endpoint}`
+}
+
+export async function getGlobalTracks() {
+  const { data } =
+    await apiClient.get<GlobalTopItemsResponse<GlobalTrack>>(
+      "/api/global/tracks"
+    )
+  return data
+}
+
+export async function getGlobalArtists() {
+  const { data } =
+    await apiClient.get<GlobalTopItemsResponse<GlobalArtist>>(
+      "/api/global/artists"
+    )
+  return data
+}
+
+export async function getGlobalRequests() {
+  const { data } =
+    await apiClient.get<GlobalRequestsResponse>("/api/global/requests")
+  return data
+}
+
+export async function getGlobalRooms() {
+  const { data } =
+    await apiClient.get<GlobalRoomsResponse>("/api/global/rooms")
+  return data
+}
+
+export async function getGlobalTotals(): Promise<GlobalTotals> {
+  const [requests, rooms] = await Promise.all([
+    getGlobalRequests(),
+    getGlobalRooms(),
+  ])
+
+  return {
+    totalRequests: requests.totalRequests,
+    totalRooms: rooms.totalRooms,
+  }
 }
 
 export async function getTotalRoomsHosted(userId: string) {
@@ -145,6 +240,41 @@ export function useTotalRoomsHostedQuery(userId: string) {
     queryKey: analyticsKeys.totalRoomsHosted(userId),
     queryFn: () => getTotalRoomsHosted(userId),
     enabled: userId.length > 0,
+  })
+}
+
+export function useGlobalTracksQuery() {
+  return useQuery({
+    queryKey: analyticsKeys.globalTracks(),
+    queryFn: getGlobalTracks,
+  })
+}
+
+export function useGlobalArtistsQuery() {
+  return useQuery({
+    queryKey: analyticsKeys.globalArtists(),
+    queryFn: getGlobalArtists,
+  })
+}
+
+export function useGlobalRequestsQuery() {
+  return useQuery({
+    queryKey: analyticsKeys.globalRequests(),
+    queryFn: getGlobalRequests,
+  })
+}
+
+export function useGlobalRoomsQuery() {
+  return useQuery({
+    queryKey: analyticsKeys.globalRooms(),
+    queryFn: getGlobalRooms,
+  })
+}
+
+export function useGlobalTotalsQuery() {
+  return useQuery({
+    queryKey: analyticsKeys.globalTotals(),
+    queryFn: getGlobalTotals,
   })
 }
 
