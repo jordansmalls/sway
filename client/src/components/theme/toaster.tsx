@@ -7,8 +7,8 @@ export function Toaster() {
       toastOptions={{
         classNames: {
           toast:
-            '!bg-secondary border-2 !border-primary/40 shadow-lg !text-primary dark:!text-white',
-          description: '!text-primary/80 dark:!text-white/70',
+            '!bg-secondary border-2 !border-primary/40 shadow-lg !text-primary dark:!text-white tracking-tight font-semibold',
+          description: '!text-primary/90 dark:!text-white/90 tracking-tight',
         },
       }}
     />

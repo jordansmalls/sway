@@ -21,7 +21,7 @@ export const PrivacyPolicy: React.FC = () => {
           </p>
           <ul className="list-disc pl-5 space-y-2 mt-2">
             <li>
-              <strong>Account Information:</strong> Your name, email address,
+              <strong>Account Information:</strong> Your username, email address,
               and login credentials when you sign up.
             </li>
             <li>
@@ -116,17 +116,17 @@ export const PrivacyPolicy: React.FC = () => {
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-12 font-sans text-gray-800">
+    <div className="max-w-6xl mx-auto px-4 py-12 font-sans tracking-tight">
       {/* Header */}
-      <div className="text-center border-b border-gray-200 pb-8 mb-12">
-        <h1 className="text-4xl font-extrabold tracking-tight text-gray-900 sm:text-5xl">
+      <div className="text-center border-b border-b-accent pb-8 mb-12">
+        <h1 className="text-4xl font-extrabold tracking-tight text-foreground sm:text-5xl">
           Privacy Policy
         </h1>
-        <p className="mt-4 text-base text-gray-500">
+        <p className="mt-4 text-base text-muted-foreground">
           Your privacy matters to us. This policy explains how we collect, use,
           and safeguard your data.
         </p>
-        <p className="mt-2 text-sm text-gray-400">
+        <p className="mt-2 text-sm text-muted-foreground/80">
           Last Updated: {lastUpdated}
         </p>
       </div>
@@ -134,12 +134,12 @@ export const PrivacyPolicy: React.FC = () => {
       <div className="flex flex-col md:flex-row gap-12">
         {/* Sidebar Navigation */}
         <aside className="md:w-1/4 sticky top-6 h-fit hidden md:block">
-          <nav className="space-y-1 border-l border-gray-200 pl-4">
+          <nav className="space-y-1 border-l border-b-accent pl-4">
             {sections.map((section) => (
               <button
                 key={section.id}
                 onClick={() => scrollToSection(section.id)}
-                className="block w-full text-left text-sm text-gray-600 hover:text-indigo-600 hover:font-medium py-1.5 transition-colors duration-150"
+                className="block w-full text-left text-sm text-muted-foreground hover:text-primary hover:font-medium py-1.5 transition-colors duration-300 hover:cursor-pointer"
               >
                 {section.title}
               </button>
@@ -148,9 +148,9 @@ export const PrivacyPolicy: React.FC = () => {
         </aside>
 
         {/* Legal Content */}
-        <main className="md:w-3/4 space-y-10">
-          <section className="prose max-w-none text-gray-600 leading-relaxed">
-            <p className="text-lg font-medium text-gray-900">
+        <main className="md:w-3/4 space-y-10 tracking-tight">
+          <section className="prose max-w-none leading-relaxed">
+            <p className="text-lg font-medium text-foreground">
               Sway ("we", "our", or "us") is committed to protecting your
               privacy. This Privacy Policy outlines our practices regarding the
               collection, use, and disclosure of your information when you use
@@ -162,30 +162,30 @@ export const PrivacyPolicy: React.FC = () => {
             <section
               key={section.id}
               id={section.id}
-              className="scroll-mt-6 border-b border-gray-100 pb-8 last:border-0"
+              className="scroll-mt-6 border-b border-b-accent pb-8 last:border-0"
             >
-              <h2 className="text-xl font-bold text-gray-900 mb-4">
+              <h2 className="text-xl font-bold text-foreground mb-4">
                 {section.title}
               </h2>
-              <div className="text-gray-600 leading-relaxed space-y-3">
+              <div className="text-muted-foreground leading-relaxed space-y-3">
                 {section.content}
               </div>
             </section>
           ))}
 
           {/* Contact Section */}
-          <section className="bg-gray-50 rounded-2xl p-6 mt-12 border border-gray-100">
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+          <section className="bg-card rounded-2xl p-6 mt-12 border border-b-accent">
+            <h3 className="text-lg font-semibold text-foreground mb-2">
               Privacy Inquiries
             </h3>
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-muted-foreground">
               If you have any questions about this Privacy Policy or wish to
               exercise your data rights, please contact us at{' '}
               <a
-                href="mailto:privacy@sway.com"
-                className="text-indigo-600 hover:underline font-medium"
+                href="mailto:hi@jsmalls.net"
+                className="text-primary hover:underline font-medium transition duration-300"
               >
-                privacy@sway.com
+                hi@jsmalls.net
               </a>
               .
             </p>

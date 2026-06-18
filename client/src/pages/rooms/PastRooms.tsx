@@ -34,7 +34,7 @@ const PastRooms = () => {
           </header>
 
           <section>
-            <h1 className="text-center font-bold text-4xl">Past Rooms</h1>
+            <h1 className="text-center font-bold text-4xl tracking-tight">{user?.username}'s Past Rooms</h1>
             <InactiveRoomsTable />
           </section>
         </SidebarInset>
