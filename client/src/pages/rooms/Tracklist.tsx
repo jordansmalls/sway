@@ -68,10 +68,13 @@ const Tracklist = () => {
         <div className="max-w-2xl mx-auto px-4 py-4 flex items-center justify-between gap-4">
           <div>
             <h1 className="text-xl font-bold tracking-tighter leading-none">
-              Room Recap
+              {roomName}
             </h1>
-            <p className="text-xs text-muted-foreground mt-1 font-medium">
+            {/* <p className="text-xs text-muted-foreground mt-1 font-medium">
               {roomName || `#${roomCode}`}
+            </p> */}
+            <p className="text-xs text-muted-foreground mt-1 font-medium">
+              Tracklist
             </p>
           </div>
           {tracklistData.length > 0 && (

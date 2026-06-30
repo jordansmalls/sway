@@ -93,7 +93,7 @@ export function NavUser({ user }: { user?: NavUserInfo }) {
   };
 
   return (
-    <SidebarMenu className='!text-tighter'>
+    <SidebarMenu className="!text-tighter">
       <SidebarMenuItem>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -102,7 +102,12 @@ export function NavUser({ user }: { user?: NavUserInfo }) {
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
               <Avatar className="h-8 w-8 rounded-lg">
-                <AvatarImage src={user?.avatar} alt={displayName} />
+                <AvatarImage
+                  src={
+                    'https://images.unsplash.com/photo-1604076913837-52ab5629fba9?q=80&w=1287&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'
+                  }
+                  alt={displayName}
+                />
                 <AvatarFallback className="rounded-lg">
                   {initials}
                 </AvatarFallback>
@@ -141,7 +146,12 @@ export function NavUser({ user }: { user?: NavUserInfo }) {
             <DropdownMenuLabel className="p-0 font-normal">
               <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                 <Avatar className="h-8 w-8 rounded-lg">
-                  <AvatarImage src={user?.avatar} alt={displayName} />
+                  <AvatarImage
+                    src={
+                      'https://images.unsplash.com/photo-1604076913837-52ab5629fba9?q=80&w=1287&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'
+                    }
+                    alt={displayName}
+                  />
                   <AvatarFallback className="rounded-lg">
                     {initials}
                   </AvatarFallback>

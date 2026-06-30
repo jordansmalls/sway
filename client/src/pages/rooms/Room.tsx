@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { Asterisk } from 'lucide-react';
 import { ShareDialog } from '../../components/dialogs/share-dialog';
 import { useParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
@@ -105,12 +104,32 @@ const Room: React.FC = () => {
 
   return (
     <>
-
       <header className="flex flex-col place-items-center my-[1rem] mb-[2rem]">
-        <Asterisk className='text-primary' />
-        <span className="tracking-tight">Sway</span>
-      </header>
+        <div className='flex items-center gap-2'>
 
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 42 42"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <g clip-path="url(#clip0_47_23)">
+              <path
+                d="M20.7724 21.7681V21.2276H20.2319H6.17781V20.2095C13.0744 18.5019 18.5019 13.0744 20.2095 6.17781H21.2276V20.2319V20.7724H21.7681H35.8222V21.7905C28.9256 23.4981 23.4981 28.9256 21.7905 35.8222H20.7724V21.7681ZM1.54054 15.5946H1V16.1351V25.8649V26.4054H1.54054H15.5946V40.4595V41H16.1351H25.8649H26.4054V40.4595C26.4054 32.6977 32.6977 26.4054 40.4595 26.4054H41V25.8649V16.1351V15.5946H40.4595H26.4054V1.54054V1H25.8649H16.1351H15.5946V1.54054C15.5946 9.30232 9.30232 15.5946 1.54054 15.5946Z"
+                fill="white"
+                stroke="white"
+              />
+            </g>
+            <defs>
+              <clipPath id="clip0_47_23">
+                <rect width="42" height="42" fill="white" />
+              </clipPath>
+            </defs>
+          </svg>
+          <p className="font-black tracking-tighter">Sway</p>
+        </div>
+      </header>
 
       {/* main Room info */}
       <main>
@@ -123,7 +142,6 @@ const Room: React.FC = () => {
           </p>
         </div>
       </main>
-
 
       {/* Room code info */}
       <section className="flex flex-col items-center justify-center mt-3">
@@ -150,7 +168,9 @@ const Room: React.FC = () => {
 
       {/* Request List */}
       <div>
-        <h3 className="font-medium text-lg tracking-tighter mx-[2rem] mt-[2rem] text-center">Request Queue</h3>
+        <h3 className="font-medium text-lg tracking-tighter mx-[2rem] mt-[2rem] text-center">
+          Request Queue
+        </h3>
         <RequestList roomId={roomData._id} />
       </div>
 

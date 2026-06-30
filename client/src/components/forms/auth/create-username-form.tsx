@@ -1,4 +1,3 @@
-import { Asterisk } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -72,14 +71,33 @@ export function CreateUsernameForm({
           <div className="flex flex-col items-center gap-2 text-center">
             <a
               href="https://www.sway.onl"
-              className="flex flex-col items-center gap-2 font-medium"
+              className="flex flex-col items-center gap-2 font-black tracking-tighter"
             >
               <div className="flex size-8 items-center justify-center rounded-md">
-                <Asterisk className="size-6" />
+                {/* <svg
+                  width="42"
+                  height="42"
+                  viewBox="0 0 42 42"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <g clip-path="url(#clip0_47_23)">
+                    <path
+                      d="M20.7724 21.7681V21.2276H20.2319H6.17781V20.2095C13.0744 18.5019 18.5019 13.0744 20.2095 6.17781H21.2276V20.2319V20.7724H21.7681H35.8222V21.7905C28.9256 23.4981 23.4981 28.9256 21.7905 35.8222H20.7724V21.7681ZM1.54054 15.5946H1V16.1351V25.8649V26.4054H1.54054H15.5946V40.4595V41H16.1351H25.8649H26.4054V40.4595C26.4054 32.6977 32.6977 26.4054 40.4595 26.4054H41V25.8649V16.1351V15.5946H40.4595H26.4054V1.54054V1H25.8649H16.1351H15.5946V1.54054C15.5946 9.30232 9.30232 15.5946 1.54054 15.5946Z"
+                      fill="#2A4596"
+                      stroke="#2A4596"
+                    />
+                  </g>
+                  <defs>
+                    <clipPath id="clip0_47_23">
+                      <rect width="42" height="42" fill="white" />
+                    </clipPath>
+                  </defs>
+                </svg> */}
               </div>
               <span className="sr-only">Sway</span>
             </a>
-            <h1 className="text-xl font-bold">
+            <h1 className="text-xl font-bold tracking-tight">
               You're in. Let's pick your handle.
             </h1>
             <FieldDescription className="text-center">
@@ -91,7 +109,7 @@ export function CreateUsernameForm({
             <Input
               id="username"
               type="text"
-              placeholder="jazzyjeff"
+              placeholder="aftrhrs"
               required
               value={username}
               onChange={(e) => setUsername(e.target.value.toLowerCase())}

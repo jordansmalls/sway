@@ -1,4 +1,3 @@
-import { Asterisk } from 'lucide-react';
 import { SignupForm } from '../../components/forms/auth/signup-form';
 
 export default function Signup() {
@@ -8,11 +7,8 @@ export default function Signup() {
         <div className="flex justify-center gap-2 md:justify-start">
           <a
             href="https://www.sway.onl"
-            className="flex items-center gap-2 font-medium"
+            className="flex items-center gap-2 font-black tracking-tighter"
           >
-            <div className="flex size-6 items-center justify-center rounded-md bg-primary text-primary-foreground">
-              <Asterisk className="size-4" />
-            </div>
             Sway
           </a>
         </div>
@@ -25,7 +21,7 @@ export default function Signup() {
       <div className="relative hidden bg-muted lg:block">
         <img
           src="https://images.unsplash.com/photo-1667830494763-621e251801c4?q=80&w=987&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
-          alt="Image"
+          alt="DJ performing to crowd of hundreds"
           className="absolute inset-0 h-full w-full object-cover dark:brightness-[0.8]"
         />
       </div>

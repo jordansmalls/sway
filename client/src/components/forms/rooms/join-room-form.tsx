@@ -1,5 +1,3 @@
-import { Asterisk } from 'lucide-react';
-
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
@@ -23,8 +21,8 @@ export function JoinRoomForm({
               href="https://www.sway.onl"
               className="flex flex-col items-center gap-2 font-medium"
             >
-              <div className="flex size-8 items-center justify-center rounded-md">
-                <Asterisk className="size-6" />
+              <div className="flex size-8 items-center justify-center rounded-md font-black tracking-tighter">
+                Sway
               </div>
               <span className="sr-only">Sway</span>
             </a>
@@ -49,11 +47,10 @@ export function JoinRoomForm({
       </form>
       <FieldDescription className="px-6 text-center">
         By clicking continue, you agree to our{' '}
-        <a href="/terms-and-conditions" target="_blank">
+        <a href="https://www.sway.onl/terms" target="_blank">
           Terms and Conditions
         </a>{' '}
-        and{' '}
-        <a href="/privacy-policy" target="_blank">
+        <a href="https://www.sway.onl/privacy-policy" target="_blank">
           Privacy Policy
         </a>
         .

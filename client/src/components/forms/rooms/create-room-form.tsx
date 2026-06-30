@@ -108,11 +108,11 @@ export function CreateRoomForm({
       </Card>
       <FieldDescription className="px-6 text-center">
         By clicking create, you agree to our{' '}
-        <a href="/terms-and-conditions" target="_blank">
+        <a href="https://www.sway.onl/terms" target="_blank">
           Terms and Conditions
         </a>{' '}
         and{' '}
-        <a href="/privacy-policy" target="_blank">
+        <a href="https://www.sway.onl/privacy-policy" target="_blank">
           Privacy Policy
         </a>
         .

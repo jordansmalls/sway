@@ -14,7 +14,8 @@ import {
 
 const router = express.Router();
 
-router.use(generalLimiter);
+// TODO: add general rate limiter back in production env
+// router.use(generalLimiter);
 
 /**
  * @desc    Total Rooms/Events Hosted

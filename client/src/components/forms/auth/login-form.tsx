@@ -41,10 +41,14 @@ export function LoginForm({
   }
 
   return (
-    <form className={cn('flex flex-col gap-6', className)} onSubmit={handleSubmit} {...props}>
+    <form
+      className={cn('flex flex-col gap-6', className)}
+      onSubmit={handleSubmit}
+      {...props}
+    >
       <FieldGroup>
         <div className="flex flex-col items-center gap-1 text-center">
-          <h1 className="text-2xl font-bold">Welcome Back!</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Welcome Back!</h1>
           <p className="text-sm text-balance text-muted-foreground">
             Please enter your credentials to sign in.
           </p>
@@ -53,13 +57,26 @@ export function LoginForm({
         {/* identifier */}
         <Field>
           <FieldLabel htmlFor="identifier">Username or Email</FieldLabel>
-          <Input id="identifier" type="text" placeholder="jazzyjeff" required value={identifier} onChange={(e) => setIdentifier(e.target.value.toLowerCase())} />
+          <Input
+            id="identifier"
+            type="text"
+            placeholder="johndoe"
+            required
+            value={identifier}
+            onChange={(e) => setIdentifier(e.target.value.toLowerCase())}
+          />
         </Field>
 
         {/* password */}
         <Field>
-            <FieldLabel htmlFor="password">Password</FieldLabel>
-            <Input id="password" type="password" placeholder="********" required value={password} onChange={(e) => setPassword(e.target.value)} />
+          <FieldLabel htmlFor="password">Password</FieldLabel>
+          <Input
+            id="password"
+            type="password"
+            required
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
         </Field>
 
         {/* submit button */}

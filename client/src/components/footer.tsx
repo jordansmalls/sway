@@ -34,7 +34,7 @@ const Footer = () => {
               </li>
               <li>
                 <a
-                  href="/privacy-policy"
+                  href="https://www.sway.onl/privacy-policy"
                   className="hover:text-foreground transition-colors"
                   target="_blank"
                   rel="noopener noreferrer"
@@ -44,8 +44,9 @@ const Footer = () => {
               </li>
               <li>
                 <a
-                  href="/terms-and-conditions"
+                  href="https://www.sway.onl/terms"
                   className="hover:text-foreground transition-colors"
+                  target="_blank"
                 >
                   Terms & Conditions
                 </a>
