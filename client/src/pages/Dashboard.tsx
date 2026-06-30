@@ -2,9 +2,7 @@ import {
   CalendarDays,
   CheckCheck,
   CheckCircle2,
-  Globe2,
   ListOrdered,
-  Trophy,
 } from "lucide-react"
 import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, XAxis } from "recharts"
 
@@ -21,7 +19,6 @@ import {
   type AnalyticsSong,
 } from "@/api/analytics"
 import { AppSidebar } from "@/components/sidebar/app-sidebar"
-import { Button } from "@/components/ui/button"
 import {
   Card,
   CardContent,
@@ -414,7 +411,7 @@ export default function Dashboard() {
         <header className="flex h-16 shrink-0 items-center gap-2 border-b">
           <div className="flex items-center gap-2 px-4">
             <SidebarTrigger className="-ml-1" />
-            <Separator orientation="vertical" className="h-4" />
+            <Separator orientation="vertical" />
             <Breadcrumb>
               <BreadcrumbList>
                 <BreadcrumbItem className="hidden md:block">
@@ -428,12 +425,7 @@ export default function Dashboard() {
         <main className="flex-1 space-y-6 p-4 md:p-6">
           <section className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div>
-              {/* <div className="flex items-center gap-2">
-                <Badge variant="outline" className="gap-1">
-                  <Radio className="size-3" />
-                  Analytics
-                </Badge>
-              </div> */}
+
               <h1 className="mt-3 text-3xl font-bold tracking-normal md:text-4xl">
                 Welcome Back, {user?.username ?? 'DJ'}.
               </h1>
@@ -443,12 +435,6 @@ export default function Dashboard() {
                 your next setlist.
               </p>
             </div>
-            {/* <Button
-              onClick={hn}
-              className="w-full gap-2 md:w-auto transition duration-300"
-            >
-              Create Room
-            </Button> */}
           </section>
 
           {!userId ? (
@@ -604,7 +590,6 @@ export default function Dashboard() {
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                      {/* <Music2 className="size-4" /> */}
                       Most Requested Songs
                     </CardTitle>
                     <CardDescription>
@@ -628,7 +613,6 @@ export default function Dashboard() {
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                      {/* <Disc3 className="size-4" /> */}
                       Most Played Songs
                     </CardTitle>
                     <CardDescription>
@@ -677,7 +661,6 @@ export default function Dashboard() {
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                      {/* <Globe2 className="size-4" /> */}
                       Top Requested Artists
                     </CardTitle>
                     <CardDescription>
@@ -743,11 +726,11 @@ export default function Dashboard() {
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                      {/* <Trophy className="size-4" /> */}
                       Top Requested Tracks
                     </CardTitle>
                     <CardDescription>
-                      The tracks that the crowds are asking for the most across all rooms on Sway.
+                      The tracks that the crowds are asking for the most across
+                      all rooms on Sway.
                     </CardDescription>
                   </CardHeader>
                   <CardContent>

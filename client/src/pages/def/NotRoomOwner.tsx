@@ -1,6 +1,5 @@
 import { Button } from "../../components/ui/button";
 import { useNavigate } from "react-router-dom";
-import { Asterisk } from "lucide-react";
 
 const NotRoomOwner = () => {
     const navigate = useNavigate();
@@ -14,10 +13,7 @@ const NotRoomOwner = () => {
         <>
              <div className="flex min-h-svh flex-col items-center justify-center gap-2 bg-muted p-6 md:p-8">
       <div className="flex w-full max-w-sm flex-col gap-6">
-        <a href="#" className="flex items-center gap-2 self-center font-medium">
-          <div className="flex size-6 items-center justify-center rounded-md bg-primary text-primary-foreground">
-            <Asterisk className="size-4" />
-          </div>
+        <a href="https://www.sway.onl" target="_blank" className="flex items-center gap-2 self-center font-black tracking-tighter">
           Sway
         </a>
         <h1 className="text-[7rem] text-center tracking-tighter! font-bold">Oops!</h1>
