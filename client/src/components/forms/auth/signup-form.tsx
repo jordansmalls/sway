@@ -19,12 +19,21 @@ import {
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { toast } from 'sonner';
 
+import { useSearchParams } from 'react-router-dom';
+
 export function SignupForm({
   className,
   ...props
 }: React.ComponentProps<'form'>) {
 
-  const [email, setEmail] = useState('');
+  const [searchParams] = useSearchParams();
+
+  // const [email, setEmail] = useState('');
+
+
+  const initialEmail = searchParams.get('email')?.toLowerCase() ?? '';
+  const [email, setEmail] = useState(initialEmail);
+
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [formError, setFormError] = useState('');
@@ -69,6 +78,9 @@ export function SignupForm({
     canCheckEmail && emailAvailabilityQuery.isFetching
       ? 'Checking email...'
       : emailAvailabilityQuery.data?.message;
+
+
+
 
   return (
     <form
