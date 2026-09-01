@@ -1,31 +1,21 @@
+import { Plus } from 'lucide-react';
 import RequestDialog from '../dialogs/request-dialog';
 
 interface MakeRequestProps {
-  roomId: string | null;
-  triggerText: string | null;
+  roomId: string;
+  triggerText: string;
 }
 
-const MakeRequest = ({ roomId, triggerText }: MakeRequestProps) => {
-  return (
-    <div className="lg:px-4 lg:py-2 lg:max-w-[40rem] max-w-[23rem] mx-auto">
-      <div className="bg-card border border-border rounded-xl p-4 flex items-center justify-between gap-4 shadow-sm">
-        <div className="flex-1">
-          <h2 className="font-semibold text-sm sm:text-base leading-tight tracking-tight text-foreground break-words">
-            Make a Song Request!
-          </h2>
-          <p className="text-xs sm:text-sm text-muted-foreground tracking-tight font-medium mt-0.5">
-            Add a song to the queue and get the party going.
-          </p>
-        </div>
-
-        <RequestDialog
-          roomId={roomId}
-          triggerText={triggerText}
-          classes="bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer rounded-full px-5 py-1.5 text-xs font-medium transition-colors whitespace-nowrap flex-shrink-0 shadow-sm"
-        />
+const MakeRequest = ({ roomId, triggerText }: MakeRequestProps) => (
+  <div className="fixed inset-x-0 bottom-0 z-30 border-t bg-background/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-8px_30px_-16px_rgba(0,0,0,0.35)] backdrop-blur-lg sm:static sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none sm:backdrop-blur-none">
+    <div className="mx-auto flex max-w-3xl items-center gap-3 rounded-2xl sm:border sm:bg-card sm:p-4 sm:shadow-sm">
+      <div className="hidden min-w-0 flex-1 sm:block">
+        <h2 className="font-semibold leading-tight tracking-tight">Have a song in mind?</h2>
+        <p className="mt-1 text-sm text-muted-foreground">Add it to the queue and let the room vote.</p>
       </div>
+      <RequestDialog pulsating roomId={roomId} triggerText={triggerText} classes="h-12 w-full rounded-xl bg-[#1e90ff] text-white text-sm font-semibold shadow-sm sm:h-10 sm:w-auto sm:rounded-full sm:px-5" triggerIcon={<Plus className="size-4" aria-hidden="true" />} />
     </div>
-  );
-};
+  </div>
+);
 
 export default MakeRequest;

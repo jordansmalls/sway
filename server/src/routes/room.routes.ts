@@ -9,6 +9,8 @@ import {
     fetchRoomDetails,
     fetchRoomRequests,
     fetchRoomPlayedRequests,
+    fetchUserLatestRooms,
+    fetchActiveRoomSummary,
 } from "../controllers/room.controller";
 import generalLimiter from "../middlewares/rate-limiters/general.limiter";
 
@@ -34,6 +36,20 @@ router.post("/join", joinRoom);
  * @access  PRIVATE
  */
 router.put("/end", protect, endRoom);
+
+/**
+ * @desc    Fetch authenticated user's five latest rooms
+ * @route   GET /api/rooms/recent
+ * @access  PRIVATE
+ */
+router.get("/recent", protect, fetchUserLatestRooms);
+
+/**
+ * @desc    Fetch authenticated user's active room summary
+ * @route   GET /api/rooms/active/summary
+ * @access  PRIVATE
+ */
+router.get("/active/summary", protect, fetchActiveRoomSummary);
 
 /**
  * @desc    Update Room Details

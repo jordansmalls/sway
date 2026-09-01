@@ -1,5 +1,7 @@
 import { useState } from 'react';
+import { useDemoSession } from '@/components/demo/demo-context';
 import { Button } from '@/components/ui/button';
+import { PulsatingButton } from '@/registry/magicui/pulsating-button';
 import {
   Dialog,
   DialogClose,
@@ -26,10 +28,13 @@ interface RequestDialogProps {
   roomId: string;
   triggerText: string;
   classes: string;
+  triggerIcon?: React.ReactNode;
+  pulsating?: boolean;
 }
 
-const RequestDialog = ({ roomId, triggerText, classes }: RequestDialogProps) => {
+const RequestDialog = ({ roomId, triggerText, classes, triggerIcon, pulsating = false }: RequestDialogProps) => {
   const [selectedTrack, setSelectedTrack] = useState<SpotifySearchTrack | null>(null);
+  const demo = useDemoSession();
   const [requestedBy, setRequestedBy] = useState('');
   const [isOpen, setIsOpen] = useState(false);
   const createRequestMutation = useCreateRequestMutation();
@@ -82,28 +87,35 @@ const RequestDialog = ({ roomId, triggerText, classes }: RequestDialogProps) => 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        {/* <Button variant="default">Make Request</Button> */}
-        <Button variant="default" className={cn(classes)}>{triggerText}</Button>
+        {pulsating ? (
+          <PulsatingButton variant="ripple" distance="10px" className={cn(classes)}>
+            {triggerIcon}
+            {triggerText}
+          </PulsatingButton>
+        ) : (
+        <Button variant="default" className={cn(classes)}>
+          {triggerIcon}
+          {triggerText}
+        </Button>
+        )}
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>Request a Track</DialogTitle>
             <DialogDescription>
-              Find the song you want to request by searching Spotify&apos;s
-              catalog. You may also add your name to the request.
+              {demo ? "Search Spotify and add a song to your private demo queue. No Spotify login needed." : "Search Spotify's catalog and request a song. Add your name if you'd like the DJ to know it's from you."}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-3">
-              <Label>Search for a Song</Label>
               <SpotifySearch onTrackSelect={handleTrackSelect} />
               {selectedTrack && (
-                <div className="flex items-center gap-3 p-3 bg-background rounded-lg border">
+                <div className="flex items-center gap-3 rounded-lg bg-muted/50 p-3 ring-1 ring-foreground/10">
                   <img
                     src={selectedTrack.albumImage}
                     alt={`Album art for ${selectedTrack.name}`}
-                    className="w-12 h-12 rounded-lg object-cover"
+                    className="size-11 rounded-md bg-muted object-cover"
                   />
                   <div className="flex-1 min-w-0">
                     <div className="font-medium truncate">

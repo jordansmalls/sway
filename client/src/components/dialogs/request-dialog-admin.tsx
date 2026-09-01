@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useDemoSession } from '@/components/demo/demo-context';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
@@ -11,7 +12,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { SpinnerButton } from '../buttons/spinner-button';
 import SpotifySearch, { type SpotifySearchTrack } from '../rooms/spotify-search';
@@ -35,6 +35,7 @@ const RequestDialogAdmin = ({
   triggerClassName,
 }: RequestDialogProps) => {
   const [selectedTrack, setSelectedTrack] = useState<SpotifySearchTrack | null>(null);
+  const demo = useDemoSession();
   const [isOpen, setIsOpen] = useState(false);
   const createRequestMutation = useCreateRequestMutation();
 
@@ -44,7 +45,7 @@ const RequestDialogAdmin = ({
 
   const createRequest = async () => {
     if (!selectedTrack) {
-      toast.error("Oops! Something went wrong.", { description: "Please select a song before submitting your request." })
+      toast.error("Choose a track first", { description: "Search for a song and select a result before adding it to the queue." })
       return;
     }
 
@@ -58,7 +59,7 @@ const RequestDialogAdmin = ({
       setIsOpen(false);
       setSelectedTrack(null);
 
-      toast.success("Success!", { description: `${selectedTrack.name} by ${selectedTrack.artist} has been added to the queue.` })
+      toast.success("Track added", { description: `${selectedTrack.name} by ${selectedTrack.artist} has been added to the queue.` })
 
     } catch (err) {
       toast.error("Oops! Your request couldn't be processed.", {
@@ -99,20 +100,18 @@ const RequestDialogAdmin = ({
           <DialogHeader>
             <DialogTitle>Request a Track</DialogTitle>
             <DialogDescription>
-              Find the song you want to request by searching Spotify&apos;s
-              catalog. You may also add your name to the request.
+              {demo ? "Search Spotify and add a song to your private demo queue. No Spotify login needed." : "Search Spotify's catalog and add a song to the request queue."}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-3">
-              <Label>Search for a Song</Label>
               <SpotifySearch onTrackSelect={handleTrackSelect} />
               {selectedTrack && (
-                <div className="flex items-center gap-3 p-3 bg-background/40 rounded-lg border">
+                <div className="flex items-center gap-3 rounded-lg bg-muted/50 p-3 ring-1 ring-foreground/10">
                   <img
                     src={selectedTrack.albumImage}
                     alt={`Album art for ${selectedTrack.name}`}
-                    className="w-12 h-12 rounded-lg object-cover"
+                    className="size-11 rounded-md bg-muted object-cover"
                   />
                   <div className="flex-1 min-w-0">
                     <div className="font-medium truncate">

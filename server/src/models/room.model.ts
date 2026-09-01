@@ -38,6 +38,10 @@ const roomSchema = new mongoose.Schema(
             type: Boolean,
             default: true,
         },
+        scheduledAt: {
+            type: Date,
+            default: null,
+        },
     },
     {
         timestamps: true,

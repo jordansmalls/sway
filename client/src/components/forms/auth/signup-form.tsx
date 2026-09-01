@@ -74,28 +74,31 @@ export function SignupForm({
     }
   }
 
-  const emailMessage =
-    canCheckEmail && emailAvailabilityQuery.isFetching
+  const emailMessage = !canCheckEmail
+    ? null
+    : emailAvailabilityQuery.isFetching
       ? 'Checking email...'
-      : emailAvailabilityQuery.data?.message;
+      : emailAvailabilityQuery.isError
+        ? getApiErrorMessage(
+            emailAvailabilityQuery.error,
+            'Unable to check email availability.'
+          )
+        : emailAvailabilityQuery.data
+          ? emailAvailabilityQuery.data.taken
+            ? 'Email is already in use.'
+            : 'Email is available!'
+          : null;
 
 
 
 
   return (
     <form
-      className={cn('flex flex-col gap-6', className)}
+      className={cn('flex flex-col gap-5', className)}
       onSubmit={handleSubmit}
       {...props}
     >
       <FieldGroup>
-        <div className="flex flex-col items-center gap-1 text-center">
-          <h1 className="text-2xl font-bold tracking-tight">Create Account</h1>
-          <p className="text-sm text-balance text-muted-foreground">
-            Join us and start taking live song requests, engaging your crowd,
-            and keeping the dancefloor packed.
-          </p>
-        </div>
         <Field>
           {/* email */}
           <FieldLabel htmlFor="email">Email</FieldLabel>
@@ -106,12 +109,18 @@ export function SignupForm({
             required
             value={email}
             onChange={(e) => setEmail(e.target.value.toLowerCase())}
+            className="h-12 rounded-xl border-zinc-200 bg-zinc-50 px-4 text-zinc-950 shadow-none placeholder:text-zinc-400 focus-visible:border-zinc-400 focus-visible:ring-zinc-300/30 dark:border-input dark:bg-secondary dark:text-foreground dark:placeholder:text-muted-foreground dark:focus-visible:border-ring dark:focus-visible:ring-ring/50"
           />
           {emailMessage ? (
             <FieldDescription
               className={cn(
                 'text-xs',
-                emailAvailabilityQuery.data?.taken && 'text-destructive'
+                (emailAvailabilityQuery.data?.taken ||
+                  emailAvailabilityQuery.isError) &&
+                  'text-destructive',
+                emailAvailabilityQuery.isSuccess &&
+                  !emailAvailabilityQuery.data.taken &&
+                  'text-emerald-600 dark:text-emerald-400'
               )}
             >
               {emailMessage}
@@ -129,6 +138,7 @@ export function SignupForm({
             required
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            className="h-12 rounded-xl border-zinc-200 bg-zinc-50 px-4 text-zinc-950 shadow-none placeholder:text-zinc-400 focus-visible:border-zinc-400 focus-visible:ring-zinc-300/30 dark:border-input dark:bg-secondary dark:text-foreground dark:placeholder:text-muted-foreground dark:focus-visible:border-ring dark:focus-visible:ring-ring/50"
           />
         </Field>
 
@@ -142,21 +152,22 @@ export function SignupForm({
             required
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
+            className="h-12 rounded-xl border-zinc-200 bg-zinc-50 px-4 text-zinc-950 shadow-none placeholder:text-zinc-400 focus-visible:border-zinc-400 focus-visible:ring-zinc-300/30 dark:border-input dark:bg-secondary dark:text-foreground dark:placeholder:text-muted-foreground dark:focus-visible:border-ring dark:focus-visible:ring-ring/50"
           />
         </Field>
 
         {/* submit button */}
         <Field>
-          <Button type="submit" disabled={signupMutation.isPending}>
+          <Button type="submit" disabled={signupMutation.isPending} className="h-12 rounded-xl bg-black text-base font-semibold text-white shadow-none hover:bg-zinc-800 dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90">
             {signupMutation.isPending ? 'Creating account...' : 'Register'}
           </Button>
           <FieldError>{formError}</FieldError>
         </Field>
 
         <Field>
-          <FieldDescription className="text-center">
+          <FieldDescription className="text-center text-sm text-zinc-500 dark:text-muted-foreground">
             Already have an account?{' '}
-            <Link to="/login" className="underline underline-offset-4">
+            <Link to="/login" className="font-semibold text-zinc-950 underline underline-offset-4 dark:text-foreground">
               Log in
             </Link>
           </FieldDescription>

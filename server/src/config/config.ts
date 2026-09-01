@@ -6,7 +6,7 @@ const corsOptions = {
     origin: process.env.NODE_ENV === "production" ? "https://sway.onl" : "http://localhost:3000",
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
-    allowedHeaders: ["Content-Type", "Authorization"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Demo-Token"],
 };
 
 interface AppConfig {

@@ -1,6 +1,6 @@
 import express from "express"
 import generalLimiter from "../middlewares/rate-limiters/general.limiter";
-import { mostRequestedTracks, mostRequestedArtists, totalSongsRequested, totalRoomsCreated } from "../controllers/global.controller";
+import { mostRequestedTracks, mostPlayedTracks, mostRequestedArtists, totalSongsRequested, totalRoomsCreated } from "../controllers/global.controller";
 const router = express.Router();
 
 
@@ -12,6 +12,7 @@ router.use(generalLimiter)
  * @route   GET /api/global/tracks
  * @access  PUBLIC
  */
+router.get("/tracks/played", mostPlayedTracks)
 router.get("/tracks", mostRequestedTracks)
 
 

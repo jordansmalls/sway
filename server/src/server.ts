@@ -3,9 +3,11 @@ import { app } from "./app";
 import config from "./config/config";
 import connectDB from "./config/db";
 import { initSocket } from "./socket";
+import { startDemoCleanup } from "./demo/demo.model";
 
 const start = async () => {
     await connectDB();
+    startDemoCleanup();
 
     // Start the Express server
     const server = app.listen(config.port, () => {

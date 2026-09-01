@@ -32,6 +32,7 @@ interface DeleteRoomDialogProps {
   size?: 'default' | 'sm' | 'lg' | 'icon';
   triggerClassName?: string;
   triggerChildren?: React.ReactNode;
+  trigger?: React.ReactNode;
   loadingText?: string;
   title?: string;
   description?: string;
@@ -46,6 +47,7 @@ const DeleteRoomDialog: React.FC<DeleteRoomDialogProps> = ({
   size = 'sm',
   triggerClassName,
   triggerChildren = <Trash2 />,
+  trigger,
   loadingText = 'Deleting...',
   title = 'Are you absolutely sure?',
   description = 'This action cannot be undone. This will permanently delete the room and all associated data.',
@@ -88,9 +90,9 @@ const DeleteRoomDialog: React.FC<DeleteRoomDialogProps> = ({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant={variant} size={size} className={triggerClassName}>
+        {trigger ?? <Button variant={variant} size={size} className={triggerClassName}>
           {triggerChildren}
-        </Button>
+        </Button>}
       </DialogTrigger>
 
       <DialogContent className="sm:max-w-[425px]">

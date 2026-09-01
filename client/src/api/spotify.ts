@@ -2,6 +2,15 @@ import { useQuery } from "@tanstack/react-query"
 
 import { apiClient } from "@/api/client"
 import type { SpotifyTrack, SpotifyTrackDetails } from "@/api/types"
+import { isDemoExperience } from "@/lib/demo-session"
+
+// Avoid the demo room's five-second polling without changing real-room defaults.
+const demoCatalogOptions = {
+  staleTime: 60_000,
+  refetchInterval: false,
+  refetchOnWindowFocus: false,
+  retry: false,
+} as const
 
 type SearchTracksResponse = {
   success: true
@@ -53,6 +62,7 @@ export function useSearchTracksQuery(query: string) {
     queryKey: spotifyKeys.search(query),
     queryFn: () => searchTracks(query),
     enabled: query.trim().length > 0,
+    ...(isDemoExperience() ? demoCatalogOptions : {}),
   })
 }
 
@@ -61,6 +71,7 @@ export function useTrackDetailsQuery(id: string) {
     queryKey: spotifyKeys.track(id),
     queryFn: () => getTrackDetails(id),
     enabled: id.length > 0,
+    ...(isDemoExperience() ? demoCatalogOptions : {}),
   })
 }
 

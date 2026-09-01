@@ -4,6 +4,8 @@ import { useDebouncedValue } from '../../hooks/use-debounced-value';
 import { Input } from '../ui/input';
 import { Spinner } from '../ui/spinner';
 import { useSearchTracksQuery } from '@/api/spotify';
+import { useDemoSession } from '@/components/demo/demo-context';
+import { getApiErrorMessage } from '@/api/client';
 
 export interface SpotifySearchTrack {
   id: string;
@@ -19,9 +21,10 @@ interface SpotifySearchTestProps {
 }
 
 const SpotifySearch = ({ onTrackSelect }: SpotifySearchTestProps) => {
+  const demo = useDemoSession();
   const [search, setSearch] = useState('');
 
-  const debouncedSearchValue = useDebouncedValue(search, 300);
+  const debouncedSearchValue = useDebouncedValue(search, demo ? 500 : 300);
   const canSearch = debouncedSearchValue.trim().length >= 2;
   const searchQuery = useSearchTracksQuery(canSearch ? debouncedSearchValue : '');
   const results = searchQuery.data?.tracks ?? [];
@@ -40,48 +43,50 @@ const SpotifySearch = ({ onTrackSelect }: SpotifySearchTestProps) => {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search by title or artist"
-            className="block w-full px-4 py-3 pl-10"
+            aria-label="Search by title or artist"
+            maxLength={demo ? 100 : undefined}
+            className="h-10 w-full rounded-lg bg-background pl-9 shadow-none"
           />
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
         </div>
 
         {searchQuery.isFetching && (
-          <div className="absolute w-full bg-background mt-1 rounded-lg shadow-lg border p-4 text-center z-50">
-            <div className="flex flex-row items-center gap-4">
-              <Spinner className="w-5 h-5" />
-              <span>Loading</span>
+          <div className="absolute z-50 mt-1 w-full rounded-lg bg-popover p-3 text-popover-foreground shadow-md ring-1 ring-foreground/10">
+            <div className="flex items-center gap-3 text-sm text-muted-foreground">
+              <Spinner className="size-4" />
+              <span>Searching Spotify...</span>
             </div>
           </div>
         )}
 
         {searchQuery.isError && (
-          <div className="absolute w-full bg-background mt-1 rounded-lg shadow-lg border p-4 text-center text-red-500 z-50">
-            Failed to fetch tracks. Please try again.
+          <div className="absolute z-50 mt-1 w-full rounded-lg bg-popover p-3 text-sm text-destructive shadow-md ring-1 ring-foreground/10">
+            {getApiErrorMessage(searchQuery.error, 'Failed to fetch tracks. Please try again.')}
           </div>
+        )}
+        {demo && canSearch && searchQuery.isSuccess && !searchQuery.isFetching && results.length === 0 && (
+          <p className="mt-2 text-sm text-muted-foreground">No tracks found. Try another title or artist.</p>
         )}
 
         {!searchQuery.isFetching && results.length > 0 && (
-          <div className="absolute w-full bg-background mt-1 rounded-lg shadow-lg border max-h-96 overflow-y-auto z-50">
+          <div className="absolute z-50 mt-1 max-h-80 w-full overflow-y-auto rounded-lg bg-popover p-1 text-popover-foreground shadow-md ring-1 ring-foreground/10">
             {results.map((track) => (
               <button
                 type="button"
                 key={track.id}
                 onClick={() => handleSelect(track)}
-                className="w-full p-2 text-left hover:bg-muted flex items-center"
+                className="flex w-full items-center gap-3 rounded-md p-2 text-left transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:outline-none"
               >
-                {/* Album Art */}
                 <img
                   src={track.albumImage}
                   alt={`Album art for ${track.name}`}
-                  className="w-12 h-12 rounded-lg object-cover mr-3"
+                  className="size-11 shrink-0 rounded-md bg-muted object-cover"
                 />
-                {/* Track Details */}
-                <div className="flex-1">
-                  <div className="font-medium">{track.name}</div>
-                  <div className="text-sm text-muted-foreground">{track.artist}</div>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-medium">{track.name}</div>
+                  <div className="truncate text-xs text-muted-foreground">{track.artist}</div>
                 </div>
-                {/* Track Duration */}
-                <div className="text-sm text-muted-foreground">
+                <div className="shrink-0 text-xs tabular-nums text-muted-foreground">
                   {Math.floor(track.duration_ms / 60000)}:
                   {((track.duration_ms % 60000) / 1000)
                     .toFixed(0)

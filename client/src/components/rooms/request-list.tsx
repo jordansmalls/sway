@@ -1,147 +1,86 @@
 import React from 'react';
-import { Disc3, ArrowBigUp } from 'lucide-react';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { ThumbsUp, ListMusic } from 'lucide-react';
 import { toast } from 'sonner';
 import { Spinner } from '../ui/spinner';
-import {
-  useRequestsByRoomQuery,
-  useUpvoteRequestMutation,
-} from '@/api/requests';
+import { useRequestsByRoomQuery, useUpvoteRequestMutation } from '@/api/requests';
 import type { SongRequest } from '@/api/types';
+import { getApiErrorMessage } from '@/api/client';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 
-interface Props {
-  roomId: string;
-}
+interface Props { roomId: string; }
 
 const RequestList: React.FC<Props> = ({ roomId }) => {
   const requestsQuery = useRequestsByRoomQuery(roomId);
   const upvoteMutation = useUpvoteRequestMutation();
-  const requests = [...(requestsQuery.data?.requests ?? [])]
-    .filter((request) => request.status !== 'played')
+  const pending = [...(requestsQuery.data?.requests ?? [])]
+    .filter((request) => request.status === 'pending')
     .sort((a, b) => b.votes - a.votes);
 
   const handleUpvote = async (requestId: string) => {
     try {
-      await upvoteMutation.mutateAsync({ requestId });
-    } catch {
-      toast.error('Upvote failed', {
-        description: 'Try again in a moment.',
-      });
+      const { request } = await upvoteMutation.mutateAsync({ requestId });
+      toast.success('Vote added', { description: `You voted for ${request.track.title} by ${request.track.artist}.` });
+    } catch (error) {
+      toast.error("Couldn't add your vote", { description: getApiErrorMessage(error, 'Your vote was not saved. Please try again.') });
     }
   };
 
-  // Render requests grouped by status
-  const renderRequests = () => {
-    const pending = requests.filter((r) => r.status === 'pending');
-    // const playing = requests.find((r) => r.status === 'playing');
-    return (
-      <>
+  if (requestsQuery.isLoading) return <div className="flex min-h-32 items-center justify-center"><Spinner /></div>;
+  if (requestsQuery.isError) return <div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-5 text-center text-sm text-destructive">Failed to load requests.</div>;
 
-        {/* <h3 className="font-medium text-lg mb-2 tracking-tighter">Up Next</h3> */}
-        {pending.length === 0 ? (
-          <p className="text-primary/60 mb-4 text-center tracking-tight font-normal">The request queue is empty, be the first to make a request!</p>
-        ) : (
-          <ul className="lg:space-y-2 md:space-y-2 space-y-[.2rem] mb-2">
-            {pending.map((r) => (
-              <RequestItem key={r._id} request={r} onUpvote={handleUpvote} />
-            ))}
-          </ul>
-        )}
-      </>
-    );
-  };
-
-  if (requestsQuery.isLoading)
+  if (pending.length === 0) {
     return (
-      <div>
-        <Spinner />
-        <h1>Loading requests...</h1>
+      <div className="flex flex-col items-center rounded-2xl border border-dashed bg-card/50 px-6 py-10 text-center">
+        <span className="mb-3 grid size-12 place-items-center rounded-2xl bg-muted"><ListMusic className="size-5 text-muted-foreground" /></span>
+        <p className="font-medium">The queue is wide open</p>
+        <p className="mt-1 max-w-xs text-sm text-muted-foreground">Be the first to request a song for this room.</p>
       </div>
     );
-  if (requestsQuery.isError)
-    return <div className="text-red-500">Failed to load requests</div>;
+  }
 
   return (
-    <div className="p-4">
-      <ScrollArea className="lg:h-140 h-120 w-full rounded-md">
-        <div className="p-4">{renderRequests()}</div>
-      </ScrollArea>
-    </div>
+    <ol className="space-y-2">
+      {pending.map((request, index) => (
+        <RequestItem key={request._id} request={request} position={index + 1} onUpvote={handleUpvote} disabled={upvoteMutation.isPending} />
+      ))}
+    </ol>
   );
 };
 
-const RequestItem = ({
-  request,
-  onUpvote,
-  isPlaying = false,
-}: {
-  request: SongRequest;
-  onUpvote: (id: string) => void;
-  isPlaying?: boolean;
-}) => (
-  <li
-    className={`p-2 border rounded-lg flex items-center justify-between shadow-sm lg:shadow-xs ${
-      isPlaying ? 'bg-blue-50 border-blue-200' : ''
-    }`}
-  >
-    <div className="flex items-center flex-1">
-      {isPlaying && (
-        <div className="animate-pulse w-2 h-2 bg-blue-500 rounded-full mr-2"></div>
-      )}
-      <a href={request.track.spotifyURI} target="_blank">
-        <img
-          src={request.track.albumArtUrl}
-          alt={request.track.title}
-          className="w-12 h-12 rounded-lg object-cover mr-3"
-        />
-      </a>
-      <div className="flex-1">
-        <div className="font-semibold text-xs leading-4 tracking-tight">
-          {request.track.title}
-        </div>
-        <div className="text-xs text-foreground tracking-tight">
-          {request.track.artist}
-        </div>
-        <div className="text-xs tracking-tight text-foreground/80 mr-1">
-          {request.requestedBy}
-        </div>
-      </div>
+const RequestItem = ({ request, position, onUpvote, disabled }: { request: SongRequest; position: number; onUpvote: (id: string) => void; disabled: boolean; }) => (
+  <li className="relative flex min-w-0 items-center gap-2 rounded-2xl border bg-card p-2.5 shadow-xs transition-transform duration-200 ease-out hover:z-10 motion-safe:hover:rotate-[0.5deg] motion-reduce:transition-none sm:gap-3 sm:p-3">
+    <span className="hidden w-5 shrink-0 text-center text-xs font-medium text-muted-foreground sm:block">{position}</span>
+    <img src={request.track.albumArtUrl} alt="" className="size-12 shrink-0 rounded-lg bg-muted object-cover sm:size-16 sm:rounded-xl" />
+    <div className="min-w-0 flex-1">
+      <p className="truncate text-sm font-medium leading-snug tracking-tight sm:text-base">{request.track.title}</p>
+      <p className="mt-0.5 truncate text-xs text-muted-foreground sm:text-sm">{request.track.artist}</p>
+      {request.requestedBy && <p className="mt-1 truncate text-[0.7rem] text-muted-foreground">Requested by {request.requestedBy}</p>}
     </div>
-
-    <div className="flex items-center">
-      {/* Upvote Button */}
-          <button
-            onClick={() => onUpvote(request._id)}
-            className="flex items-center gap-1 lg:p-2 rounded-lg"
-          >
-            {/* <ThumbsUp className="w-5 h-5 text-gray-500" /> */}
-            <ArrowBigUp className="lg:w-5 lg:h-5 w-4 h-4 text-gray-500 hover:text-green-500 transition-colors" />
-            <span className="lg:text-sm md:text-sm text-xs text-gray-700">
-              {request.votes}
-            </span>
-          </button>
-
-
-
-      {/* Spotify Link - Opens web player */}
+    <div className="flex shrink-0 items-center">
+      <Tooltip>
+        <TooltipTrigger asChild>
+      <button type="button" onClick={() => onUpvote(request._id)} disabled={disabled} aria-label={`Upvote ${request.track.title}. ${request.votes} votes`} className="group flex min-h-11 min-w-11 items-center justify-center rounded-full text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50">
+        <span className="inline-flex items-center gap-1 rounded-full border border-border/70 bg-muted/30 px-2 py-1 transition-colors group-hover:border-border group-hover:bg-accent group-active:bg-accent">
+          <ThumbsUp className="size-4" strokeWidth={2} aria-hidden="true" />
+          <span className="text-xs font-medium tabular-nums">{request.votes}</span>
+        </span>
+      </button>
+        </TooltipTrigger>
+        <TooltipContent>Upvote song</TooltipContent>
+      </Tooltip>
       {request.track.spotifyLink && (
-        <a
-          href={request.track.spotifyLink}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="p-2 rounded-lg"
-          title="Open in Spotify Web"
-        >
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Disc3 className="lg:w-5 lg:h-5 md:w-5 md:h-5 h-4 w-4 text-gray-700 hover:text-green-600 transition-colors" />
-            </TooltipTrigger>
-            <TooltipContent>
-              View on Spotify
-            </TooltipContent>
-          </Tooltip>
-        </a>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <a href={request.track.spotifyLink} target="_blank" rel="noopener noreferrer" aria-label={`Open ${request.track.title} in Spotify`} className="flex size-11 items-center justify-center rounded-xl transition-colors hover:bg-accent">
+              <img
+                src="https://upload.wikimedia.org/wikipedia/commons/8/84/Spotify_icon.svg"
+                alt=""
+                className="size-5"
+              />
+            </a>
+          </TooltipTrigger>
+          <TooltipContent>Open in Spotify</TooltipContent>
+        </Tooltip>
       )}
     </div>
   </li>

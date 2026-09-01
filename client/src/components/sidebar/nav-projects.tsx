@@ -1,19 +1,15 @@
 'use client';
 
-import {
-  PieChart,
-  type LucideIcon,
-} from 'lucide-react';
+import { type LucideIcon } from 'lucide-react';
+import { Link, useLocation } from 'react-router-dom';
 
 
 import {
   SidebarGroup,
-  SidebarGroupLabel,
   SidebarMenu,
 
   SidebarMenuButton,
   SidebarMenuItem,
-  useSidebar,
 } from '@/components/ui/sidebar';
 
 export function NavProjects({
@@ -25,30 +21,25 @@ export function NavProjects({
     icon: LucideIcon;
   }[];
 }) {
-  const { isMobile } = useSidebar();
+  const { pathname } = useLocation();
 
   return (
-    <SidebarGroup className="group-data-[collapsible=icon]:hidden">
-      <SidebarGroupLabel>Command Center</SidebarGroupLabel>
+    <SidebarGroup className="p-0">
       <SidebarMenu>
         {projects.map((item) => (
           <SidebarMenuItem key={item.name}>
-            <SidebarMenuButton asChild>
-              <a href={item.url}>
-                <item.icon />
+            <SidebarMenuButton
+              asChild
+              isActive={pathname === item.url}
+              className="h-9"
+            >
+              <Link to={item.url}>
+                <item.icon className="size-4 shrink-0" />
                 <span>{item.name}</span>
-              </a>
+              </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
         ))}
-
-        {/* <SidebarMenuItem>
-          <SidebarMenuButton>
-            <PieChart />
-            <span>More</span>
-          </SidebarMenuButton>
-        </SidebarMenuItem> */}
-
       </SidebarMenu>
     </SidebarGroup>
   );

@@ -14,8 +14,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import RoomQrCodeAdmin from './room-qr-code-admin';
 import type { Room } from '@/api/types';
-import { Share } from 'lucide-react';
 import { Send } from 'lucide-react';
+import { useDemoSession } from '@/components/demo/demo-context';
 
 
 interface ShareDialogProps {
@@ -29,6 +29,7 @@ export function ShareDialog({
   roomData,
   triggerClassName,
 }: ShareDialogProps) {
+  const demo = useDemoSession();
   //! change for prod
   // let shareLink = `https://www.app.sway.onl/room/${roomCode}`
   const shareLink = `http://localhost:3000/room/${roomCode}`;
@@ -38,6 +39,8 @@ export function ShareDialog({
         <Button
           variant="outline"
           size="sm"
+          disabled={Boolean(demo)}
+          title={demo ? 'Demo rooms are private to this session.' : undefined}
           className={cn('shrink-0 text-xs transition ease-in', triggerClassName)}
         >
           <Send />

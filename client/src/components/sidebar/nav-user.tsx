@@ -9,7 +9,8 @@ import {
   Settings,
 } from 'lucide-react';
 
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -44,13 +45,25 @@ type NavUserInfo = {
   name?: string;
   email?: string;
   avatar?: string;
+  plan?: 'free' | 'starter';
 } | null;
 
-export function NavUser({ user }: { user?: NavUserInfo }) {
+export function NavUser({
+  user,
+  showEmail = true,
+  showInitials = true,
+  circularAvatar = false,
+}: {
+  user?: NavUserInfo;
+  showEmail?: boolean;
+  showInitials?: boolean;
+  circularAvatar?: boolean;
+}) {
   const { isMobile } = useSidebar();
   const { setTheme } = useTheme();
   const displayName = user?.username || user?.name || 'User';
   const displayEmail = user?.email || '';
+  const displayPlan = user?.plan === 'starter' ? 'Starter' : 'Free';
   const initials =
     displayName
       .split(/\s+/)
@@ -101,15 +114,9 @@ export function NavUser({ user }: { user?: NavUserInfo }) {
               size="lg"
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
-              <Avatar className="h-8 w-8 rounded-lg">
-                <AvatarImage
-                  src={
-                    'https://images.unsplash.com/photo-1604076913837-52ab5629fba9?q=80&w=1287&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'
-                  }
-                  alt={displayName}
-                />
-                <AvatarFallback className="rounded-lg">
-                  {initials}
+              <Avatar className={`size-7.5 ${circularAvatar ? 'rounded-full' : 'rounded-md'}`}>
+                <AvatarFallback className={`${circularAvatar ? 'rounded-full' : 'rounded-md'} bg-gradient-to-br from-violet-500 via-fuchsia-500 to-orange-400 text-[10px] font-semibold text-white`}>
+                  {showInitials ? initials : null}
                 </AvatarFallback>
               </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight">
@@ -130,7 +137,7 @@ export function NavUser({ user }: { user?: NavUserInfo }) {
                     <path d="m9 12 2 2 4-4" />
                   </svg>
                 </div>
-                {displayEmail ? (
+                {showEmail && displayEmail ? (
                   <span className="truncate text-xs">{displayEmail}</span>
                 ) : null}
               </div>
@@ -145,18 +152,12 @@ export function NavUser({ user }: { user?: NavUserInfo }) {
           >
             <DropdownMenuLabel className="p-0 font-normal">
               <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-                <Avatar className="h-8 w-8 rounded-lg">
-                  <AvatarImage
-                    src={
-                      'https://images.unsplash.com/photo-1604076913837-52ab5629fba9?q=80&w=1287&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'
-                    }
-                    alt={displayName}
-                  />
-                  <AvatarFallback className="rounded-lg">
-                    {initials}
+                <Avatar className={`h-8 w-8 ${circularAvatar ? 'rounded-full' : 'rounded-md'}`}>
+                  <AvatarFallback className={`${circularAvatar ? 'rounded-full' : 'rounded-md'} bg-gradient-to-br from-violet-500 via-fuchsia-500 to-orange-400 text-xs font-semibold text-white`}>
+                    {showInitials ? initials : null}
                   </AvatarFallback>
                 </Avatar>
-                <div className="grid flex-1 text-left text-sm leading-tight">
+                <div className="grid min-w-0 flex-1 text-left text-sm leading-tight">
                   <div className="flex items-center gap-[.1rem]">
                     <span className="truncate font-medium">{displayName}</span>
                     <svg
@@ -175,9 +176,12 @@ export function NavUser({ user }: { user?: NavUserInfo }) {
                     </svg>
                   </div>
                   {displayEmail ? (
-                    <span className="truncate text-xs">{displayEmail}</span>
+                    <span className="truncate text-xs text-muted-foreground">{displayEmail}</span>
                   ) : null}
                 </div>
+                <Badge variant="secondary" className="ml-auto capitalize">
+                  {displayPlan}
+                </Badge>
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
@@ -189,14 +193,13 @@ export function NavUser({ user }: { user?: NavUserInfo }) {
                 </DropdownMenuShortcut>
               </DropdownMenuItem>
             </DropdownMenuGroup>
-            <DropdownMenuSeparator />
             <DropdownMenuGroup>
               <DropdownMenuItem onClick={handleProfile}>
-                <User />
+                <User className="text-[#C39D03]" />
                 Profile
               </DropdownMenuItem>
               <DropdownMenuItem onClick={handleSettings}>
-                <Settings />
+                <Settings className="dark:text-icon-orange" />
                 Settings
               </DropdownMenuItem>
               {/* Theme Toggle Submenu */}
@@ -225,7 +228,6 @@ export function NavUser({ user }: { user?: NavUserInfo }) {
               </DropdownMenuSub>
             </DropdownMenuGroup>
 
-            <DropdownMenuSeparator />
             <DropdownMenuItem
               disabled={isLoggingOut}
               onSelect={(event) => {
@@ -234,7 +236,7 @@ export function NavUser({ user }: { user?: NavUserInfo }) {
               }}
             >
               <LogOut />
-              {isLoggingOut ? 'Logging out...' : 'Log out'}
+              {isLoggingOut ? 'Logging out...' : 'Log out?'}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

@@ -2,7 +2,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
 import { analyticsKeys } from "@/api/analytics"
 import { apiClient } from "@/api/client"
-import type { ApiMessageResponse, QueueRequest, Room } from "@/api/types"
+import type {
+  ApiMessageResponse,
+  QueueRequest,
+  RequestStatus,
+  RequestTrack,
+  Room,
+} from "@/api/types"
 import { userKeys } from "@/api/users"
 
 type CreateRoomResponse = {
@@ -43,6 +49,36 @@ type RoomRequestsResponse = {
   data: QueueRequest[]
 }
 
+type LatestRoomsResponse = {
+  success: true
+  latestRooms: Pick<
+    Room,
+    "_id" | "roomName" | "roomCode" | "active" | "createdAt" | "updatedAt"
+  >[]
+}
+
+export type ActiveRoomSummary = Pick<
+  Room,
+  "_id" | "roomName" | "roomDescription" | "roomCode" | "roomCreator" | "active" | "scheduledAt" | "createdAt" | "updatedAt"
+> & {
+  requestsReceived: number
+  requestsPlayed: number
+  requestsWaiting: number
+  totalVotes: number
+  recentRequests: {
+    _id: string
+    status: RequestStatus
+    votes: number
+    track: RequestTrack
+    createdAt: string
+  }[]
+}
+
+type ActiveRoomSummaryResponse = {
+  success: true
+  activeRoom: ActiveRoomSummary | null
+}
+
 export type CreateRoomInput = {
   roomName: string
   roomDescription: string
@@ -70,6 +106,8 @@ export type DeleteRoomInput = {
 export const roomKeys = {
   all: ["rooms"] as const,
   detail: (roomCode: string) => [...roomKeys.all, "detail", roomCode] as const,
+  recent: () => [...roomKeys.all, "recent"] as const,
+  activeSummary: () => [...roomKeys.all, "active", "summary"] as const,
   requests: (roomCode: string) =>
     [...roomKeys.all, roomCode, "requests"] as const,
   playedSpotify: (roomCode: string) =>
@@ -119,6 +157,18 @@ export async function deleteRoom({ roomId, userId }: DeleteRoomInput) {
 export async function getRoomDetails(roomCode: string) {
   const { data } = await apiClient.get<RoomDetailsResponse>(
     `/api/rooms/${encodeURIComponent(roomCode)}`
+  )
+  return data
+}
+
+export async function getLatestRooms() {
+  const { data } = await apiClient.get<LatestRoomsResponse>("/api/rooms/recent")
+  return data
+}
+
+export async function getActiveRoomSummary() {
+  const { data } = await apiClient.get<ActiveRoomSummaryResponse>(
+    "/api/rooms/active/summary"
   )
   return data
 }
@@ -205,6 +255,27 @@ export function useRoomDetailsQuery(roomCode: string) {
     queryKey: roomKeys.detail(roomCode),
     queryFn: () => getRoomDetails(roomCode),
     enabled: roomCode.length > 0,
+  })
+}
+
+export function useLatestRoomsQuery(options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: roomKeys.recent(),
+    queryFn: getLatestRooms,
+    enabled: options?.enabled ?? true,
+  })
+}
+
+export function useActiveRoomSummaryQuery(options?: {
+  enabled?: boolean
+}) {
+  return useQuery({
+    queryKey: roomKeys.activeSummary(),
+    queryFn: getActiveRoomSummary,
+    enabled: options?.enabled ?? true,
+    refetchInterval: false,
+    refetchOnReconnect: false,
+    refetchOnWindowFocus: false,
   })
 }
 

@@ -1,4 +1,5 @@
 import { Button } from '../../components/ui/button';
+import { SwayLogo } from '@/components/sway-logo';
 import { useNavigate } from 'react-router-dom';
 
 
@@ -19,7 +20,7 @@ export default function NotFound() {
           className="flex items-center gap-2 self-center font-black tracking-tighter"
           target="_blank"
         >
-          Sway
+          <SwayLogo className="h-8" />
         </a>
 
         <div className="text-center">

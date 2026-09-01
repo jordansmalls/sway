@@ -1,30 +1,21 @@
+import { SwayLogo } from '@/components/sway-logo';
 import React, { useEffect, useState } from 'react';
-import { ShareDialog } from '../../components/dialogs/share-dialog';
+import { useDemoSession } from '@/components/demo/demo-context';
+import { AnimatedThemeToggler } from '@/registry/magicui/animated-theme-toggler';
 import { useParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
+import { ShareDialog } from '../../components/dialogs/share-dialog';
 import { roomKeys, useRoomDetailsQuery } from '@/api/rooms';
-import {
-  removeRequestFromRoomCache,
-  requestKeys,
-  upsertRequestInRoomCache,
-} from '@/api/requests';
+import { removeRequestFromRoomCache, requestKeys, upsertRequestInRoomCache } from '@/api/requests';
 import RoomEnded from './RoomEnded';
 import Footer from '../../components/footer';
 import RequestList from '../../components/rooms/request-list';
 import MakeRequest from '../../components/rooms/make-request';
 import NowPlaying from '../../components/rooms/now-playing';
-import {
-  joinRoom,
-  onRequestCreated,
-  onRequestDeleted,
-  onRequestPlayed,
-  onRequestPlaying,
-  onRequestUpdated,
-  onRoomEnded,
-  onRoomUpdated,
-} from '@/lib/socket';
+import { joinRoom, onRequestCreated, onRequestDeleted, onRequestPlayed, onRequestPlaying, onRequestUpdated, onRoomEnded, onRoomUpdated } from '@/lib/socket';
 
 const Room: React.FC = () => {
+  const demo = useDemoSession();
   const { roomCode: rawRoomCode } = useParams();
   const roomCode = rawRoomCode ? rawRoomCode.toUpperCase() : '';
   const [roomEnded, setRoomEnded] = useState(false);
@@ -35,10 +26,7 @@ const Room: React.FC = () => {
 
   useEffect(() => {
     if (!roomId) return;
-
-    const invalidateRoom = () => {
-      queryClient.invalidateQueries({ queryKey: roomKeys.detail(roomCode) });
-    };
+    const invalidateRoom = () => queryClient.invalidateQueries({ queryKey: roomKeys.detail(roomCode) });
     const invalidateRequests = () => {
       queryClient.invalidateQueries({ queryKey: requestKeys.byRoom(roomId) });
       queryClient.invalidateQueries({ queryKey: roomKeys.requests(roomCode) });
@@ -47,135 +35,70 @@ const Room: React.FC = () => {
       upsertRequestInRoomCache(queryClient, request);
       invalidateRequests();
     };
-
     const leaveRoom = joinRoom(roomId);
-
-    const unsubscribeRoomUpdated = onRoomUpdated(({ roomId: eventRoomId }) => {
-      if (eventRoomId === roomId) invalidateRoom();
-    });
+    const unsubscribeRoomUpdated = onRoomUpdated(({ roomId: eventRoomId }) => eventRoomId === roomId && invalidateRoom());
     const unsubscribeRoomEnded = onRoomEnded(({ roomId: eventRoomId }) => {
       if (eventRoomId !== roomId) return;
-
       setRoomEnded(true);
       invalidateRoom();
     });
-    const unsubscribeCreated = onRequestCreated(({ roomId: eventRoomId, request }) => {
-      if (eventRoomId !== roomId) return;
-
-      syncRequest(request);
-    });
-    const unsubscribeUpdated = onRequestUpdated(({ roomId: eventRoomId, request }) => {
-      if (eventRoomId === roomId) syncRequest(request);
-    });
+    const unsubscribeCreated = onRequestCreated(({ roomId: eventRoomId, request }) => eventRoomId === roomId && syncRequest(request));
+    const unsubscribeUpdated = onRequestUpdated(({ roomId: eventRoomId, request }) => eventRoomId === roomId && syncRequest(request));
     const unsubscribeDeleted = onRequestDeleted(({ requestId }) => {
       removeRequestFromRoomCache(queryClient, roomId, requestId);
       invalidateRequests();
     });
-    const unsubscribePlaying = onRequestPlaying(({ roomId: eventRoomId, request }) => {
-      if (eventRoomId === roomId) syncRequest(request);
-    });
-    const unsubscribePlayed = onRequestPlayed(({ roomId: eventRoomId, request }) => {
-      if (eventRoomId === roomId) syncRequest(request);
-    });
-
+    const unsubscribePlaying = onRequestPlaying(({ roomId: eventRoomId, request }) => eventRoomId === roomId && syncRequest(request));
+    const unsubscribePlayed = onRequestPlayed(({ roomId: eventRoomId, request }) => eventRoomId === roomId && syncRequest(request));
     return () => {
       leaveRoom();
-      unsubscribeRoomUpdated();
-      unsubscribeRoomEnded();
-      unsubscribeCreated();
-      unsubscribeUpdated();
-      unsubscribeDeleted();
-      unsubscribePlaying();
-      unsubscribePlayed();
+      unsubscribeRoomUpdated(); unsubscribeRoomEnded(); unsubscribeCreated(); unsubscribeUpdated();
+      unsubscribeDeleted(); unsubscribePlaying(); unsubscribePlayed();
     };
   }, [queryClient, roomCode, roomId]);
 
-  if (roomEnded || roomData?.active === false) {
-    return <RoomEnded roomCode={roomCode} roomName={roomData?.roomName} />;
-  }
-
-  if (roomQuery.isLoading) {
-    return <p className="p-8 text-muted-foreground">Loading room...</p>;
-  }
-
-  if (roomQuery.isError || !roomData) {
-    return <p className="p-8 text-destructive">Room could not be loaded.</p>;
-  }
+  if (roomEnded || roomData?.active === false) return <RoomEnded roomCode={roomCode} roomName={roomData?.roomName} />;
+  if (roomQuery.isLoading) return <p className="p-8 text-center text-sm text-muted-foreground">Loading room…</p>;
+  if (roomQuery.isError || !roomData) return <p className="p-8 text-center text-sm text-destructive">Room could not be loaded.</p>;
 
   return (
-    <>
-      <header className="flex flex-col place-items-center my-[1rem] mb-[2rem]">
-        <div className='flex items-center gap-2'>
+    <div className="min-h-dvh bg-gradient-to-b from-primary/[0.055] via-background to-background dark:bg-background dark:bg-none">
+      <div className="mx-auto w-full max-w-3xl px-4 pb-28 sm:px-6 sm:pb-12">
+        <header className="flex h-16 items-center justify-between sm:h-20">
+          <a href={demo ? '/demo' : '/'} className="flex items-center gap-2" aria-label="Sway home">
+            <SwayLogo className="h-6" />
+          </a>
+          <div className="flex items-center gap-2">
+            <AnimatedThemeToggler className="size-11 rounded-full" />
+            <ShareDialog roomCode={roomData.roomCode} roomData={roomData} triggerClassName="h-11 min-w-11 rounded-full bg-background/80 px-3 shadow-sm backdrop-blur" />
+          </div>
+        </header>
 
-          <svg
-            width="20"
-            height="20"
-            viewBox="0 0 42 42"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <g clip-path="url(#clip0_47_23)">
-              <path
-                d="M20.7724 21.7681V21.2276H20.2319H6.17781V20.2095C13.0744 18.5019 18.5019 13.0744 20.2095 6.17781H21.2276V20.2319V20.7724H21.7681H35.8222V21.7905C28.9256 23.4981 23.4981 28.9256 21.7905 35.8222H20.7724V21.7681ZM1.54054 15.5946H1V16.1351V25.8649V26.4054H1.54054H15.5946V40.4595V41H16.1351H25.8649H26.4054V40.4595C26.4054 32.6977 32.6977 26.4054 40.4595 26.4054H41V25.8649V16.1351V15.5946H40.4595H26.4054V1.54054V1H25.8649H16.1351H15.5946V1.54054C15.5946 9.30232 9.30232 15.5946 1.54054 15.5946Z"
-                fill="white"
-                stroke="white"
-              />
-            </g>
-            <defs>
-              <clipPath id="clip0_47_23">
-                <rect width="42" height="42" fill="white" />
-              </clipPath>
-            </defs>
-          </svg>
-          <p className="font-black tracking-tighter">Sway</p>
-        </div>
-      </header>
+        <main>
+          <section className="pb-6 pt-5 text-center sm:pb-9 sm:pt-8">
+            <div className="mx-auto mb-4 inline-flex items-center gap-2 rounded-full border bg-background/70 px-3 py-1.5 shadow-xs backdrop-blur">
+              <span className="size-2 rounded-full bg-emerald-500 shadow-[0_0_0_3px] shadow-emerald-500/15" />
+              <span className="text-xs font-medium text-muted-foreground">{demo ? 'Demo Room' : 'Live Room'}</span>
+            </div>
+            <h1 className="text-balance text-3xl font-bold tracking-tighter sm:text-5xl">{roomData.roomName}</h1>
+            {roomData.roomDescription && <p className="mx-auto mt-2 max-w-xl text-pretty text-sm leading-6 text-muted-foreground sm:mt-3 sm:text-base">{roomData.roomDescription}</p>}
+          </section>
 
-      {/* main Room info */}
-      <main>
-        <div className="flex flex-col gap-[.2rem]">
-          <h1 className="font-bold text-2xl lg:text-3xl text-center tracking-tighter">
-            {roomData?.roomName}
-          </h1>
-          <p className="font-normal text-xs mx-[2.5rem] lg:text-lg text-center lg:mx-[30rem]">
-            {roomData?.roomDescription}
-          </p>
-        </div>
-      </main>
-
-      {/* Room code info */}
-      <section className="flex flex-col items-center justify-center mt-3">
-        <p className="font-medium opacity-60 text-[.45rem] lg:text-[.67rem] mb-1">
-          ROOM CODE
-        </p>
-
-        <div className="flex items-center">
-          <h2 className="text-4xl font-semibold tracking-wide text-primary mr-2">
-            {roomData.roomCode}
-          </h2>
-          <ShareDialog roomCode={roomData.roomCode} roomData={roomData} />
-        </div>
-      </section>
-
-      {/* Make Request */}
-      <div className="lg:mt-8 mt-4">
-        <MakeRequest roomId={roomData._id} triggerText="Request a Song" />
+          <div className="space-y-5 sm:space-y-7">
+            <MakeRequest roomId={roomData._id} triggerText="Request a song" />
+            <NowPlaying roomId={roomId} />
+            <section aria-labelledby="request-queue-heading">
+              <div className="mb-3 space-y-1 px-1">
+                <h2 id="request-queue-heading" className="text-xl font-semibold tracking-tight sm:text-2xl">Request queue</h2>
+                <p className="text-xs text-muted-foreground">Vote for your favorite!</p>
+              </div>
+              <RequestList roomId={roomData._id} />
+            </section>
+          </div>
+        </main>
       </div>
-
-      <div>
-        <NowPlaying roomId={roomId} />
-      </div>
-
-      {/* Request List */}
-      <div>
-        <h3 className="font-medium text-lg tracking-tighter mx-[2rem] mt-[2rem] text-center">
-          Request Queue
-        </h3>
-        <RequestList roomId={roomData._id} />
-      </div>
-
       <Footer />
-    </>
+    </div>
   );
 };
 

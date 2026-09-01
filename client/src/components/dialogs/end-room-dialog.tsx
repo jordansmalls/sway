@@ -17,6 +17,7 @@ import { getApiErrorMessage } from '@/api/client';
 import { useEndRoomMutation, useRoomDetailsQuery } from '@/api/rooms';
 import { OctagonX } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import { useDemoSession } from '@/components/demo/demo-context';
 
 interface EndRoomDialogProps {
   roomCode?: string;
@@ -49,6 +50,7 @@ const EndRoomDialog: React.FC<EndRoomDialogProps> = ({
   title = 'Are you sure you want to end this room?',
   description = 'This action cannot be undone. All participants will be disconnected and the room will be permanently closed.',
 }) => {
+  const demo = useDemoSession();
   const endRoomMutation = useEndRoomMutation();
   const roomDetailsQuery = useRoomDetailsQuery(roomCode ?? '');
   const [open, setOpen] = useState(false);
@@ -85,7 +87,7 @@ const EndRoomDialog: React.FC<EndRoomDialogProps> = ({
 
       toast.success('The party is now over!', {
         description:
-          'Room ended successfully and all participants have been disconnected.',
+          demo ? 'Your demo room is closed. View its tracklist or reset the demo to keep exploring.' : 'Your room is closed to new requests. You can review the songs in its tracklist.',
       });
 
       // Close the dialog
@@ -102,7 +104,7 @@ const EndRoomDialog: React.FC<EndRoomDialogProps> = ({
       }
     } catch (err) {
       console.error('There was an error ending the room:', err);
-      toast.error("Something went wrong.", { description: `${getApiErrorMessage(err), "Oops!"}`})
+      toast.error("Couldn't end the room", { description: getApiErrorMessage(err, 'Please try again. Your room is still open.') })
     }
   };
 

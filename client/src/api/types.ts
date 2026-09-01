@@ -23,6 +23,7 @@ export type Room = {
   roomQr?: string
   roomCreator?: string | User
   active: boolean
+  scheduledAt?: string | null
   createdAt: string
   updatedAt: string
 }
