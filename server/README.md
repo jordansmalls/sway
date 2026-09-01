@@ -1,1563 +1,341 @@
 # Sway Server
 
-A robust web API built with Bun, Express, and MongoDB.
+The API for Sway. Accounts, rooms, requests, Spotify search, analytics, exports, and isolated public demo.
 
----
-
-## Table of Contents
-
-- [Core Dependencies](#core-dependencies)
-- [Installation](#installation)
-- [Project Structure](#project-structure)
-- [Environment Variables](#environment-variables)
-- [Errors](#errors)
-- [Database Models](#database-models)
-- [Authentication](#authentication)
-- [Users](#users)
-- [Rooms](#rooms)
-- [Spotify](#spotify)
-- [Requests](#requests)
-- [Analytics](#analytics)
-- [Global](#global)
-- [Exports](#exports)
-- [Server Health](#server-health)
-- [Contact](#contact)
-
----
-
-## Core Dependencies
-
-**Production**
-
-- express
-- mongoose
-- cors
-- morgan
-- validator
-- jsonwebtoken
-- bcryptjs
-- dotenv
-- axios
-- cookie-parser
-- express-rate-limit
-- qrcode
-- csv-writer
-- socket.io
-
-**Development**
-
-- prettier
-- @types/bun
-
----
+See the [project overview](../README.md) and [client README](../client/README.md). The complete demo implementation and operational guide is included in [Public demo API](#public-demo-api).
 
 ## Installation
 
+Prerequisites: Bun, Node.js 22.12+ on the 22.x line or Node.js 24+ for the test tooling, MongoDB 5.0+ for analytics using `$dateTrunc`, and Spotify app client credentials for live search.
+
+From the repository root:
+
 ```bash
-git clone git@github.com:jordansmalls/sway.git
 cd server
-bun install
-touch .env
+bun install --frozen-lockfile
+cp .env.example .env
+# Fill in .env using the values described below.
 bun run dev
 ```
 
----
+Run commands from `server/` so dotenv can load the intended `.env`. The server connects to MongoDB, starts demo cleanup, then listens on port 9999 by default and attaches Socket.IO to the same HTTP server.
 
-## Project Structure
+| Command | Purpose |
+| --- | --- |
+| `bun run dev` | Run the TypeScript entry point with Bun's file watcher |
+| `bun run start` | Run the server without watch mode |
+| `bun run test` | Run Vitest in watch mode |
+| `bun run test:run` | Run the API tests once |
+| `bun run format` | Run Prettier with writes across the server directory |
 
-```
-./
-├── src/
-│   ├── config/
-│   │   ├── config.ts
-│   │   ├── db.ts
-│   │   └── logger.ts
-│   ├── controllers/
-│   │   ├── auth.controller.ts
-│   │   ├── export.controller.ts
-│   │   ├── health.controller.ts
-│   │   ├── request.controller.ts
-│   │   ├── room.controller.ts
-│   │   ├── spotify.controller.ts
-│   │   └── user.controller.ts
-│   ├── middlewares/
-│   │   ├── rate-limiters/
-│   │   │   ├── general.limiter.ts
-│   │   │   └── vote.limiter.ts
-│   │   ├── auth.middleware.ts
-│   │   └── error.middleware.ts
-│   ├── models/
-│   │   ├── request.model.ts
-│   │   ├── room.model.ts
-│   │   └── user.model.ts
-│   ├── routes/
-│   │   ├── auth.routes.ts
-│   │   ├── export.routes.ts
-│   │   ├── health.routes.ts
-│   │   ├── request.routes.ts
-│   │   ├── room.routes.ts
-│   │   ├── spotify.routes.ts
-│   │   └── user.routes.ts
-│   ├── utils/
-│   │   ├── formatters/
-│   │   │   ├── format.spotify.ts
-│   │   │   ├── format.times.ts
-│   │   │   ├── format.uptime.ts
-│   │   │   └── plaintext-helpers.ts
-│   │   ├── generate.jwt.ts
-│   │   ├── generate.room.code.ts
-│   │   ├── set.room.inactive.ts
-│   │   └── set.user.active.room.ts
-│   ├── app.ts
-│   ├── server.ts
-│   └── socket.ts
-├── bun.lock
-├── package.json
-├── README.md
-└── tsconfig.json
-```
+There is no server build script. Production startup runs [src/server.ts](src/server.ts) directly with Bun.
 
+## Environment variables
 
----
+Copy [.env.example](.env.example) to `.env`. Example local values:
 
-## Environment Variables
-
-Configure these before starting the server:
-
-```env
-PORT=
-MONGO_URI=
-JWT_SECRET=
-NODE_ENV=
-SPOTIFY_CLIENT_ID=
-SPOTIFY_CLIENT_SECRET=
-FRONTEND_URL=
+```dotenv
+PORT=9999
+MONGO_URI=mongodb://127.0.0.1:27017/sway
+JWT_SECRET=replace-with-a-long-random-secret
+NODE_ENV=development
+SPOTIFY_CLIENT_ID=your-spotify-app-client-id
+SPOTIFY_CLIENT_SECRET=your-spotify-app-client-secret
+FRONTEND_URL=http://localhost:3000
 DOMAIN=
 ```
 
----
+| Variable | Use |
+| --- | --- |
+| `PORT` | HTTP and Socket.IO port; defaults to 9999 |
+| `MONGO_URI` | MongoDB connection string |
+| `JWT_SECRET` | Secret used to sign and verify real-account login tokens |
+| `NODE_ENV` | Controls cookie security, CORS selection, and error details; use `development` for local HTTP |
+| `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET` | Server-side Spotify app credentials; required for live catalog requests in real and demo rooms |
+| `FRONTEND_URL` | Public frontend origin used in room QR codes, demo QR codes, and the Socket.IO origin list |
+| `DOMAIN` | Read by the config module but currently unused; it does not configure cookie domains |
 
-## Errors
+There are no additional demo environment variables or shared demo credentials. Seeded demo tracks require no upstream Spotify calls, searching or submitting a new track requires valid Spotify credentials.
 
-Standard error response format:
 
-```js
-res.status(500).json({
-  success: false,
-  error: "Internal Server Error",
-  message: "We're having trouble, please try again.",
-});
-```
-
-- `success` and `error` values assist with debugging
-- `message` is displayed in Sonner toast notifications
-- Used consistently across 400, 401, 403, 404, etc. (text varies per endpoint)
-
----
-
-## Database Models
-
-### User
-
-| Field | Type | Constraints |
-|-------|------|-------------|
-| `username` | String | 3-20 chars, alphanumeric + underscore, unique, sparse |
-| `email` | String | Required, unique, lowercase |
-| `password` | String | Required, min 8 chars |
-| `active` | Boolean | Default: `true` |
-| `hasActiveRoom` | Boolean | Default: `false` |
-| `hasUsername` | Boolean | Default: `false` |
-| `admin` | Boolean | Default: `false` |
-
-```js
-const userSchema = new mongoose.Schema(
-  {
-    username: {
-      type: String,
-      sparse: true,
-      minLength: 3,
-      maxLength: 20,
-      unique: true,
-      lowercase: true,
-      index: 1,
-      validate: {
-        validator: function (v) {
-          if (!v) return true;
-          const isValidLength = v.length >= 3 && v.length <= 20;
-          const isValidFormat = /^[a-zA-Z0-9_]+$/.test(v);
-          return isValidLength && isValidFormat;
-        },
-        message:
-          "Username must be 3-20 characters and contain only letters, numbers, and underscores",
-      },
-    },
-    email: {
-      type: String,
-      required: true,
-      unique: true,
-      lowercase: true,
-      trim: true,
-      index: 1,
-    },
-    password: {
-      type: String,
-      required: true,
-      minLength: 8,
-    },
-    active: { type: Boolean, default: true },
-    hasActiveRoom: { type: Boolean, default: false },
-    hasUsername: { type: Boolean, default: false },
-    admin: { type: Boolean, default: false },
-  },
-  { timestamps: true }
-);
-```
-
-### Room
-
-| Field | Type | Constraints |
-|-------|------|-------------|
-| `roomName` | String | Required, max 100 chars |
-| `roomDescription` | String | Required, max 450 chars |
-| `roomCode` | String | Required, unique, max 5 chars |
-| `roomQr` | String | Optional |
-| `roomCreator` | ObjectId | Required, ref: `User` |
-| `active` | Boolean | Default: `true` |
-
-```js
-const roomSchema = new mongoose.Schema(
-  {
-    roomName: {
-      type: String,
-      required: [true, "A room name is required"],
-      trim: true,
-      maxLength: [100, "Room names cannot exceed 100 characters"],
-    },
-    roomDescription: {
-      type: String,
-      required: [true, "Room descriptions are required"],
-      trim: true,
-      maxLength: [450, "Room descriptions cannot exceed 450 characters"],
-    },
-    roomCode: {
-      type: String,
-      unique: true,
-      required: [true, "A room code is required"],
-      maxLength: 5,
-      trim: true,
-      index: 1,
-    },
-    roomQr: { type: String, required: false },
-    roomCreator: {
-      type: Schema.Types.ObjectId,
-      required: true,
-      ref: "User",
-      index: 1,
-    },
-    active: { type: Boolean, default: true },
-  },
-  { timestamps: true }
-);
-```
-
-### Request
-
-| Field | Type | Constraints |
-|-------|------|-------------|
-| `roomId` | ObjectId | Required, ref: `Room` |
-| `status` | String | Enum: `pending`, `playing`, `played`, `rejected` |
-| `votes` | Number | Default: `1`, min: `1` |
-| `playedAt` | Date | Nullable |
-| `requestedBy` | String | Optional |
-| `completedAt` | Date | Nullable |
-| `track.spotifyTrackId` | String | Required |
-| `track.title` | String | Required |
-| `track.artist` | String | Required |
-| `track.albumArtUrl` | String | Optional |
-| `track.spotifyLink` | String | Required |
-| `track.spotifyURI` | String | Required |
-
-```js
-const requestSchema = new Schema(
-  {
-    roomId: { type: Schema.Types.ObjectId, ref: "Room", required: true },
-    status: {
-      type: String,
-      enum: ["pending", "playing", "played", "rejected"],
-      default: "pending",
-    },
-    votes: { type: Number, default: 1, min: 1 },
-    playedAt: { type: Date, default: null },
-    requestedBy: { type: String, required: false },
-    completedAt: { type: Date, default: null },
-    track: {
-      spotifyTrackId: { type: String, required: true },
-      title: { type: String, required: true, trim: true },
-      artist: { type: String, required: true, trim: true },
-      albumArtUrl: { type: String, required: false },
-      spotifyLink: { type: String, required: true },
-      spotifyURI: { type: String, required: true },
-    },
-  },
-  { timestamps: true }
-);
-```
-
----
-
-## Authentication
-
-### Create Account
-
-```
-POST /api/auth
-```
-
-**Access:** Public
-**Body:** `{ email, password }`
-
-| Field | Constraints |
-|-------|-------------|
-| `email` | Valid email format |
-| `password` | Min 8 characters |
-
-**Success Response:**
-
-```js
-res.status(201).json({
-  success: true,
-  message: "Account created successfully. Welcome to Sway!",
-  user: {
-    _id: user._id,
-    email: user.email,
-    hasActiveRoom: user.hasActiveRoom,
-    hasUsername: user.hasUsername,
-    createdAt: user.createdAt,
-    updatedAt: user.updatedAt,
-  },
-});
-```
-
-> Sets JWT cookie on success.
-
----
-
-### Create Username
-
-```
-POST /api/auth/username
-```
-
-**Access:** Private
-**Body:** `{ username }`
-
-| Field | Constraints |
-|-------|-------------|
-| `username` | 3-20 chars, `/^[a-zA-Z0-9_]+$/` |
-
-**Success Response:**
-
-```js
-res.status(201).json({
-  success: true,
-  message: `${username} has a great ring to it, let's do this.`,
-  user: {
-    _id: user._id,
-    username: updatedUser.username,
-    email: updatedUser.email,
-    hasActiveRoom: updatedUser.hasActiveRoom,
-    hasUsername: updatedUser.hasUsername,
-    createdAt: updatedUser.createdAt,
-    updatedAt: updatedUser.updatedAt,
-  },
-});
-```
-
----
-
-### Check Username Availability
-
-```
-GET /api/auth/username/:username
-```
-
-**Access:** Public
-
-**Success Responses:**
-
-```js
-// Taken
-{ success: true, taken: true, message: "Username is already in use." }
-
-// Available
-{ success: true, taken: false, message: "Username is available." }
-```
-
----
-
-### Check Email Availability
-
-```
-GET /api/auth/email/:email
-```
-
-**Access:** Public
-
-**Success Responses:**
-
-```js
-// Taken
-{ success: true, taken: true, message: "Email is already in use." }
-
-// Available
-{ success: true, taken: false, message: "Email is available!" }
-```
-
----
-
-### Log In
-
-```
-POST /api/auth/login
-```
-
-**Access:** Public
-**Body:** `{ identifier, password }`
-
-> `identifier` can be username or email.
-
-**Success Response:**
-
-```js
-res.status(200).json({
-  success: true,
-  message: "You've been successfully logged in.",
-  user: {
-    _id: user._id,
-    username: user.username,
-    email: user.email,
-    hasActiveRoom: user.hasActiveRoom,
-    hasUsername: user.hasUsername,
-    createdAt: user.createdAt,
-    updatedAt: user.updatedAt,
-  },
-});
-```
-
-> Sets JWT cookie on success.
-
----
-
-### Log Out
-
-```
-POST /api/auth/logout
-```
-
-**Access:** Public
-
-Clears JWT cookie and returns:
-
-```js
-res.status(200).json({
-  success: true,
-  message: "Logged out successfully. Please come back soon.",
-});
-```
-
----
-
-## Users
-
-### Update Profile
-
-```
-PUT /api/users/profile
-```
-
-**Access:** Private
-**Body:** `{ username?, email? }` (at least one required)
-
-**Success Response:**
-
-```js
-res.status(200).json({
-  success: true,
-  message: "Success! Your account has been updated.",
-  user: { /* updated user object */ },
-});
-```
-
----
-
-### Update Password
-
-```
-POST /api/users/password
-```
-
-**Access:** Private
-**Body:** `{ currentPassword, newPassword }`
-
-**Success Response:**
-
-```js
-res.status(200).json({
-  success: true,
-  message: "Password updated successfully.",
-});
-```
-
----
-
-### Get Current User
-
-```
-GET /api/users/me
-```
-
-**Access:** Private
-
-**Success Response:**
-
-```js
-res.status(200).json({
-  success: true,
-  user: { /* user object */ },
-});
-```
-
----
-
-### Delete Account
-
-```
-DELETE /api/users/profile
-```
-
-**Access:** Private
-**Effect:** Toggles `active` to `false`, clears JWT cookie
-
-**Success Response:**
-
-```js
-res.status(200).json({
-  success: true,
-  message: "Account deactivated successfully.",
-});
-```
-
----
-
-### Fetch Active Room
-
-```
-GET /api/users/:userId/rooms/active
-```
-
-**Access:** Public
-
-**Success Response:**
-
-```js
-res.status(200).json({
-  success: true,
-  activeRoom,
-});
-```
-
----
-
-### Check Active Room Status
-
-```
-GET /api/users/:userId/has-active-room
-```
-
-**Access:** Private
-
-**Success Response:**
-
-```js
-res.status(200).json({
-  success: true,
-  hasActiveRoom,
-});
-```
-
----
-
-### Fetch Inactive Rooms
-
-```
-GET /api/users/:userId/inactive
-```
-
-**Access:** Private
-
-**Success Response:**
-
-```js
-res.status(200).json({
-  success: true,
-  inactiveRooms: [], // or array of rooms
-});
-```
-
----
-
-### Fetch User ID
-
-```
-GET /api/users/:username/id
-```
-
-**Access:** Public
-
-**Success Response:**
-
-```js
-res.status(200).json({
-  success: true,
-  userId: user._id,
-})
-```
-
----
-
-## Rooms
-
-### Create Room
-
-```
-POST /api/rooms
-```
-
-**Access:** Private
-**Body:** `{ roomName, roomDescription }`
-
-| Field | Constraints |
-|-------|-------------|
-| `roomName` | Max 100 chars |
-| `roomDescription` | Max 450 chars |
-
-**Success Response:**
-
-```js
-res.status(201).json({
-  success: true,
-  message: `Success! ${newRoom.roomName} has been created and is now active.`,
-  newRoom,
-});
-```
-
----
-
-### Update Room
-
-```
-PUT /api/rooms/:roomId
-```
-
-**Access:** Private
-**Body:** `{ roomName?, roomDescription? }`
-**Socket Event:** `room:updated` → `roomId, payload`
-
-**Success Response:**
-
-```js
-res.status(200).json({
-  success: true,
-  message: "Room updated successfully.",
-  updatedRoom,
-});
-```
-
----
-
-### Join Room
-
-```
-POST /api/rooms/join
-```
-
-**Access:** Public
-**Body:** `{ roomCode }`
-
-**Success Response:**
-
-```js
-res.status(200).json({
-  success: true,
-  roomDetails: {
-    _id: room._id,
-    roomName: room.roomName,
-    roomDescription: room.roomDescription,
-    roomCode: room.roomCode,
-    createdAt: room.createdAt,
-  },
-});
-```
-
----
-
-### End Room
-
-```
-PUT /api/rooms/end
-```
-
-**Access:** Private
-**Body:** `{ roomId }`
-**Socket Event:** `room:ended` → `roomId, { roomId }`
-
-**Success Response:**
-
-```js
-res.status(200).json({
-  success: true,
-  message: "The room is now over.",
-});
-```
-
----
-
-### Delete Room
-
-```
-DELETE /api/rooms/:roomId
-```
-
-**Access:** Private
-**Body:** `{ userId }`
-
-**Success Response:**
-
-```js
-res.status(200).json({
-  success: true,
-  message: `The ${room.roomName} room has been successfully deleted.`,
-  room,
-});
-```
-
----
-
-### Fetch Room Details
-
-```
-GET /api/rooms/:roomCode
-```
-
-**Access:** Public
-
-**Success Response:**
-
-```js
-res.status(200).json({
-  success: true,
-  message: `Success! Here's ${room.roomName}'s details.`,
-  roomDetails: {
-    _id: room._id,
-    roomName: room.roomName,
-    roomDescription: room.roomDescription,
-    roomCode: room.roomCode,
-    roomQr: room.roomQr,
-    createdAt: room.createdAt,
-    updatedAt: room.updatedAt,
-    active: room.active,
-  },
-});
-```
-
----
-
-### Fetch Room Requests
-
-```
-GET /api/rooms/:roomCode/fetch/requests
-```
-
-**Access:** Public
-
-**Success Response:**
-
-```js
-res.status(200).json({
-  success: true,
-  message: "Requests loaded.",
-  data: [
-    {
-      id: req._id,
-      title: req.track.title,
-      artist: req.track.artist,
-      albumArtUrl: req.track.albumArtUrl,
-      spotifyUri: "spotify:track:{id}",
-      spotifyLink: "https://open.spotify.com/track/{id}",
-      status: req.status,
-      votes: req.votes,
-      requestedAt: req.createdAt,
-      requestedBy: req.requestedBy,
-      playedAt: req.playedAt,
-    },
-  ],
-});
-```
-
----
-
-### Fetch Played Requests (Spotify Format)
-
-```
-GET /api/rooms/:roomCode/fetch/spotify/played
-```
-
-**Access:** Public
-
-**Success Response:**
-
-```js
-res.status(200).json({
-  success: true,
-  data: [
-    {
-      id: req._id,
-      title: req.track.title,
-      artist: req.track.artist,
-      albumArtUrl: req.track.albumArtUrl,
-      spotifyUri: "spotify:track:{id}",
-      spotifyLink: "https://open.spotify.com/track/{id}",
-      status: req.status,
-      votes: req.votes,
-      requestedAt: "12:34 PM", // formatted
-      requestedBy: req.requestedBy,
-      playedAt: "1:05 PM", // formatted or empty string
-    },
-  ],
-});
-```
-
----
-
-## Spotify
-
-### Search Tracks
-
-```
-GET /api/spotify/search?q={query}
-```
-
-**Access:** Public
-
-**Success Response:**
-
-```js
-res.status(200).json({
-  success: true,
-  tracks: [
-    {
-      id: track.id,
-      name: track.name,
-      artist: "Artist 1, Artist 2",
-      duration_ms: track.duration_ms,
-      albumImage: "https://...",
-      uri: track.uri,
-    },
-  ],
-});
-```
-
----
-
-### Fetch Track Details
-
-```
-GET /api/spotify/tracks/:id
-```
-
-**Access:** Public
-
-**Success Response:**
-
-```js
-res.status(200).json({
-  success: true,
-  track: {
-    id: track.id,
-    name: track.name,
-    artist: "Artist 1, Artist 2",
-    album: track.album.name,
-    duration_ms: track.duration_ms,
-    popularity: track.popularity,
-    albumImage: "https://...",
-    previewUrl: track.preview_url,
-    uri: track.uri,
-  },
-});
-```
-
----
-
-### Fetch Artist's Top Tracks
-
-```
-GET /api/spotify/artists/:id/top-tracks
-```
-
-**Access:** Public
-
-**Success Response:**
-
-```js
-res.status(200).json({
-  success: true,
-  tracks: [
-    {
-      id: track.id,
-      name: track.name,
-      album: track.album.name,
-      duration_ms: track.duration_ms,
-      albumImage: "https://...",
-      uri: track.uri,
-    },
-  ],
-});
-```
-
----
-
-## Requests
-
-### Create Request
-
-```
-POST /api/requests
-```
-
-**Access:** Public
-**Body:** `{ track, roomId, requestedBy? }`
-**Socket Event:** `request:created` → `roomId, request`
-
-**Success Response:**
-
-```js
-res.status(201).json({
-  success: true,
-  message: `Success! ${request.track.title} has been added to the queue.`,
-  request,
-});
-```
-
----
-
-### Upvote Request
-
-```
-PUT /api/requests/vote
-```
-
-**Access:** Public
-**Body:** `{ requestId }`
-**Socket Event:** `request:updated` → `request.roomId, request`
-
-**Success Response:**
-
-```js
-res.status(200).json({
-  success: true,
-  message: `Your upvote on ${request.track.title} has been counted!`,
-  request,
-});
-```
-
----
-
-### Mark as Playing
-
-```
-PUT /api/requests/:requestId/mark-playing
-```
-
-**Access:** Private
-**Body:** `{ requestId }`
-**Socket Event:** `request:playing` → `request.roomId, request`
-
-**Success Response:**
-
-```js
-res.status(200).json({
-  success: true,
-  message: "Request marked as playing.",
-  request,
-});
-```
-
----
-
-### Mark as Played
-
-```
-PUT /api/requests/:requestId/mark-played
-```
-
-**Access:** Private
-**Body:** `{ requestId }`
-**Socket Event:** `request:played` → `request.roomId, request`
-
-**Success Response:**
-
-```js
-res.status(200).json({
-  success: true,
-  message: "Request marked as played.",
-  request,
-});
-```
-
----
-
-### Remove Request
-
-```
-DELETE /api/requests/:requestId/delete
-```
-
-**Access:** Private
-**Body:** `{ requestId }`
-**Socket Event:** `request:deleted` → `roomId, { requestId }`
-
-**Success Response:**
-
-```js
-res.status(200).json({
-  success: true,
-  message: "Request has been removed.",
-});
-```
-
----
-
-### Fetch Room Requests
-
-```
-GET /api/requests/:roomId/requests
-```
-
-**Access:** Public
-
-> Returns requests sorted by votes (descending).
-
-**Success Response:**
-
-```js
-res.status(200).json({
-  success: true,
-  requests, // array of Request documents
-});
-```
-
----
-
-### Fetch Request Details
+### Origins and cookies
 
-```
-GET /api/requests/:requestId
-```
-
-**Access:** Public
-
-**Success Response:**
-
-```js
-res.status(200).json({
-  success: true,
-  request,
-});
-```
-
----
-
-### Filter Requests
-
-```
-GET /api/requests/:roomId/filter?status={status}
-```
-
-**Access:** Public
-**Query:** `status` (optional) — `pending`, `playing`, `played`, `rejected`
-
-> Returns requests sorted by votes (descending).
-
-**Success Response:**
-
-```js
-res.status(200).json({
-  success: true,
-  requests,
-});
-```
-
----
-
-## Analytics
-
-### Total Rooms Hosted
-
-```
-GET /api/analytics/:userId/total-rooms-hosted
-```
+The local client runs on port 3000 and proxies `/api` and `/socket.io` to port 9999.
 
-**Access:** Public
+Express CORS is currently hardcoded in [config.ts](src/config/config.ts): `http://localhost:3000` outside production and `https://sway.onl` in production. **Changing `FRONTEND_URL` alone does not change Express CORS.** The Socket.IO allowlist is configured separately in [socket.ts](src/socket.ts). Update both when using another origin.
 
-**Success Response:**
+Real account auth uses the `jwt` cookie with `HttpOnly`, `SameSite=Strict`, and a 30 day lifetime. It is `Secure` whenever `NODE_ENV` is not `development`. Cross-origin requests must include credentials, and genuinely cross-site deployments need cookie-policy review. CORS alone does not override SameSite restrictions.
 
-```js
-res.status(200).json({
-  success: true,
-  roomsHosted,
-});
-```
-
----
-
-### Total Requests Received
-
-```
-GET /api/analytics/:userId/total-requests-received
-```
-
-**Access:** Public
-
-**Success Response:**
-
-```js
-res.status(200).json({
-  success: true,
-  requestsReceived,
-});
-```
-
----
+Demo requests use `X-Demo-Token`, which is included in the API's allowed headers, instead of login cookies.
 
-### Total Requests Played
+## Structure
 
-```
-GET /api/analytics/:userId/total-requests-played
-```
-
-**Access:** Public
-
-**Success Response:**
-
-```js
-res.status(200).json({
-  success: true,
-  requestsPlayed,
-});
-```
-
----
-
-### Most Played Artists
+| Location | Responsibility |
+| --- | --- |
+| [src/server.ts](src/server.ts) | Database connection, cleanup startup, HTTP listener, and sockets |
+| [src/app.ts](src/app.ts) | Express middleware, router registration, demo-token guard, and errors |
+| [src/config](src/config/) | Environment configuration, MongoDB, and logging |
+| [src/models](src/models/) | User, Room, and Request schemas |
+| [src/routes](src/routes/) | Normal API route registration |
+| [src/controllers](src/controllers/) | Account, room, request, catalog, analytics, export, and health handlers |
+| [src/middlewares](src/middlewares/) | Cookie authentication, error handling, and normal rate limiters |
+| [src/demo](src/demo/) | Demo model, seed data, restricted routes, display QR, Spotify cache, and limits |
+| [src/socket.ts](src/socket.ts) | Real-room Socket.IO subscriptions and broadcasts |
+| [tests](tests/) | Vitest/Supertest integration tests and temporary MongoDB setup |
 
-```
-GET /api/analytics/:userId/most-played-artists
-```
+## Database models
 
-**Access:** Public
-
-**Success Response:**
-
-```js
-res.status(200).json({
-  success: true,
-  artists: [
-    {
-      artist: "Artist Name",
-      playCount: 12,
-    },
-  ],
-});
-```
+| Model | Important fields and behavior |
+| --- | --- |
+| [User](src/models/user.model.ts) | Unique email, optional unique username, bcrypt-hashed password, `active`, `hasActiveRoom`, `hasUsername`, `admin`, timestamps |
+| [Room](src/models/room.model.ts) | `roomName` (100 characters), `roomDescription` (450), unique room code (up to 5), QR data URL, creator reference, active state, nullable `scheduledAt`, timestamps |
+| [Request](src/models/request.model.ts) | Room reference, status, votes, optional requester, `playedAt`, `completedAt`, Spotify metadata, timestamps |
+| [DemoSession](src/demo/demo.model.ts) | Separate `demosessions` document containing a synthetic host, room, requests, vote history, token hashes, and fixed expiry |
 
----
+Usernames accept 3–20 letters, digits, or underscores. Passwords have an 8 character minimum and are hashed before saving. Account “deletion” sets `active=false` and clears the login cookie, it does not purge the user or their room history.
 
-### Most Requested Songs
+Requests have `pending`, `playing`, `played`, or `rejected` status. Votes start at one. Track metadata includes `spotifyTrackId`, `title`, `artist`, `albumArtUrl`, `spotifyLink`, and `spotifyURI`. Playback transitions maintain timestamps for history and analytics.
 
-```
-GET /api/analytics/:userId/most-requested-songs
-```
+Room creation enforces one active room per DJ. Deleting a room removes its requests. The `scheduledAt` field exists, but room creation and automatic scheduled activation are not implemented as a complete scheduling workflow. (coming soon)
 
-**Access:** Private
-
-> Returns up to 10 songs grouped by Spotify track ID and sorted by request count.
-
-**Success Response:**
-
-```js
-res.status(200).json({
-  success: true,
-  songs: [
-    {
-      spotifyTrackId: "spotify-track-id",
-      title: "Song Title",
-      artist: "Artist Name",
-      albumArtUrl: "https://...",
-      spotifyLink: "https://open.spotify.com/track/{id}",
-      spotifyURI: "spotify:track:{id}",
-      requestCount: 8,
-      totalVotes: 21,
-      latestRequestedAt: "2024-01-15T10:30:00.000Z",
-      latestPlayedAt: null,
-    },
-  ],
-});
-```
+## API conventions
 
----
+Normal endpoints are prefixed with `/api`, health routes are outside that prefix. Send JSON for request bodies.
 
-### Most Played Songs
+“Private” below means the route uses the real account JWT middleware. Additional authorization depends on the controller, it does not imply every legacy route performs the same ownership checks. Demo tokens cannot authorize normal routes: [app.ts](src/app.ts) rejects `X-Demo-Token` on non-demo `/api` requests.
 
-```
-GET /api/analytics/:userId/most-played-songs
-```
+Most JSON responses include `success` plus the result key listed below. Common errors use `{ success: false, message }`, sometimes with an additional `error` field. File exports return downloads, and the general rate limiter returns a plain-text error, so clients should not assume every response is JSON.
 
-**Access:** Private
-
-> Returns up to 10 played songs grouped by Spotify track ID and sorted by play count.
-
-**Success Response:**
-
-```js
-res.status(200).json({
-  success: true,
-  songs: [
-    {
-      spotifyTrackId: "spotify-track-id",
-      title: "Song Title",
-      artist: "Artist Name",
-      albumArtUrl: "https://...",
-      spotifyLink: "https://open.spotify.com/track/{id}",
-      spotifyURI: "spotify:track:{id}",
-      requestCount: 5,
-      totalVotes: 14,
-      latestRequestedAt: "2024-01-15T10:30:00.000Z",
-      latestPlayedAt: "2024-01-15T11:05:00.000Z",
-    },
-  ],
-});
-```
+### Authentication
 
----
+Prefix: `/api/auth`.
 
-### Most Upvoted Songs
+| Method | Path | Access | Input / result |
+| --- | --- | --- | --- |
+| POST | `/` | Public | `email`, `password`; create an account and set the login cookie |
+| POST | `/username` | Private | `username`; finish username onboarding |
+| GET | `/username/:username` | Public | Username availability in `taken` |
+| GET | `/email/:email` | Public | Email availability in `taken` |
+| POST | `/login` | Public | `identifier` (username or email), `password`; set the login cookie |
+| POST | `/logout` | Public | Clear the login cookie |
 
-```
-GET /api/analytics/:userId/most-upvoted-songs
-```
+### Users
 
-**Access:** Private
-
-> Returns up to 10 songs grouped by Spotify track ID and sorted by total votes.
-
-**Success Response:**
-
-```js
-res.status(200).json({
-  success: true,
-  songs: [
-    {
-      spotifyTrackId: "spotify-track-id",
-      title: "Song Title",
-      artist: "Artist Name",
-      albumArtUrl: "https://...",
-      spotifyLink: "https://open.spotify.com/track/{id}",
-      spotifyURI: "spotify:track:{id}",
-      requestCount: 4,
-      totalVotes: 32,
-      latestRequestedAt: "2024-01-15T10:30:00.000Z",
-      latestPlayedAt: "2024-01-15T11:05:00.000Z",
-    },
-  ],
-});
-```
+Prefix: `/api/users`.
 
----
+| Method | Path | Access | Input / result |
+| --- | --- | --- | --- |
+| GET | `/me` | Private | Current `user` |
+| PUT | `/profile` | Private | Update `username` and/or `email` |
+| POST | `/password` | Private | `currentPassword`, `newPassword` |
+| DELETE | `/profile` | Private | Deactivate the account and clear its cookie |
+| GET | `/:userId/rooms/active` | Public | `activeRoom` |
+| GET | `/:userId/has-active-room` | Private | `hasActiveRoom` |
+| GET | `/:userId/inactive` | Private | `inactiveRooms`, including `requestsTotal` and `requestsPlayed` for play-rate display |
+| GET | `/:username/id` | Public | Resolve a public profile's `userId` |
 
-## Global
+### Rooms
 
-### Top 10 Most Requested Tracks on Sway
+Prefix: `/api/rooms`.
 
-```
-GET /api/global/tracks
-```
+| Method | Path | Access | Input / result |
+| --- | --- | --- | --- |
+| POST | `/` | Private | `roomName`, `roomDescription`; returns `newRoom` |
+| POST | `/join` | Public | `roomCode`; returns `roomDetails` for an active room |
+| PUT | `/end` | Private | `roomId`; end the room |
+| GET | `/recent` | Private | `latestRooms`: up to five rooms, active first, then newest |
+| GET | `/active/summary` | Private | `activeRoom` with summary metrics, or `null` |
+| PUT | `/:roomId` | Private | `roomName` and/or `roomDescription`; returns `updatedRoom` |
+| DELETE | `/:roomId` | Private | Requires `userId` in the body; removes the room and its requests |
+| GET | `/:roomCode` | Public | `roomDetails` |
+| GET | `/:roomCode/fetch/requests` | Public | Normalized queue in `data`, including Spotify links and status |
+| GET | `/:roomCode/fetch/spotify/played` | Public | Played tracklist in `data` with formatted request/play times |
 
-**Access:** Public
+The active summary includes `requestsReceived`, `requestsPlayed`, `requestsWaiting`, `totalVotes`, and up to four `recentRequests` inside `activeRoom`. Waiting includes both pending and currently playing requests. These endpoints power the new dashboard experience and recent room sidebar quick glance functionality.
 
-***Success Response:**
+The room display reuses room details and the generated QR code, it does not need a separate normal API endpoint.
 
-```js
-return res.status(200).json({
-            success: true,
-            cached: false,
-            data: topTracks,
-        });
-```
----
+### Song requests
 
-### Top 10 Most Requested Artists on Sway
+Prefix: `/api/requests`.
 
-```
-GET /api/global/artists
-```
+| Method | Path | Access | Input / result |
+| --- | --- | --- | --- |
+| POST | `/` | Public | `roomId`, optional `requestedBy`, and `track`; returns `request` |
+| PUT | `/vote` | Public | `requestId`; upvote a request |
+| PUT | `/:requestId/mark-playing` | Private | Also send `requestId` in the body |
+| PUT | `/:requestId/mark-played` | Private | Also send `requestId` in the body |
+| DELETE | `/:requestId/delete` | Private | Also send `requestId` in the body |
+| GET | `/:roomId/requests` | Public | `requests` ordered by votes |
+| GET | `/:requestId` | Public | One `request` |
+| GET | `/:roomId/filter?status=pending` | Public | `requests` matching the status |
 
-**Access:** Public
+The normal create handler accepts Spotify search fields `track.id`, `track.name`, `track.artist`, and optional `track.albumImage`. It stores normalized track fields and derived Spotify links. Use the shared client track mapper rather than assuming search and stored track shapes are identical.
 
-***Success Response:**
+Demo submissions instead require `track.spotifyTrackId` and resolve canonical metadata server side. The client mapper supplies the aliases needed by both contracts. This server verification is specific to the demo path, not a guarantee of the legacy normal request handler.
 
-```js
-return res.status(200).json({
-            success: true,
-            cached: false,
-            data: topArtists,
-        });
-```
----
+### Spotify
 
+Prefix: `/api/spotify`. These normal routes are public.
 
+| Method | Path | Result |
+| --- | --- | --- |
+| GET | `/search?q=track+or+artist` | Up to eight normalized `tracks` |
+| GET | `/tracks/:id` | One `track` with additional metadata |
+| GET | `/artists/:id/top-tracks` | Artist's top `tracks` |
 
-### Total Number of Requests Given on Sway
+Search results include `id`, `name`, `artist`, `duration_ms`, `albumImage`, and `uri`. The server uses a cached Spotify client credentials access token. No visitor Spotify login, external account connection, or audio playback is involved.
 
-```
-GET /api/global/requests
-```
+Demo search and track lookup have separate authenticated routes, metadata caching, and additional limits described below.
 
-**Access:** Public
+### User analytics
 
-***Success Response:**
+Prefix: `/api/analytics/:userId`.
 
-```js
- return res.status(200).json({
-                success: true,
-                message: `There have been ${totalRequests} songs requested on Sway.`,
-                totalRequests: totalRequests,
-            });
-```
----
+| Method | Path | Access | Result |
+| --- | --- | --- | --- |
+| GET | `/total-rooms-hosted` | Public | `roomsHosted` |
+| GET | `/total-requests-received` | Public | `requestsReceived` |
+| GET | `/total-requests-played` | Public | `requestsPlayed` |
+| GET | `/most-played-artists` | Public | Up to five `artists` |
+| GET | `/most-requested-songs` | Public | Up to ten `songs` |
+| GET | `/most-played-songs` | Public | Up to ten `songs` |
+| GET | `/most-upvoted-songs` | Public | Up to ten `songs` |
+| GET | `/request-activity?range=7d` | Private, owner or admin | `range`, `interval`, and activity `data` |
 
+Song rankings include Spotify metadata, `requestCount`, `playCount`, `totalVotes`, `latestRequestedAt`, and `latestPlayedAt`. These support profile/dashboard tables and room recommendations.
 
-### Total Number of Rooms Created on Sway
+Request activity defaults to `30d`; accepted ranges are `7d`, `30d`, `90d`, `6m`, `1y`, and `all`. Daily buckets serve the first three ranges, weekly buckets serve `6m`, monthly buckets serve `1y`, and `all` chooses a granularity based on history length. Buckets use UTC and include zero-count periods. Each item contains `date`, `requestsReceived`, and `requestsPlayed`; received counts use creation time, while played counts use played status and `playedAt`. The dashboard currently requests `7d`.
 
-```
-GET /api/global/rooms
-```
+The other analytics routes are public in the current router, including song rankings. Do not treat them as private account data.
 
-**Access:** Public
+### Global analytics
 
-***Success Response:**
+Prefix: `/api/global`. All routes are public.
 
-```js
-return res.status(200).json({
-            success: true,
-            message: `There have been ${totalRooms} created on Sway.`,
-            totalRooms: totalRooms,
-        })
-```
----
+| Method | Path | Result |
+| --- | --- | --- |
+| GET | `/tracks` | Top ten requested tracks in `data` |
+| GET | `/tracks/played` | Top five played tracks in `data`, including `playCount` |
+| GET | `/artists` | Top ten requested artists in `data` |
+| GET | `/requests` | `totalRequests` |
+| GET | `/rooms` | `totalRooms` |
 
-## Exports
+Ranking endpoints use a five-day in-process cache and expose a `cached` flag. These are not live rankings. Demo documents do not contribute to real global statistics.
 
-### Export Tracklist — JSON
+### Exporting data
 
-```
-GET /api/exports/:roomId/tracklist/json
-```
+Prefix: `/api/exports`.
 
-**Access:** Private (played songs only)
-
-**Success Response:**
-
-```js
-res.status(200).json({
-  success: true,
-  message: "Tracklist exported successfully.",
-  tracklist: [
-    {
-      title: request.track.title,
-      artist: request.track.artist,
-      playedAt: "12:34 PM",
-    },
-  ],
-});
-```
+| Method | Registered path | Access | Result |
+| --- | --- | --- | --- |
+| GET | `/:roomId/tracklist/json` | Private | Played songs in `tracklist` |
+| GET | `/:roomId/tracklist/csv` | Private | Played-track CSV download |
+| GET | `/:roomId/tracklist/txt` | Private | Played-track text download |
+| GET | `/:roomCode/export/json` | Public | Room requests in `data` |
+| GET | `/:roomCode/export/txt` | Public | Room-request text download |
 
----
+Exports require an ended room, and demo exports are unavailable.
 
-### Export Tracklist — CSV
+Known wiring limitation: [export.routes.ts](src/routes/export.routes.ts) registers the request CSV controller under a second `/export/json` route, so the first JSON handler wins and `/export/csv` is not available. The text route is `/export/txt`, not `/export/plaintext`. The client's generic request file helpers still use the CSV/plaintext paths. The current room history UI exposes request JSON export instead. Played tracklist JSON/CSV/TXT routes are registered separately.
 
-```
-GET /api/exports/:roomId/tracklist/csv
-```
+### Server health
 
-**Access:** Private (played songs only)
-**Response:** CSV file download
+| Method | Path | Access | Result |
+| --- | --- | --- | --- |
+| GET | `/` | Public | Service metadata; not a complete database readiness check |
+| GET | `/server/health/admin` | Private, admin | Runtime health statistics |
 
----
+Unknown routes return 404.
 
-### Export Tracklist — Plain Text
+## Public demo API
 
-```
-GET /api/exports/:roomId/tracklist/txt
-```
+Visitors start at the client's `/demo` page and choose DJ or Guest. The client creates or resumes a private, 30 minute session and renders the same `RoomAdmin`, `Room`, display, and tracklist components used by real rooms. The visitor can switch roles in the same tab, edit the room, search and request real Spotify songs, vote, manage playback state, end the room, inspect its tracklist, and reset it. Resetting restores the seed without extending expiration.
 
-**Access:** Private (played songs only)
-**Response:** Text file download
+The API stores the entire sandbox as one document in `demosessions`: a synthetic host, room, requests, vote history, and fixed expiry. It never creates permanent User, Room, or Request documents and therefore does not affect real accounts or global statistics. There is no permanent shared username or password.
 
----
+| Method | Path | Authentication | Purpose |
+| --- | --- | --- | --- |
+| POST | `/api/demo/session` | None; creation limit applies | Create a session; return `djToken`, `guestToken`, `expiresAt`, `room`, and `user` |
+| GET | `/api/demo/session` | `X-Demo-Token` | Fetch current session details |
+| POST | `/api/demo/reset` | Either role token | Restore seeds while preserving room identity, tokens, and expiry |
+| Various | `/api/demo/api/*` | `X-Demo-Token` | Allowlisted room, request, catalog, and recommendation contracts |
 
-### Export Requests — JSON
+Both random role tokens are intentionally returned to the visitor so they can switch perspectives. Only SHA-256 token hashes are stored. The browser keeps the tokens in session storage with an in-memory fallback, independently of the real login cookie and auth store. It sends the active role token in `X-Demo-Token`; tokens never appear in URLs. A guest token alone cannot edit/end the room or manage playback, but it can request tracks and vote. Both roles can reset their own session.
 
-```
-GET /api/exports/:roomCode/export/json
-```
+The allowlist supports room details and recent rooms, request lists/details/filtering, tracklists, room editing/ending, request creation/voting/playback/removal, Spotify search/details, and the recommendation data needed by the shared UI. It does not expose every normal endpoint. Credential changes, signup, external account connections, extra rooms, exports, and public sharing fail closed. A demo token sent to a normal API route is rejected even when the browser also has a valid real-account cookie.
 
-**Access:** Public
-
-**Success Response:**
-
-```js
-res.status(200).json({
-  success: true,
-  message: "Requests exported successfully.",
-  data: [
-    {
-      title: req.track.title,
-      artist: req.track.artist,
-      votes: req.votes,
-      status: req.status,
-      playedAt: "12:34 PM", // or ""
-      requestedAt: "Jan 15, 2024 at 10:30 AM",
-      requestedBy: req.requestedBy,
-    },
-  ],
-});
-```
+Every request validates fixed expiry and scopes resource lookups to the session. Document version checks reject concurrent lost updates with 409. Missing or malformed tokens return 401; expired or unknown sessions return 410; cross-session resource lookups return 404. Unsupported operations return 403.
 
----
+### Seeded data and live music
 
-### Export Requests — CSV
+[demo.tracks.ts](src/demo/demo.tracks.ts) holds checked in snapshots of real Spotify tracks with artwork, IDs, and links plus their verification dates. [demo.seed.ts](src/demo/demo.seed.ts) assembles synthetic requests, history, votes, and recommendations. Spotify links work throughout the queue, recommendations, and tracklist. Sway changes request state but does not play audio or connect a visitor's Spotify account.
 
-```
-GET /api/exports/:roomCode/export/csv
-```
+Recommendations use 19 separately curated tracks across rows of 10 and 9, with sample historical counts such as 203, 331, 98, and 121. For their respective artists. Recommendation counts, initial votes, requesters, and play history are simulated rather than Spotify listening statistics. Queue defaults are maintained separately from recommendations. Existing sessions load changed defaults when reset, not by automatic overwrites.
 
-**Access:** Public
-**Response:** CSV file download
+Live searches reuse the app's shared Spotify search component and the server's client credentials integration, visitors never log into Spotify. Demo submissions validate a 22-character Spotify track ID and resolve titles, artists, and artwork server-side rather than trusting browser metadata. Search queries must contain 2–100 characters.
 
----
+Demo Spotify results and canonical track metadata have a bounded 500-entry, five-minute server cache with duplicate in-flight requests coalesced. Upstream requests have eight-second timeouts; Spotify 429 responses preserve `Retry-After` and pause new upstream calls for that period. Seed rendering needs no live Spotify access, while search and newly submitted tracks require the existing `SPOTIFY_CLIENT_ID` and `SPOTIFY_CLIENT_SECRET`. No demo-specific environment variables are required.
 
-### Export Requests — Plain Text
+### Demo display and synchronization
 
-```
-GET /api/exports/:roomCode/export/plaintext
-```
+The associated display opens at `/demo/room/:roomCode/display` in the same tab to retain its private session. It reuses the real display layout and current room details. Its QR links to `FRONTEND_URL/demo/guest`, where a scanning visitor starts or resumes their own demo rather than gaining access to the displayed room. No token or private room ID is embedded in the QR. The display explains the distinction and provides a path back to the DJ view through the demo controls.
 
-**Access:** Public
-**Response:** Text file download
+Demo room data refreshes through an isolated React Query cache every five seconds. Catalog queries never poll and use a 1 minute client cache. Demo rooms never join production Socket.IO channels.
 
----
+Demo URLs are private to the browser session. Sharing a URL or opening it in an unrelated tab does not grant access, that visitor is directed to start their own demo. Closing the tab discards its session-storage access, and expired server data is removed later.
 
-## Server Health
+### Expiry, cleanup, and rate limits
 
-### Root Route
+| Scope | Limit |
+| --- | --- |
+| Session lifetime | 30 minutes, including resets |
+| Creation | 10 sessions/hour/IP |
+| All demo traffic | 240 requests/minute/IP |
+| Authenticated traffic | 180 requests/minute/session across both roles |
+| Writes and resets | 40 requests/minute/session |
+| Search, track details, and song submissions combined | 20 requests/minute/session and 60/minute/IP |
+| Upstream Spotify calls | 30 per rolling 30 seconds/server process |
+| Stored requests | 60 per demo |
+| Voting | One vote per queued request per session |
 
-```
-GET /
-```
+Endpoint quotas still count cache hits; the upstream quota counts only provider calls. Song submissions cannot bypass the music-endpoint limits.
 
-**Access:** Public
-
-**Success Response:**
-
-```js
-res.status(200).json({
-  success: true,
-  message: "What are you doing here? This is Sway's API!",
-  home: "https://www.sway.onl",
-  service: "sway - a DJ's best friend",
-  version: "1.0.2",
-  development: "https://www.jsmalls.net",
-  timestamp: "2024-01-15T10:30:00.000Z",
-});
-```
+Expired documents are removed on server startup and every minute. A MongoDB TTL index on `expiresAt` is a backup cleanup mechanism. Authorization checks expiry immediately, regardless of when cleanup runs. Reset never extends the deadline.
 
----
+Cross-origin deployments must allow `X-Demo-Token`. Do not cache personalized demo responses or log demo-token headers. The rate-limit memory stores, upstream quota guard, and Spotify caches are process-local; multi-replica deployments need shared limits and correctly configured trusted proxy addresses. Do not blindly enable `trust proxy` for arbitrary forwarded addresses.
 
-### Health Check
+## Normal API rate limits
 
-```
-GET /server/health/admin
-```
+The shared general limiter allows 100 requests per two hours per IP. It is mounted on authentication, users, global analytics, exports, and room creation, not every API route. Normal votes have a separate limit of five per 30 seconds per IP.
 
-**Access:** Private (admin only)
-
-**Success Response:**
-
-```js
-res.status(200).json({
-  status: "OK",
-  success: true,
-  message: "Services are currently up and running.",
-  service: "sway - a DJ's best friend",
-  version: "1.0.2",
-  development: "https://www.jsmalls.net",
-  documentation: "https://www.github.com/jordansmalls/sway",
-  timestamp: "2024-01-15T10:30:00.000Z",
-  environment: "production",
-  uptime_raw_seconds: 12345.67,
-  uptime_formatted: "3h 25m 45s",
-  memory: { rss: 49352704, heapTotal: 18268160, /* ... */ },
-  process_version: "v20.10.0",
-});
-```
+The normal Spotify router has no dedicated limiter mounted, and the general limiter in the user analytics router is currently commented out. Demo limits are separate and do not harden those normal routes. Review normal endpoint exposure before a public rollout.
 
----
+## Socket.IO
 
-### 404 Handler
+The server supports WebSocket and polling transports. A client emits `join-room` or `leave-room` with the MongoDB room ID, not the short room code. The channel name is `room-${roomId}`.
 
-```
-ANY /*
-```
+| Server event | Payload |
+| --- | --- |
+| `room:updated` | Room ID and updated name/description |
+| `room:ended` | `{ roomId }` |
+| `request:created`, `request:updated`, `request:playing`, `request:played` | Request document |
+| `request:deleted` | `{ requestId }` |
 
-**Access:** Public
+The client normalizes request events into its query cache. A legacy client `room:update` event is also rebroadcast as `room:updated`. Socket handlers currently have no dedicated authentication/room-authorization layer; do not treat channel membership as private access control.
 
-**Response:**
+## Tests
 
-```js
-res.status(404).json({
-  success: false,
-  error: "404 ROUTE NOT FOUND",
-  message: "CANNOT GET /unknown-route",
-});
+```bash
+bun run test:run
 ```
-
----
-
-## Socket.IO Events
 
-| Event | Direction | Payload | Description |
-|-------|-----------|---------|-------------|
-| `room:updated` | Server → Client | `{ roomId, ...roomData }` | Room details changed |
-| `room:ended` | Server → Client | `{ roomId }` | Room was closed |
-| `request:created` | Server → Client | `Request` | New song added to queue |
-| `request:updated` | Server → Client | `Request` | Request upvoted |
-| `request:playing` | Server → Client | `Request` | Song now playing |
-| `request:played` | Server → Client | `Request` | Song finished |
-| `request:deleted` | Server → Client | `{ requestId }` | Song removed from queue |
+[vitest.config.ts](vitest.config.ts) runs [tests](tests/) with Supertest and temporary MongoDB instances. Tests cover auth and health behavior, plus demo isolation, role permissions, fixed expiry, cleanup, reset, real-login preservation, voting, playback, room editing/ending, display behavior, Spotify metadata, caching, endpoint/upstream quotas, and provider errors.
 
+Spotify responses are mocked in the demo tests. The normal general/vote limiters are mocked in shared test setup and demo limits have dedicated coverage. A first run may require network access to download a MongoDB binary. Live catalog verification requires working app credentials and is separate from this suite.
 
----
+For UI verification, run `pnpm build` from `client/` and follow its [manual checklist](../client/README.md#manual-verification).
 
-# Contact
+## Contact
 
-I'd love to talk about Sway. Feel free to message me on [twitter](https://www.x.com/@jsmallsdev), or send me an [email](mailto:hi@jsmalls.net).
+Message [@jsmallsdev](https://www.x.com/jsmallsdev) or email [hi@jsmalls.net](mailto:hi@jsmalls.net).
