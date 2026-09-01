@@ -13,6 +13,8 @@ import Room from "../models/room.model";
 
 let topTracksCache = null;
 let topTracksCacheTime = 0;
+let mostPlayedTracksCache = null;
+let mostPlayedTracksCacheTime = 0;
 
 const CACHE_DURATION = 5 * 24 * 60 * 60 * 1000; // 5 days in milliseconds
 
@@ -48,6 +50,12 @@ export const mostRequestedTracks = async (req, res) => {
                     totalVotes: { $sum: "$votes" },
                     // Count how many times this song was added to a queue overall
                     requestCount: { $sum: 1 },
+                    // Count how many of those requests were played
+                    playCount: {
+                        $sum: { $cond: [{ $eq: ["$status", "played"] }, 1, 0] },
+                    },
+                    latestRequestedAt: { $max: "$createdAt" },
+                    latestPlayedAt: { $max: "$playedAt" },
                 },
             },
 
@@ -80,6 +88,49 @@ export const mostRequestedTracks = async (req, res) => {
             success: false,
             error: "Internal Server Error",
             message: "We're having trouble, please try again soon.",
+        });
+    }
+};
+
+/**
+ * @desc    Top 5 Played Tracks on Sway
+ * @route   GET /api/global/tracks/played
+ * @access  PUBLIC
+ */
+export const mostPlayedTracks = async (req, res) => {
+    try {
+        const now = Date.now();
+        if (mostPlayedTracksCache && now - mostPlayedTracksCacheTime < CACHE_DURATION) {
+            return res.status(200).json({ success: true, cached: true, data: mostPlayedTracksCache });
+        }
+
+        const tracks = await Request.aggregate([
+            { $match: { status: "played" } },
+            {
+                $group: {
+                    _id: "$track.spotifyTrackId",
+                    spotifyTrackId: { $first: "$track.spotifyTrackId" },
+                    title: { $first: "$track.title" },
+                    artist: { $first: "$track.artist" },
+                    albumArtUrl: { $first: "$track.albumArtUrl" },
+                    spotifyLink: { $first: "$track.spotifyLink" },
+                    playCount: { $sum: 1 },
+                    latestPlayedAt: { $max: "$playedAt" },
+                },
+            },
+            { $sort: { playCount: -1, latestPlayedAt: -1 } },
+            { $limit: 5 },
+        ]);
+
+        mostPlayedTracksCache = tracks;
+        mostPlayedTracksCacheTime = now;
+        return res.status(200).json({ success: true, cached: false, data: tracks });
+    } catch (err) {
+        console.error("There was an error fetching the most played tracks on Sway:", err);
+        return res.status(500).json({
+            success: false,
+            error: "Internal Server Error",
+            message: "We're having trouble finding the most played tracks, please try again soon.",
         });
     }
 };

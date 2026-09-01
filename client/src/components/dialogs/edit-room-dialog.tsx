@@ -19,24 +19,29 @@ import { toast } from 'sonner';
 import { useUpdateRoomMutation } from '@/api/rooms';
 import type { Room } from '@/api/types';
 import { useAuthStore } from '@/stores/auth-store';
+import { useDemoSession } from '@/components/demo/demo-context';
 
 interface EditRoomDialogProps {
-  variant: React.ComponentProps<typeof Button>['variant'];
+  variant?: React.ComponentProps<typeof Button>['variant'];
   roomData: Room;
   triggerClassName?: string;
+  trigger?: React.ReactNode;
 }
 
 export function EditRoomDialog({
   variant,
   roomData,
   triggerClassName,
+  trigger,
 }: EditRoomDialogProps) {
   const [open, setOpen] = useState(false);
   const [roomName, setRoomName] = useState(roomData.roomName);
   const [roomDescription, setRoomDescription] = useState(
     roomData.roomDescription
   );
-  const user = useAuthStore((state) => state.user);
+  const realUser = useAuthStore((state) => state.user);
+  const demo = useDemoSession();
+  const user = demo?.user ?? realUser;
   const updateRoomMutation = useUpdateRoomMutation();
   const roomCreatorId =
     typeof roomData.roomCreator === 'string'
@@ -95,7 +100,7 @@ export function EditRoomDialog({
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button
+        {trigger ?? <Button
           variant={variant}
           size="sm"
           className={cn('shrink-0 text-xs transition ease-in', triggerClassName)}
@@ -103,7 +108,7 @@ export function EditRoomDialog({
           <SquarePen />
           <span className="hidden sm:inline">Edit Room</span>
           <span className="sr-only sm:hidden">Edit Room</span>
-        </Button>
+        </Button>}
       </DialogTrigger>
 
       <DialogContent className="sm:max-w-[425px]">

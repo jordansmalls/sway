@@ -198,6 +198,14 @@ export const markRequestPlaying = async (req, res) => {
 
         // Check if user is room creator
         const room = await Room.findById(request.roomId);
+        if (!room) {
+            return res.status(404).json({
+                success: false,
+                error: "Resource not found",
+                message: "Room not found!",
+            });
+        }
+
         if (room.roomCreator.toString() !== req.user.id.toString()) {
             return res.status(403).json({
                 success: false,
@@ -206,9 +214,38 @@ export const markRequestPlaying = async (req, res) => {
             });
         }
 
-        request.status = "playing";
-        request.playedAt = new Date();
+        const changedAt = new Date();
+        const previouslyPlaying = await Request.find({
+            roomId: request.roomId,
+            status: "playing",
+            _id: { $ne: request._id },
+        });
 
+        if (previouslyPlaying.length > 0) {
+            await Request.updateMany(
+                {
+                    roomId: request.roomId,
+                    status: "playing",
+                    _id: { $ne: request._id },
+                },
+                {
+                    $set: {
+                        status: "played",
+                        completedAt: changedAt,
+                    },
+                },
+            );
+
+            previouslyPlaying.forEach((previousRequest) => {
+                previousRequest.status = "played";
+                previousRequest.completedAt = changedAt;
+                emitToRoom(previousRequest.roomId, "request:played", previousRequest);
+            });
+        }
+
+        request.status = "playing";
+        request.playedAt = changedAt;
+        request.completedAt = null;
         await request.save();
 
         // Emit socket event for status change

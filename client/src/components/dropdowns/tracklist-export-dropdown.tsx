@@ -21,6 +21,7 @@ interface TracklistExportDropdownProps {
   roomName: string;
   /** Optional: Change the button's appearance */
   variant?: 'default' | 'secondary' | 'outline';
+  triggerClassName?: string;
 }
 
 // --- Download Logic Utility ---
@@ -43,6 +44,7 @@ export function TracklistExportDropdown({
   roomId,
   roomName,
   variant = 'default',
+  triggerClassName,
 }: TracklistExportDropdownProps) {
   const [exportingFormat, setExportingFormat] =
     useState<TracklistExportFormat | null>(null);
@@ -91,6 +93,7 @@ export function TracklistExportDropdown({
         <SpinnerButton
           variant={variant}
           size="sm"
+          className={triggerClassName}
           isLoading={isLoading}
           loadingText={
             exportingFormat ? `Exporting ${exportingFormat}...` : 'Exporting...'

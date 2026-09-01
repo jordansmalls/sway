@@ -26,7 +26,10 @@ type ActiveRoomStatusResponse = {
 
 type InactiveRoomsResponse = {
   success: true
-  inactiveRooms: Room[]
+  inactiveRooms: (Room & {
+    requestsPlayed: number
+    requestsTotal: number
+  })[]
 }
 
 type fetchUserIdResponse = {

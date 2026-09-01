@@ -10,6 +10,102 @@ import { createSpotifyLink, createSpotifyUriLink } from "../utils/formatters/for
 import { formatTo12HourTime } from "../utils/formatters/format.times";
 
 /**
+ * @desc    Fetch the authenticated user's five most recently created rooms
+ * @route   GET /api/rooms/recent
+ * @access  PRIVATE
+ */
+export const fetchUserLatestRooms = async (req, res) => {
+    try {
+        const latestRooms = await Room.find({ roomCreator: req.user._id })
+            .select("roomName roomCode active createdAt updatedAt")
+            .sort({ active: -1, createdAt: -1 })
+            .limit(5)
+            .lean();
+
+        return res.status(200).json({
+            success: true,
+            latestRooms,
+        });
+    } catch (err) {
+        console.error("There was an error fetching the user's latest rooms:", err);
+        return res.status(500).json({
+            success: false,
+            error: "Internal Server Error",
+            message: "We're having trouble loading your recent rooms, please try again soon.",
+        });
+    }
+};
+
+/**
+ * @desc    Fetch the authenticated user's active room and live summary
+ * @route   GET /api/rooms/active/summary
+ * @access  PRIVATE
+ */
+export const fetchActiveRoomSummary = async (req, res) => {
+    try {
+        const activeRoom = await Room.findOne({
+            roomCreator: req.user._id,
+            active: true,
+        })
+            .select("roomName roomDescription roomCode roomCreator active scheduledAt createdAt updatedAt")
+            .lean();
+
+        if (!activeRoom) {
+            return res.status(200).json({
+                success: true,
+                activeRoom: null,
+            });
+        }
+
+        const [metricsResult, recentRequests] = await Promise.all([
+            Request.aggregate([
+                { $match: { roomId: activeRoom._id } },
+                {
+                    $group: {
+                        _id: null,
+                        requestsReceived: { $sum: 1 },
+                        requestsPlayed: {
+                            $sum: { $cond: [{ $eq: ["$status", "played"] }, 1, 0] },
+                        },
+                        requestsWaiting: {
+                            $sum: {
+                                $cond: [{ $in: ["$status", ["pending", "playing"]] }, 1, 0],
+                            },
+                        },
+                        totalVotes: { $sum: "$votes" },
+                    },
+                },
+            ]),
+            Request.find({ roomId: activeRoom._id })
+                .select("track status votes createdAt")
+                .sort({ createdAt: -1 })
+                .limit(4)
+                .lean(),
+        ]);
+        const metrics = metricsResult[0];
+
+        return res.status(200).json({
+            success: true,
+            activeRoom: {
+                ...activeRoom,
+                requestsReceived: metrics?.requestsReceived ?? 0,
+                requestsPlayed: metrics?.requestsPlayed ?? 0,
+                requestsWaiting: metrics?.requestsWaiting ?? 0,
+                totalVotes: metrics?.totalVotes ?? 0,
+                recentRequests,
+            },
+        });
+    } catch (err) {
+        console.error("There was an error fetching the active room summary:", err);
+        return res.status(500).json({
+            success: false,
+            error: "Internal Server Error",
+            message: "We're having trouble loading your active room, please try again soon.",
+        });
+    }
+};
+
+/**
  * @desc    Create a Room
  * @route   POST /api/rooms
  * @access  PRIVATE

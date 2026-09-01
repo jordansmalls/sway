@@ -2,6 +2,7 @@ import config from "../config/config";
 import User from "../models/user.model";
 import validator from "validator";
 import Room from "../models/room.model";
+import Request from "../models/request.model";
 
 /**
  * @desc    Update user profile
@@ -387,7 +388,7 @@ export const fetchUserInactiveRooms = async (req, res) => {
             });
         }
 
-        const inactiveRooms = await Room.find({ roomCreator: userId, active: false });
+        const inactiveRooms = await Room.find({ roomCreator: userId, active: false }).lean();
 
         if (inactiveRooms.length === 0) {
             return res.status(200).json({
@@ -396,9 +397,35 @@ export const fetchUserInactiveRooms = async (req, res) => {
             });
         }
 
+        const requestCounts = await Request.aggregate([
+            { $match: { roomId: { $in: inactiveRooms.map((room) => room._id) } } },
+            {
+                $group: {
+                    _id: "$roomId",
+                    requestsTotal: { $sum: 1 },
+                    requestsPlayed: {
+                        $sum: { $cond: [{ $eq: ["$status", "played"] }, 1, 0] },
+                    },
+                },
+            },
+        ]);
+        const countsByRoom = new Map(
+            requestCounts.map((counts) => [counts._id.toString(), counts])
+        );
+
+        const inactiveRoomsWithPlayRate = inactiveRooms.map((room) => {
+            const counts = countsByRoom.get(room._id.toString());
+
+            return {
+                ...room,
+                requestsPlayed: counts?.requestsPlayed ?? 0,
+                requestsTotal: counts?.requestsTotal ?? 0,
+            };
+        });
+
         return res.status(200).json({
             success: true,
-            inactiveRooms,
+            inactiveRooms: inactiveRoomsWithPlayRate,
         });
     } catch (err) {
         console.error("There was an error attempting to fetch a user's inactive rooms:", err);

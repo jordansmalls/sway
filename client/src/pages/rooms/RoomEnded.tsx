@@ -1,11 +1,14 @@
+import { SwayLogo } from '@/components/sway-logo';
+import { ArrowRight, Music2 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Button } from '../../components/ui/button';
+
+import { Button } from '@/components/ui/button';
+import { roomExperiencePath, isDemoExperience } from '@/lib/demo-session';
 
 interface RoomEndedProps {
   roomCode?: string;
   roomName?: string;
 }
-
 
 const RoomEnded: React.FC<RoomEndedProps> = ({ roomCode, roomName }) => {
   const navigate = useNavigate();
@@ -13,62 +16,36 @@ const RoomEnded: React.FC<RoomEndedProps> = ({ roomCode, roomName }) => {
   const tracklistRoomCode = roomCode ?? routeRoomCode ?? '';
 
   return (
-    <div className="flex min-h-svh flex-col items-center justify-center gap-6 bg-muted p-6 md:p-10">
-      <div className="flex w-full max-w-sm flex-col gap-6">
-        <a
-          href="https://www.sway.onl"
-          className="flex items-center gap-2 self-center font-medium"
-          target="_blank"
-        >
-          <div className="flex size-6 items-center justify-center rounded-md bg-primary text-primary-foreground font-black tracking-tighter">
-            <svg
-              width="12"
-              height="12"
-              viewBox="0 0 42 42"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <g clip-path="url(#clip0_47_23)">
-                <path
-                  d="M20.7724 21.7681V21.2276H20.2319H6.17781V20.2095C13.0744 18.5019 18.5019 13.0744 20.2095 6.17781H21.2276V20.2319V20.7724H21.7681H35.8222V21.7905C28.9256 23.4981 23.4981 28.9256 21.7905 35.8222H20.7724V21.7681ZM1.54054 15.5946H1V16.1351V25.8649V26.4054H1.54054H15.5946V40.4595V41H16.1351H25.8649H26.4054V40.4595C26.4054 32.6977 32.6977 26.4054 40.4595 26.4054H41V25.8649V16.1351V15.5946H40.4595H26.4054V1.54054V1H25.8649H16.1351H15.5946V1.54054C15.5946 9.30232 9.30232 15.5946 1.54054 15.5946Z"
-                  fill="white"
-                  stroke="white"
-                />
-              </g>
-              <defs>
-                <clipPath id="clip0_47_23">
-                  <rect width="42" height="42" fill="white" />
-                </clipPath>
-              </defs>
-            </svg>
-          </div>
-        </a>
+    <main className="min-h-svh bg-white text-zinc-950 dark:bg-background dark:text-foreground">
+      <section className="flex min-h-svh flex-col px-6 py-7 sm:px-10 lg:px-14 xl:px-20">
+        <div className="flex flex-1 items-center justify-center py-12">
+          <div className="w-full max-w-md">
+            <div className="mb-9 flex flex-col items-center text-center">
+              <a href="https://www.sway.onl" className="mb-7 flex w-fit items-center gap-2.5 text-xl font-bold tracking-[-0.04em]">
+                <SwayLogo className="h-8" />
+              </a>
+              <h1 className="max-w-sm text-3xl font-semibold leading-[1.1] tracking-[-0.04em] sm:text-4xl">The room is over.</h1>
+              <p className="mt-3 max-w-sm text-sm leading-6 text-zinc-500 dark:text-muted-foreground">
+                {roomName ? <><span className="font-medium text-zinc-950 dark:text-foreground">{roomName}</span> has ended. </> : 'This room has ended. '}
+                You can still view the final tracklist or join another room.
+              </p>
+            </div>
 
-        <section className="text-center">
-          <h1 className="font-semibold text-4xl tracking-tight mb-4">
-            The Room is Over!
-          </h1>
-          <p className="mb-4 text-foreground/80">
-            We hope you enjoyed {roomName}, with Sway!
-          </p>
-          <Button
-            onClick={() => navigate(`/${tracklistRoomCode}/tracklist`)}
-            disabled={!tracklistRoomCode}
-            className="transition duration-300 px-3 py-5 w-full text-lg tracking-tight font-normal"
-          >
-            View Tracklist
-          </Button>
-          <div className="mt-4 text-center">
-            <button
-              onClick={() => navigate('/join-room')}
-              className="text-sm text-foreground/80 transition duration-300 hover:text-primary hover:cursor-pointer"
-            >
-              Join Another Room?
-            </button>
+            <div className="grid gap-3">
+              <Button onClick={() => navigate(roomExperiencePath(`/${tracklistRoomCode}/tracklist`))} disabled={!tracklistRoomCode} className="h-12 w-full rounded-xl bg-black text-base font-semibold text-white shadow-none transition-colors duration-300 ease-out hover:bg-zinc-800 dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90">
+              <Music2 className="size-4" />
+              View tracklist
+            </Button>
+              <Button variant="outline" onClick={() => navigate(isDemoExperience() ? '/demo' : '/join-room')} className="h-12 w-full rounded-xl border-zinc-200 bg-white text-base font-semibold shadow-none transition-colors duration-300 ease-out hover:bg-zinc-100 dark:border-input dark:bg-background dark:hover:bg-accent">
+              Join another room
+              <ArrowRight className="size-4" />
+            </Button>
+            </div>
           </div>
-        </section>
-      </div>
-    </div>
+        </div>
+      </section>
+    </main>
   );
-}
+};
+
 export default RoomEnded;

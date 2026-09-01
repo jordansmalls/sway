@@ -1,6 +1,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { Plus } from "lucide-react";
 
 import { useActiveRoomQuery, useActiveRoomStatusQuery } from "@/api/users";
 import { useAuthStore } from "@/stores/auth-store";
@@ -67,17 +68,40 @@ const CreateRoomButton = () => {
 
   if (isLoading) {
     return (
-      <SpinnerButton isLoading loadingText="Loading...">
+      <SpinnerButton
+        variant="ghost"
+        className="h-9 w-full justify-start px-2 font-normal"
+        isLoading
+        loadingText="Loading..."
+      >
         Create Room
       </SpinnerButton>
     );
   }
 
   if (userHasActiveRoom) {
-    return <Button onClick={handleClickJoin}>Join Room</Button>;
+    return (
+      <Button
+        variant="ghost"
+        className="h-9 w-full justify-start gap-2 px-2 font-normal"
+        onClick={handleClickJoin}
+      >
+        <Plus className="size-4" />
+        Join Active Room
+      </Button>
+    );
   }
 
-  return <Button onClick={handleClickCreate}>Create Room</Button>;
+  return (
+    <Button
+      variant="ghost"
+      className="h-9 w-full justify-start gap-2 px-2 font-normal"
+      onClick={handleClickCreate}
+    >
+      <Plus className="size-4" />
+      Create Room
+    </Button>
+  );
 };
 
 export default CreateRoomButton;

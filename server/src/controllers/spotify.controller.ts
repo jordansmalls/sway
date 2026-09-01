@@ -5,10 +5,10 @@ const CLIENT_ID = config.spotify_client_id;
 const CLIENT_SECRET = config.spotify_client_secret;
 
 // Cache the token to avoid unnecessary requests
-let cachedToken = null;
-let tokenExpiration = null;
+let cachedToken: string | null = null;
+let tokenExpiration: number | null = null;
 
-const getAccessToken = async () => {
+export const getAccessToken = async () => {
     // check for valid cached token
     if (cachedToken && tokenExpiration && Date.now() < tokenExpiration) {
         return cachedToken;
@@ -19,6 +19,7 @@ const getAccessToken = async () => {
         const response = await axios({
             method: "post",
             url: "https://accounts.spotify.com/api/token",
+            timeout: 8000,
             params: {
                 grant_type: "client_credentials",
             },
@@ -30,13 +31,13 @@ const getAccessToken = async () => {
         });
 
         // Cache the token and expiration
-        cachedToken = response.data.access_token;
+        cachedToken = response.data.access_token as string;
         // Set expiration 10 seconds before actual expiry to be safe
         tokenExpiration = Date.now() + (response.data.expires_in - 10) * 1000;
 
         return cachedToken;
     } catch (err) {
-        console.error("There was an error getting a token from Spotify:", err);
+        console.error("Spotify token request failed:", axios.isAxiosError(err) ? err.response?.status ?? err.code : "Unknown error");
         throw err;
     }
 };

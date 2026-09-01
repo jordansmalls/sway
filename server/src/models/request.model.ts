@@ -68,15 +68,10 @@ requestSchema.index({ roomId: 1 });
 requestSchema.index({ status: 1 });
 requestSchema.index({ roomId: 1, status: 1 });
 
-// TODO: === TEST THIS === \\
-// pre save hook
-requestSchema.pre("save", function (next) {
-    // if (this.status === "played" && !this.playedAt)
+requestSchema.pre("save", function () {
     if (this.status === "played" && this.playedAt === null) {
         this.playedAt = new Date();
     }
-    // return;
-    // next();
 });
 
 const Request = mongoose.model("Request", requestSchema);

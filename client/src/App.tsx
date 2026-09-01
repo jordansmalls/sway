@@ -6,14 +6,13 @@ import { ThemeProvider } from "./components/theme/theme-provider";
 
 export default function App(){
   return (
-    <main className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-background text-foreground">
       <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
         <TooltipProvider>
           <Toaster />
           <Outlet />
         </TooltipProvider>
       </ThemeProvider>
-    </main>
+    </div>
   );
 }
-

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo } from 'react';
-import { Play, Check, Trash2, Music, ArrowUp, PackageOpen } from 'lucide-react';
+import { Play, Check, Trash2, Music, ThumbsUp, PackageOpen } from 'lucide-react';
 import { useParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -7,7 +7,10 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 import { cn } from '@/lib/utils';
+import { AnimatedList } from '@/registry/magicui/animated-list';
 import { toast } from 'sonner';
+import { getApiErrorMessage } from '@/api/client';
+import { useDemoSession } from '@/components/demo/demo-context';
 import { roomKeys, useRoomDetailsQuery } from '@/api/rooms';
 import {
   removeRequestFromRoomCache,
@@ -78,6 +81,7 @@ interface AdminRequestRowProps {
   onMarkAsPlaying: (requestId: string) => void;
   onMarkAsPlayed: (requestId: string) => void;
   onDeleteRequest: (requestId: string) => void;
+  playbackPending: boolean;
 }
 
 const AdminRequestRow = ({
@@ -87,16 +91,17 @@ const AdminRequestRow = ({
   onMarkAsPlaying,
   onMarkAsPlayed,
   onDeleteRequest,
+  playbackPending,
 }: AdminRequestRowProps) => (
-  <div className="flex items-center gap-3 border-b px-4 py-3 last:border-b-0">
-    <span className="w-4 shrink-0 text-sm text-muted-foreground">
+  <div className="grid grid-cols-[2.75rem_minmax(0,1fr)] items-center gap-x-3 gap-y-3 border-b px-3 py-3 last:border-b-0 sm:flex sm:px-4">
+    <span className="hidden w-4 shrink-0 text-sm text-muted-foreground sm:block">
       {index + 1}
     </span>
 
     {request.track.albumArtUrl ? (
       <Tooltip>
         <TooltipTrigger asChild>
-          <a href={request.track.spotifyLink} target="_blank">
+          <a href={request.track.spotifyLink || undefined} target={request.track.spotifyLink ? "_blank" : undefined} rel="noreferrer" aria-disabled={!request.track.spotifyLink}>
             <img
               src={request.track.albumArtUrl}
               alt={`Album art for ${request.track.title}`}
@@ -105,7 +110,7 @@ const AdminRequestRow = ({
           </a>
         </TooltipTrigger>
         <TooltipContent>
-          <p>Open in Spotify</p>
+          <p>{request.track.spotifyLink ? 'Open in Spotify' : 'Demo album artwork'}</p>
         </TooltipContent>
       </Tooltip>
     ) : (
@@ -128,22 +133,23 @@ const AdminRequestRow = ({
       )}
     </div>
 
-    <Badge
-      variant="outline"
-      className={cn(
-        'shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium',
-        getStatusBadgeClassName(statusLabel)
-      )}
-    >
-      {statusLabel}
-    </Badge>
+    <div className="col-span-2 flex min-w-0 flex-wrap items-center gap-2 sm:contents">
+      <Badge
+        variant="outline"
+        className={cn(
+          'shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium',
+          getStatusBadgeClassName(statusLabel)
+        )}
+      >
+        {statusLabel}
+      </Badge>
 
-    <div className="flex shrink-0 items-center gap-1 rounded-full bg-green-50 px-2.5 py-1 text-sm font-medium text-green-700 dark:bg-green-950 dark:text-green-300">
-      <ArrowUp className="size-3.5" />
-      <span>{request.votes}</span>
-    </div>
+      <div className="flex shrink-0 items-center gap-1 rounded-full bg-green-50 px-2.5 py-1 text-sm font-medium text-green-700 dark:bg-green-950 dark:text-green-300">
+        <ThumbsUp className="size-4" strokeWidth={2} aria-hidden="true" />
+        <span>{request.votes}</span>
+      </div>
 
-    <div className="flex shrink-0 items-center gap-1">
+      <div className="ml-auto flex shrink-0 items-center gap-1 sm:ml-0">
       {request.status !== 'playing' && (
         <Tooltip>
           <TooltipTrigger asChild>
@@ -151,6 +157,7 @@ const AdminRequestRow = ({
               variant="outline"
               size="icon-sm"
               onClick={() => onMarkAsPlaying(request._id)}
+              disabled={playbackPending}
               aria-label="Mark as Playing"
               className="rounded-lg text-green-600 hover:bg-green-50 hover:text-green-700"
             >
@@ -169,6 +176,7 @@ const AdminRequestRow = ({
               variant="outline"
               size="icon-sm"
               onClick={() => onMarkAsPlayed(request._id)}
+              disabled={playbackPending}
               aria-label="Mark as Played"
               className="rounded-lg text-blue-600 hover:bg-blue-50 hover:text-blue-700"
             >
@@ -196,11 +204,13 @@ const AdminRequestRow = ({
           <p>Remove Request</p>
         </TooltipContent>
       </Tooltip>
+      </div>
     </div>
   </div>
 );
 
 const RequestListAdmin: React.FC = () => {
+  const demo = useDemoSession();
   const { roomCode: rawRoomCode } = useParams<{ roomCode: string }>();
   const roomCode = rawRoomCode?.toUpperCase() || '';
   const queryClient = useQueryClient();
@@ -275,30 +285,35 @@ const RequestListAdmin: React.FC = () => {
 
   const handleMarkAsPlaying = async (requestId: string) => {
     try {
-      await markPlayingMutation.mutateAsync({ requestId });
-    } catch {
-      toast.error('Something went wrong.', {
-        description: 'Failed to mark track as playing, please try again.',
+      const { request } = await markPlayingMutation.mutateAsync({ requestId });
+      // Real rooms already announce this through their Socket.IO event.
+      if (demo) toast.success('Now playing in your demo', { description: `${request.track.title} by ${request.track.artist} is now at the top of the room. No audio is played.` });
+    } catch (error) {
+      toast.error("Couldn't update now playing", {
+        description: getApiErrorMessage(error, 'The track status was not changed. Please try again.'),
       });
     }
   };
 
   const handleMarkAsPlayed = async (requestId: string) => {
     try {
-      await markPlayedMutation.mutateAsync({ requestId });
-    } catch {
-      toast.error('Something went wrong.', {
-        description: 'Failed to mark track as played, please try again.',
+      const { request } = await markPlayedMutation.mutateAsync({ requestId });
+      toast.success('Track marked as played', { description: `${request.track.title} by ${request.track.artist} is now in the room's tracklist.` });
+    } catch (error) {
+      toast.error("Couldn't mark the track as played", {
+        description: getApiErrorMessage(error, 'The track status was not changed. Please try again.'),
       });
     }
   };
 
   const handleDeleteRequest = async (requestId: string) => {
+    const track = requestsQuery.data?.requests.find((request) => request._id === requestId)?.track;
     try {
       await removeRequestMutation.mutateAsync({ requestId });
-    } catch {
-      toast.error('Something went wrong.', {
-        description: 'Failed to delete request, please try again.',
+      toast.success('Request removed', { description: track ? `${track.title} by ${track.artist} has been removed from the queue.` : 'The song request has been removed from this room.' });
+    } catch (error) {
+      toast.error("Couldn't remove the request", {
+        description: getApiErrorMessage(error, 'The request is still in the queue. Please try again.'),
       });
     }
   };
@@ -321,9 +336,9 @@ const RequestListAdmin: React.FC = () => {
   }
 
   return (
-    <div className="w-full mt-8">
+    <div className="mt-2 w-full sm:mt-8">
       {requests.length === 0 ? (
-        <div className="flex h-[500px] flex-col items-center justify-center rounded-xl border border-border/50 bg-card">
+        <div className="flex h-[360px] flex-col items-center justify-center rounded-xl border border-border/50 bg-card px-5 sm:h-[500px]">
           {/* Illustration */}
 
           <div className="relative mb-8">
@@ -337,7 +352,7 @@ const RequestListAdmin: React.FC = () => {
           {/* Content */}
 
           <div className="max-w-md text-center">
-            <h4 className="mb-2 text-3xl font-semibold tracking-tight">
+            <h4 className="mb-2 text-2xl font-semibold tracking-tight sm:text-3xl">
               The Queue is Empty!
             </h4>
 
@@ -349,8 +364,8 @@ const RequestListAdmin: React.FC = () => {
         </div>
       ) : (
         <>
-          <ScrollArea className="h-[700px] w-full rounded-xl border bg-background">
-            <div>
+          <ScrollArea className="h-[min(700px,calc(100dvh-10rem))] min-h-[420px] w-full rounded-xl border bg-background">
+            <AnimatedList delay={60}>
               {requests.map((request, index) => (
                 <AdminRequestRow
                   key={request._id}
@@ -360,9 +375,12 @@ const RequestListAdmin: React.FC = () => {
                   onMarkAsPlaying={handleMarkAsPlaying}
                   onMarkAsPlayed={handleMarkAsPlayed}
                   onDeleteRequest={handleDeleteRequest}
+                  playbackPending={
+                    markPlayingMutation.isPending || markPlayedMutation.isPending
+                  }
                 />
               ))}
-            </div>
+            </AnimatedList>
           </ScrollArea>
         </>
       )}

@@ -2,6 +2,7 @@ import { io, type Socket } from "socket.io-client"
 
 import { getSongRequestRoomId } from "@/api/requests"
 import type { Room, SongRequest } from "@/api/types"
+import { isDemoExperience } from "@/lib/demo-session"
 
 export const socketEvents = {
   roomUpdated: "room:updated",
@@ -82,6 +83,8 @@ export function disconnectSocket() {
 
 /** Join a room once the socket is connected; returns cleanup that leaves the room. */
 export function joinRoom(roomId: string) {
+  // Demo data refreshes through its isolated API; never join live room channels.
+  if (isDemoExperience() || roomId.startsWith("demo-room-")) return () => {}
   connectSocket()
 
   const emitJoin = () => {
@@ -121,7 +124,7 @@ function normalizeId(value: unknown): string | undefined {
 }
 
 function extractRoomIdFromPayload(payload: RoomUpdatedPayload | RoomEndedPayload) {
-  return normalizeId(payload.roomId ?? payload._id)
+  return normalizeId(payload.roomId ?? ("_id" in payload ? payload._id : undefined))
 }
 
 function parseRequestPayload(request: SongRequest): RequestEventPayload | null {

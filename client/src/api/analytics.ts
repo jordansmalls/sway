@@ -58,6 +58,7 @@ export type AnalyticsSong = {
   spotifyLink: string
   spotifyURI: string
   requestCount: number
+  playCount: number
   totalVotes: number
   latestRequestedAt: string
   latestPlayedAt: string | null
@@ -69,6 +70,21 @@ export type AnalyticsTotals = {
   requestsPlayed: number
 }
 
+export type RequestActivityRange = "7d" | "30d" | "90d" | "6m" | "1y" | "all"
+
+export type RequestActivityPoint = {
+  date: string
+  requestsReceived: number
+  requestsPlayed: number
+}
+
+type RequestActivityResponse = {
+  success: true
+  range: RequestActivityRange
+  interval: "day" | "week" | "month"
+  data: RequestActivityPoint[]
+}
+
 export type GlobalTrack = {
   _id?: string | { title?: string; artist?: string; spotifyTrackId?: string }
   spotifyTrackId?: string
@@ -78,7 +94,10 @@ export type GlobalTrack = {
   albumArtUrl?: string
   spotifyLink?: string
   requestCount?: number
+  playCount?: number
   totalVotes?: number
+  latestRequestedAt?: string
+  latestPlayedAt?: string | null
   totalRequests?: number
   totalSongRequests?: number
   count?: number
@@ -104,6 +123,7 @@ export const analyticsKeys = {
   all: ["analytics"] as const,
   global: () => [...analyticsKeys.all, "global"] as const,
   globalTracks: () => [...analyticsKeys.global(), "tracks"] as const,
+  globalPlayedTracks: () => [...analyticsKeys.global(), "tracks", "played"] as const,
   globalArtists: () => [...analyticsKeys.global(), "artists"] as const,
   globalRequests: () => [...analyticsKeys.global(), "requests"] as const,
   globalRooms: () => [...analyticsKeys.global(), "rooms"] as const,
@@ -116,6 +136,8 @@ export const analyticsKeys = {
   totalRequestsPlayed: (userId: string) =>
     [...analyticsKeys.byUser(userId), "total-requests-played"] as const,
   totals: (userId: string) => [...analyticsKeys.byUser(userId), "totals"] as const,
+  requestActivity: (userId: string, range: RequestActivityRange) =>
+    [...analyticsKeys.byUser(userId), "request-activity", range] as const,
   mostPlayedArtists: (userId: string) =>
     [...analyticsKeys.byUser(userId), "most-played-artists"] as const,
   mostRequestedSongs: (userId: string) =>
@@ -135,6 +157,13 @@ export async function getGlobalTracks() {
     await apiClient.get<GlobalTopItemsResponse<GlobalTrack>>(
       "/api/global/tracks"
     )
+  return data
+}
+
+export async function getGlobalPlayedTracks() {
+  const { data } = await apiClient.get<GlobalTopItemsResponse<GlobalTrack>>(
+    "/api/global/tracks/played"
+  )
   return data
 }
 
@@ -207,6 +236,17 @@ export async function getAnalyticsTotals(
   }
 }
 
+export async function getRequestActivity(
+  userId: string,
+  range: RequestActivityRange = "30d"
+) {
+  const { data } = await apiClient.get<RequestActivityResponse>(
+    analyticsPath(userId, "request-activity"),
+    { params: { range } }
+  )
+  return data
+}
+
 export async function getMostPlayedArtists(userId: string) {
   const { data } = await apiClient.get<MostPlayedArtistsResponse>(
     analyticsPath(userId, "most-played-artists")
@@ -247,6 +287,13 @@ export function useGlobalTracksQuery() {
   return useQuery({
     queryKey: analyticsKeys.globalTracks(),
     queryFn: getGlobalTracks,
+  })
+}
+
+export function useGlobalPlayedTracksQuery() {
+  return useQuery({
+    queryKey: analyticsKeys.globalPlayedTracks(),
+    queryFn: getGlobalPlayedTracks,
   })
 }
 
@@ -298,6 +345,17 @@ export function useAnalyticsTotalsQuery(userId: string) {
   return useQuery({
     queryKey: analyticsKeys.totals(userId),
     queryFn: () => getAnalyticsTotals(userId),
+    enabled: userId.length > 0,
+  })
+}
+
+export function useRequestActivityQuery(
+  userId: string,
+  range: RequestActivityRange = "30d"
+) {
+  return useQuery({
+    queryKey: analyticsKeys.requestActivity(userId, range),
+    queryFn: () => getRequestActivity(userId, range),
     enabled: userId.length > 0,
   })
 }

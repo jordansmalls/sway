@@ -1,5 +1,6 @@
 import express from "express";
 import generalLimiter from "../middlewares/rate-limiters/general.limiter";
+import { protect } from "../middlewares/auth.middleware";
 import {
     mostPlayedArtists,
     totalRequestsPlayed,
@@ -10,9 +11,12 @@ import {
     mostPlayedSongs,
     mostRequestedSongs,
     mostUpvotedSongs,
+    requestActivity,
 } from "../controllers/analytics.controller";
 
 const router = express.Router();
+
+router.get("/:userId/request-activity", protect, requestActivity);
 
 // TODO: add general rate limiter back in production env
 // router.use(generalLimiter);

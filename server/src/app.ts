@@ -16,6 +16,7 @@ import requestRouter from "./routes/request.routes";
 import exportRouter from "./routes/export.routes";
 import analyticsRouter from "./routes/analytics.routes";
 import globalRouter from "./routes/global.routes"
+import demoRouter from "./demo/demo.routes";
 
 export const app = express();
 
@@ -25,6 +26,12 @@ app.use(cookieParser());
 app.use(cors(config.cors_options));
 
 app.use("/", health);
+app.use("/api/demo", demoRouter);
+// A demo token must never authorize or fall through to a production endpoint.
+app.use("/api", (req, res, next) => {
+    if (req.get("X-Demo-Token")) return res.status(403).json({ success: false, message: "Demo sessions can only use demo endpoints." });
+    next();
+});
 app.use("/api/auth", authRouter);
 app.use("/api/users", userRouter);
 app.use("/api/rooms", roomRouter);

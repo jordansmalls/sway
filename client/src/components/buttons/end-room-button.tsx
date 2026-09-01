@@ -2,7 +2,6 @@ import React from 'react';
 import { SpinnerButton } from './spinner-button';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
-import { getApiErrorMessage } from '@/api/client';
 import { useEndRoomMutation, useRoomDetailsQuery } from '@/api/rooms';
 
 interface EndRoomButtonProps {
