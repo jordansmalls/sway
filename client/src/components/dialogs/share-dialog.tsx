@@ -30,9 +30,7 @@ export function ShareDialog({
   triggerClassName,
 }: ShareDialogProps) {
   const demo = useDemoSession();
-  //! change for prod
-  // let shareLink = `https://www.app.sway.onl/room/${roomCode}`
-  const shareLink = `http://localhost:3000/room/${roomCode}`;
+  const shareLink = `${window.location.origin}/room/${roomCode}`;
   return (
     <Dialog>
       <DialogTrigger asChild>

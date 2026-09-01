@@ -20,6 +20,10 @@ import demoRouter from "./demo/demo.routes";
 
 export const app = express();
 
+// Railway terminates TLS one proxy hop before the app. This keeps secure
+// request metadata and IP-based rate limits accurate without trusting every hop.
+if (config.node_env === "production") app.set("trust proxy", 1);
+
 app.use(express.json());
 app.use(logger);
 app.use(cookieParser());

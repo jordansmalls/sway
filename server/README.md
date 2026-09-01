@@ -42,7 +42,7 @@ NODE_ENV=development
 SPOTIFY_CLIENT_ID=your-spotify-app-client-id
 SPOTIFY_CLIENT_SECRET=your-spotify-app-client-secret
 FRONTEND_URL=http://localhost:3000
-DOMAIN=
+COOKIE_DOMAIN=
 ```
 
 | Variable | Use |
@@ -50,10 +50,10 @@ DOMAIN=
 | `PORT` | HTTP and Socket.IO port; defaults to 9999 |
 | `MONGO_URI` | MongoDB connection string |
 | `JWT_SECRET` | Secret used to sign and verify real-account login tokens |
-| `NODE_ENV` | Controls cookie security, CORS selection, and error details; use `development` for local HTTP |
+| `NODE_ENV` | Controls cookie security, proxy handling, and error details; use `development` for local HTTP |
 | `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET` | Server-side Spotify app credentials; required for live catalog requests in real and demo rooms |
-| `FRONTEND_URL` | Public frontend origin used in room QR codes, demo QR codes, and the Socket.IO origin list |
-| `DOMAIN` | Read by the config module but currently unused; it does not configure cookie domains |
+| `FRONTEND_URL` | Exact frontend origin used by Express CORS, Socket.IO CORS, and real/demo QR codes; omit a trailing slash |
+| `COOKIE_DOMAIN` | Optional cookie domain override; omit locally. Production defaults to `.sway.onl` for the `app.sway.onl`/`api.sway.onl` deployment |
 
 There are no additional demo environment variables or shared demo credentials. Seeded demo tracks require no upstream Spotify calls, searching or submitting a new track requires valid Spotify credentials.
 
@@ -62,9 +62,9 @@ There are no additional demo environment variables or shared demo credentials. S
 
 The local client runs on port 3000 and proxies `/api` and `/socket.io` to port 9999.
 
-Express CORS is currently hardcoded in [config.ts](src/config/config.ts): `http://localhost:3000` outside production and `https://sway.onl` in production. **Changing `FRONTEND_URL` alone does not change Express CORS.** The Socket.IO allowlist is configured separately in [socket.ts](src/socket.ts). Update both when using another origin.
+Express and Socket.IO CORS both use the normalized `FRONTEND_URL`. The server defaults to `http://localhost:3000` in development and `https://app.sway.onl` in production, but startup validation requires an explicit value. CORS permits credentials and the demo-specific `X-Demo-Token` header.
 
-Real account auth uses the `jwt` cookie with `HttpOnly`, `SameSite=Strict`, and a 30 day lifetime. It is `Secure` whenever `NODE_ENV` is not `development`. Cross-origin requests must include credentials, and genuinely cross-site deployments need cookie-policy review. CORS alone does not override SameSite restrictions.
+Real account auth uses a shared cookie policy for creation and removal: `HttpOnly`, `SameSite=Lax`, path `/`, and a 30 day lifetime. It is `Secure` in production and uses `.sway.onl` by default there; development cookies are insecure and host-only. This supports the same-site `app.sway.onl` and `api.sway.onl` deployment while preserving the existing production cookie scope. Cross-origin requests must include credentials.
 
 Demo requests use `X-Demo-Token`, which is included in the API's allowed headers, instead of login cookies.
 
@@ -334,7 +334,28 @@ bun run test:run
 
 Spotify responses are mocked in the demo tests. The normal general/vote limiters are mocked in shared test setup and demo limits have dedicated coverage. A first run may require network access to download a MongoDB binary. Live catalog verification requires working app credentials and is separate from this suite.
 
-For UI verification, run `pnpm build` from `client/` and follow its [manual checklist](../client/README.md#manual-verification).
+For UI verification, run `pnpm build` from `client/` and follow its [build and deployment guidance](../client/README.md#build-and-deployment).
+
+## Deployment notes
+
+The production client is served from `https://app.sway.onl`, and the Railway API and Socket.IO server use `https://api.sway.onl`. They are separate origins, so the client sends credentials and the server allows the exact frontend origin through both CORS configurations.
+
+Connect Railway to the monorepo with `/server` as the root directory, `/server/**` as its watch path, and `bun run start` as its start command. Railway supplies `PORT`; configure `/` as the initial health-check path. The server validates its required variables before connecting to MongoDB.
+
+Configure these production variables in Railway rather than committing an environment file:
+
+```dotenv
+NODE_ENV=production
+MONGO_URI=your-production-mongodb-uri
+JWT_SECRET=your-existing-production-signing-secret
+SPOTIFY_CLIENT_ID=your-spotify-client-id
+SPOTIFY_CLIENT_SECRET=your-spotify-client-secret
+FRONTEND_URL=https://app.sway.onl
+```
+
+`COOKIE_DOMAIN` is optional in this deployment because production defaults to `.sway.onl`. Preserve the existing `JWT_SECRET` and `MONGO_URI` during migration if existing sessions and data should remain valid. The server trusts exactly one production proxy hop for Railway's forwarded client IPs; do not broaden this to arbitrary proxy chains.
+
+Keep one Railway replica until Socket.IO has a multi-instance adapter and the process-local rate limits and caches have shared backing stores. Preserve the `X-Demo-Token` request header through any additional proxy or CDN layer.
 
 ## Contact
 

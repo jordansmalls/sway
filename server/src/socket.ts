@@ -3,12 +3,7 @@ import { Server as HttpServer } from "http";
 import { Server, Socket } from "socket.io";
 import { initSocketIO } from "./controllers/request.controller.js";
 
-const allowedOrigins = [
-    config.frontend_url || "http://localhost:3000",
-    "http://localhost:5173",
-    "http://192.168.1.2:3000",
-    "http://192.168.1.2:8000",
-];
+const allowedOrigins = [config.frontend_url];
 
 
 

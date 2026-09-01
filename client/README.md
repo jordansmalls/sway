@@ -18,11 +18,11 @@ pnpm dev
 
 Start the [server](../server/README.md#installation) in a separate terminal. The client runs at [localhost:3000](http://localhost:3000). In development, [vite.config.ts](vite.config.ts) proxies `/api` and `/socket.io` to `http://localhost:9999`, including WebSocket connections.
 
-No client environment file is required for the default local setup. If you change the API port, update the Vite proxy targets or configure explicit origins.
+No client environment file is required for the default local setup. If you change the API port, update the Vite proxy targets or configure explicit origins. Copy [.env.example](.env.example) to an ignored mode-specific file only when you need overrides.
 
 ### Optional environment variables
 
-These variables are public, build-time configuration. They can be set in an uncommitted `client/.env.local`.
+These variables are public, build-time configuration. They can be set in an uncommitted `client/.env.local` or in Netlify's environment settings.
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
@@ -123,12 +123,14 @@ The interface uses React 19, TypeScript, Vite 8, React Router 7, TanStack Query,
 ## Build and deployment
 
 1. Set any public API/socket origins before running `pnpm build`.
-2. Serve `dist/` as static files with an `index.html` fallback for browser routes, including deep room and demo links.
+2. Serve `dist/` as static files. The checked-in [public/_redirects](public/_redirects) supplies Netlify's `index.html` fallback for browser routes, including deep room and demo links.
 3. Route `/api` and `/socket.io` to the server if using the same origin; support WebSocket upgrades. Vite's development proxy does not configure your production host.
-4. If using separate origins, configure both API and Socket.IO CORS and verify cookie behavior. The server currently hardcodes its Express origin by environment; setting `FRONTEND_URL` alone does not change that allowlist.
+4. If using separate origins, set the server's `FRONTEND_URL` to the exact client origin. Express and Socket.IO use that value for credentialed CORS.
 5. Keep demo responses private and uncached, and preserve the `X-Demo-Token` header through proxies.
 
-Use the [server deployment notes](../server/README.md#deployment-notes) for HTTPS, strict cookies, rate-limit stores, and trusted proxy configuration.
+For the current Netlify deployment, use `client` as the base directory, `pnpm build` as the build command, and `dist` as the publish directory. Set `VITE_API_URL=https://api.sway.onl`; `VITE_SOCKET_URL` may use the same value or be omitted because it falls back to the API origin.
+
+Use the [server deployment notes](../server/README.md#deployment-notes) for HTTPS, authentication cookies, rate-limit stores, and trusted proxy configuration.
 
 Sway does not play audio. Marking a song as playing changes queue state only. The current request CSV/plaintext export helpers also do not match the registered server routes. See [export limitations](../server/README.md#exporting-data) before exposing those formats in the UI.
 

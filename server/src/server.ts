@@ -1,11 +1,12 @@
 import http from "http";
 import { app } from "./app";
-import config from "./config/config";
+import config, { validateRuntimeConfig } from "./config/config";
 import connectDB from "./config/db";
 import { initSocket } from "./socket";
 import { startDemoCleanup } from "./demo/demo.model";
 
 const start = async () => {
+    validateRuntimeConfig();
     await connectDB();
     startDemoCleanup();
 

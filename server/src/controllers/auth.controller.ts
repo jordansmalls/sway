@@ -1,5 +1,5 @@
 import User from "../models/user.model";
-import generateToken from "../utils/generate.jwt";
+import generateToken, { clearAuthToken } from "../utils/generate.jwt";
 import validator from "validator";
 
 /**
@@ -345,10 +345,7 @@ export const loginUserAccount = async (req, res) => {
 
 export const logoutUserAccount = (req, res) => {
     try {
-        res.cookie("jwt", "", {
-            httpOnly: true,
-            expires: new Date(0),
-        });
+        clearAuthToken(res);
 
         return res.status(200).json({
             success: true,

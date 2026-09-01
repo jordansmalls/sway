@@ -1,8 +1,8 @@
-import config from "../config/config";
 import User from "../models/user.model";
 import validator from "validator";
 import Room from "../models/room.model";
 import Request from "../models/request.model";
+import { clearAuthToken } from "../utils/generate.jwt";
 
 /**
  * @desc    Update user profile
@@ -258,12 +258,7 @@ export const deleteAccount = async (req, res) => {
 
         // clear JWT cookie
 
-        res.cookie("jwt", "", {
-            httpOnly: true,
-            secure: config.node_env === "production",
-            sameSite: "strict",
-            expires: new Date(0),
-        });
+        clearAuthToken(res);
 
         return res.status(200).json({
             success: true,
