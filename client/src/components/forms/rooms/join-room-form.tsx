@@ -25,7 +25,7 @@ export function JoinRoomForm({
               required
               autoComplete="off"
               maxLength={5}
-              className="h-12 rounded-xl border-zinc-200 bg-zinc-50 px-4 font-mono text-base uppercase tracking-[0.18em] text-zinc-950 shadow-none placeholder:font-sans placeholder:tracking-normal placeholder:text-zinc-400 focus-visible:border-zinc-400 focus-visible:ring-zinc-300/30 dark:border-input dark:bg-secondary dark:text-foreground dark:placeholder:text-muted-foreground dark:focus-visible:border-ring dark:focus-visible:ring-ring/50"
+              className="h-12 rounded-xl border-zinc-200 bg-zinc-50 px-4 font-mono text-base uppercase tracking-[0.02em] text-zinc-950 shadow-none placeholder:font-sans placeholder:tracking-normal placeholder:text-zinc-400 focus-visible:border-zinc-400 focus-visible:ring-zinc-300/30 dark:border-input dark:bg-secondary dark:text-foreground dark:placeholder:text-muted-foreground dark:focus-visible:border-ring dark:focus-visible:ring-ring/50"
             />
           </Field>
           <Field>
