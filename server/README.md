@@ -52,7 +52,7 @@ COOKIE_DOMAIN=
 | `JWT_SECRET` | Secret used to sign and verify real-account login tokens |
 | `NODE_ENV` | Controls cookie security, proxy handling, and error details; use `development` for local HTTP |
 | `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET` | Server-side Spotify app credentials; required for live catalog requests in real and demo rooms |
-| `FRONTEND_URL` | Exact frontend origin used by Express CORS, Socket.IO CORS, and real/demo QR codes; omit a trailing slash |
+| `FRONTEND_URL` | Exact frontend origin used by Express CORS and Socket.IO CORS; omit a trailing slash. QR codes always use `https://app.sway.onl`. |
 | `COOKIE_DOMAIN` | Optional cookie domain override; omit locally. Production defaults to `.sway.onl` for the `app.sway.onl`/`api.sway.onl` deployment |
 
 There are no additional demo environment variables or shared demo credentials. Seeded demo tracks require no upstream Spotify calls, searching or submitting a new track requires valid Spotify credentials.
@@ -153,7 +153,7 @@ Prefix: `/api/rooms`.
 
 The active summary includes `requestsReceived`, `requestsPlayed`, `requestsWaiting`, `totalVotes`, and up to four `recentRequests` inside `activeRoom`. Waiting includes both pending and currently playing requests. These endpoints power the new dashboard experience and recent room sidebar quick glance functionality.
 
-The room display reuses room details and the generated QR code, it does not need a separate normal API endpoint.
+The room display reuses room details and the generated QR code, it does not need a separate normal API endpoint. Room details generate a fresh QR linking to `https://app.sway.onl/room/{roomCode}`, including for rooms with old stored localhost QR images.
 
 ### Song requests
 
@@ -279,7 +279,7 @@ Demo Spotify results and canonical track metadata have a bounded 500-entry, five
 
 ### Demo display and synchronization
 
-The associated display opens at `/demo/room/:roomCode/display` in the same tab to retain its private session. It reuses the real display layout and current room details. Its QR links to `FRONTEND_URL/demo/guest`, where a scanning visitor starts or resumes their own demo rather than gaining access to the displayed room. No token or private room ID is embedded in the QR. The display explains the distinction and provides a path back to the DJ view through the demo controls.
+The associated display opens at `/demo/room/:roomCode/display` in the same tab to retain its private session. It reuses the real display layout and current room details. Its QR links to `https://app.sway.onl/demo/guest`, where a scanning visitor starts or resumes their own demo rather than gaining access to the displayed room. No token or private room ID is embedded in the QR. The display explains the distinction and provides a path back to the DJ view through the demo controls.
 
 Demo room data refreshes through an isolated React Query cache every five seconds. Catalog queries never poll and use a 1 minute client cache. Demo rooms never join production Socket.IO channels.
 

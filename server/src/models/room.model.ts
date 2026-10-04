@@ -1,6 +1,5 @@
 import mongoose, { Schema } from "mongoose";
-import QRCode from "qrcode";
-import config from "../config/config";
+import { generateRoomQr } from "../utils/room.qr";
 
 const roomSchema = new mongoose.Schema(
     {
@@ -53,17 +52,7 @@ roomSchema.statics.generateRoomQr = async function (roomId) {
 
     if (!room) throw new Error("Room not found");
 
-    // === note: update FRONTEND_URL in .env when deploying prod ===
-
-    const qrText = `${config.frontend_url}/room/${room.roomCode}`;
-
-    // generate QR code as SVG data url
-    const qrDataUrl = await QRCode.toDataURL(qrText, {
-        errorConnectionLevel: "H",
-        type: "image/svg+xml",
-        width: 300,
-        margin: 2,
-    });
+    const qrDataUrl = await generateRoomQr(room.roomCode);
 
     // save the generated QR code to the model
     room.roomQr = qrDataUrl;

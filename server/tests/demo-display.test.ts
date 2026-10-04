@@ -12,7 +12,7 @@ describe("Demo display QR", () => {
         toDataURL.mockResolvedValue("data:image/png;base64,test");
         expect(await demoDisplayQr()).toBe("data:image/png;base64,test");
         await demoDisplayQr();
-        expect(toDataURL).toHaveBeenCalledExactlyOnceWith("https://sway.example/demo/guest", { width: 640, margin: 2, errorCorrectionLevel: "M" });
+        expect(toDataURL).toHaveBeenCalledExactlyOnceWith("https://app.sway.onl/demo/guest", { width: 640, margin: 2, errorCorrectionLevel: "M" });
     });
 
     it("allows retry after an image generation failure", async () => {

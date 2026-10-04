@@ -8,6 +8,7 @@ import { setRoomInactive } from "../utils/set.room.inactive";
 import Request from "../models/request.model";
 import { createSpotifyLink, createSpotifyUriLink } from "../utils/formatters/format.spotify";
 import { formatTo12HourTime } from "../utils/formatters/format.times";
+import { generateRoomQr } from "../utils/room.qr";
 
 /**
  * @desc    Fetch the authenticated user's five most recently created rooms
@@ -484,7 +485,8 @@ export const fetchRoomDetails = async (req, res) => {
                 roomDescription: room.roomDescription,
                 roomCode: room.roomCode,
                 roomCreator: room.roomCreator,
-                roomQr: room.roomQr,
+                // Stored images may still encode an old localhost URL.
+                roomQr: await generateRoomQr(room.roomCode),
                 createdAt: room.createdAt,
                 updatedAt: room.updatedAt,
                 active: room.active,
