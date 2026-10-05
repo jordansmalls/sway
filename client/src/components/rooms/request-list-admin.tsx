@@ -13,6 +13,7 @@ import { getApiErrorMessage } from '@/api/client';
 import { useDemoSession } from '@/components/demo/demo-context';
 import { roomKeys, useRoomDetailsQuery } from '@/api/rooms';
 import {
+  sortRequestsForQueue,
   removeRequestFromRoomCache,
   requestKeys,
   upsertRequestInRoomCache,
@@ -39,11 +40,7 @@ const statusOrder: Record<RequestStatus, number> = {
 };
 
 function sortRequestsForAdminDisplay(requests: SongRequest[]) {
-  return [...requests].sort((a, b) => {
-    const statusDiff = statusOrder[a.status] - statusOrder[b.status];
-    if (statusDiff !== 0) return statusDiff;
-    return b.votes - a.votes;
-  });
+  return sortRequestsForQueue(requests).sort((a, b) => statusOrder[a.status] - statusOrder[b.status]);
 }
 
 function getQueueStatusLabel(
@@ -81,7 +78,7 @@ interface AdminRequestRowProps {
   onMarkAsPlaying: (requestId: string) => void;
   onMarkAsPlayed: (requestId: string) => void;
   onDeleteRequest: (requestId: string) => void;
-  playbackPending: boolean;
+  actionPending: boolean;
 }
 
 const AdminRequestRow = ({
@@ -91,7 +88,7 @@ const AdminRequestRow = ({
   onMarkAsPlaying,
   onMarkAsPlayed,
   onDeleteRequest,
-  playbackPending,
+  actionPending,
 }: AdminRequestRowProps) => (
   <div className="grid grid-cols-[2.75rem_minmax(0,1fr)] items-center gap-x-3 gap-y-3 border-b px-3 py-3 last:border-b-0 sm:flex sm:px-4">
     <span className="hidden w-4 shrink-0 text-sm text-muted-foreground sm:block">
@@ -157,7 +154,7 @@ const AdminRequestRow = ({
               variant="outline"
               size="icon-sm"
               onClick={() => onMarkAsPlaying(request._id)}
-              disabled={playbackPending}
+              disabled={actionPending}
               aria-label="Mark as Playing"
               className="rounded-lg text-green-600 hover:bg-green-50 hover:text-green-700"
             >
@@ -176,7 +173,7 @@ const AdminRequestRow = ({
               variant="outline"
               size="icon-sm"
               onClick={() => onMarkAsPlayed(request._id)}
-              disabled={playbackPending}
+              disabled={actionPending}
               aria-label="Mark as Played"
               className="rounded-lg text-blue-600 hover:bg-blue-50 hover:text-blue-700"
             >
@@ -194,6 +191,7 @@ const AdminRequestRow = ({
             variant="outline"
             size="icon-sm"
             onClick={() => onDeleteRequest(request._id)}
+            disabled={actionPending}
             aria-label="Remove Request"
             className="rounded-lg text-red-600 hover:bg-red-50 hover:text-red-700"
           >
@@ -232,6 +230,7 @@ const RequestListAdmin: React.FC = () => {
     const syncRequest = (
       request: Parameters<typeof upsertRequestInRoomCache>[1]
     ) => {
+      if (queryClient.isMutating({ mutationKey: requestKeys.all })) return;
       upsertRequestInRoomCache(queryClient, request);
       invalidateRequests();
     };
@@ -254,6 +253,7 @@ const RequestListAdmin: React.FC = () => {
       }
     );
     const unsubscribeDeleted = onRequestDeleted(({ requestId }) => {
+      if (queryClient.isMutating({ mutationKey: requestKeys.all })) return;
       removeRequestFromRoomCache(queryClient, roomId, requestId);
       invalidateRequests();
     });
@@ -375,8 +375,8 @@ const RequestListAdmin: React.FC = () => {
                   onMarkAsPlaying={handleMarkAsPlaying}
                   onMarkAsPlayed={handleMarkAsPlayed}
                   onDeleteRequest={handleDeleteRequest}
-                  playbackPending={
-                    markPlayingMutation.isPending || markPlayedMutation.isPending
+                  actionPending={
+                    markPlayingMutation.isPending || markPlayedMutation.isPending || removeRequestMutation.isPending
                   }
                 />
               ))}

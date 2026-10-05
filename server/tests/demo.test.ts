@@ -132,6 +132,20 @@ describe("Isolated room demos", () => {
         expect((await request(app).put(api("/rooms/end")).set("X-Demo-Token", demo.guestToken).send({ roomId: demo.room._id })).status).toBe(403);
     });
 
+    it("converts an already queued demo request into a vote", async () => {
+        const demo = await start();
+        const before = (await readQueue(demo)).body.requests;
+        const original = before.find((item: DemoRequest) => item.status === "pending");
+        const response = await request(app).post(api("/requests")).set("X-Demo-Token", demo.guestToken)
+            .send({ roomId: demo.room._id, track: { spotifyTrackId: original.track.spotifyTrackId } });
+        expect(response.status).toBe(200);
+        expect(response.body.alreadyQueued).toBe(true);
+        expect(response.body.request._id).toBe(original._id);
+        expect(response.body.request.votes).toBe(original.votes + 1);
+        expect((await readQueue(demo)).body.requests).toHaveLength(before.length);
+        expect(getDemoSpotifyTrack).not.toHaveBeenCalled();
+    });
+
     it("lets the DJ edit, play, complete, delete, end and reset the room", async () => {
         const demo = await start();
         const queue = await readQueue(demo);

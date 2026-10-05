@@ -78,27 +78,56 @@ export const createRequest = async (req, res) => {
     }
 
     try {
-        // Create the request
-        const request = await Request.create({
+        const filter = {
             roomId,
-            requestedBy: requestedBy || null,
-            track: {
-                spotifyTrackId,
-                title,
-                artist,
-                albumArtUrl,
-                spotifyLink: createSpotifyLink(spotifyTrackId),
-                spotifyURI: createSpotifyUriLink(spotifyTrackId),
+            "track.spotifyTrackId": spotifyTrackId,
+            status: { $in: ["pending", "playing"] },
+        };
+        const update = {
+            $inc: { votes: 1 },
+            $setOnInsert: {
+                roomId,
+                status: "pending",
+                playedAt: null,
+                completedAt: null,
+                requestedBy: requestedBy || null,
+                track: {
+                    spotifyTrackId,
+                    title,
+                    artist,
+                    albumArtUrl,
+                    spotifyLink: createSpotifyLink(spotifyTrackId),
+                    spotifyURI: createSpotifyUriLink(spotifyTrackId),
+                },
             },
-        });
+        };
+        let result;
+        try {
+            result = await Request.findOneAndUpdate(filter, update, {
+                upsert: true, returnDocument: "after", includeResultMetadata: true,
+                setDefaultsOnInsert: false,
+                runValidators: true,
+            });
+        } catch (error) {
+            // Another guest can insert the same track while this upsert is running.
+            if (error.code !== 11000) throw error;
+            result = await Request.findOneAndUpdate(filter, { $inc: { votes: 1 } }, {
+                returnDocument: "after", includeResultMetadata: true,
+            });
+        }
+        const request = result.value;
+        const alreadyQueued = Boolean(result.lastErrorObject?.updatedExisting);
 
         if (request) {
             // Emit socket event for new request
-            emitToRoom(roomId, "request:created", request);
+            emitToRoom(roomId, alreadyQueued ? "request:updated" : "request:created", request);
 
-            return res.status(201).json({
+            return res.status(alreadyQueued ? 200 : 201).json({
                 success: true,
-                message: `Success! ${request.track.title} has been added to the queue.`,
+                alreadyQueued,
+                message: alreadyQueued
+                    ? `Your upvote on ${request.track.title} has been counted!`
+                    : `Success! ${request.track.title} has been added to the queue.`,
                 request,
             });
         } else {
@@ -392,7 +421,7 @@ export const fetchRoomRequests = async (req, res) => {
         }
 
         // Get requests for room, sort by votes (descending)
-        const requests = await Request.find({ roomId }).sort({ votes: -1 });
+        const requests = await Request.find({ roomId }).sort({ votes: -1, createdAt: 1, _id: 1 });
 
         return res.status(200).json({
             success: true,
@@ -477,7 +506,7 @@ export const filterRequests = async (req, res) => {
         }
 
         // Get filtered requests
-        const requests = await Request.find(filter).sort({ votes: -1 });
+        const requests = await Request.find(filter).sort({ votes: -1, createdAt: 1, _id: 1 });
         return res.status(200).json({
             success: true,
             requests,

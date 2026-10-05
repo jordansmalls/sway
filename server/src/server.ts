@@ -4,10 +4,13 @@ import config, { validateRuntimeConfig } from "./config/config";
 import connectDB from "./config/db";
 import { initSocket } from "./socket";
 import { startDemoCleanup } from "./demo/demo.model";
+import Request from "./models/request.model";
 
 const start = async () => {
     validateRuntimeConfig();
     await connectDB();
+    // Do not accept writes until duplicate submissions are protected by the index.
+    await Request.init();
     startDemoCleanup();
 
     // Start the Express server

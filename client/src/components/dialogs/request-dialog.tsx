@@ -50,7 +50,7 @@ const RequestDialog = ({ roomId, triggerText, classes, triggerIcon, pulsating = 
     }
 
     try {
-      await createRequestMutation.mutateAsync({
+      const { alreadyQueued } = await createRequestMutation.mutateAsync({
         roomId,
         requestedBy: requestedBy.trim() || undefined,
         track: createRequestTrackFromSpotifyTrack(selectedTrack),
@@ -59,8 +59,10 @@ const RequestDialog = ({ roomId, triggerText, classes, triggerIcon, pulsating = 
       setIsOpen(false);
       setSelectedTrack(null);
       setRequestedBy('');
-      toast.success('Request sent!', {
-        description: `${selectedTrack.name} by ${selectedTrack.artist} has been added to the queue.`,
+      toast.success(alreadyQueued ? 'Vote added' : 'Request sent!', {
+        description: alreadyQueued
+          ? `${selectedTrack.name} is already queued. Your vote has been added.`
+          : `${selectedTrack.name} by ${selectedTrack.artist} has been added to the queue.`,
       });
     } catch (error) {
       toast.error("Oops! Your request couldn't be processed.", {

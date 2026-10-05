@@ -67,6 +67,11 @@ requestSchema.index({ "track.spotifyTrackId": 1 });
 requestSchema.index({ roomId: 1 });
 requestSchema.index({ status: 1 });
 requestSchema.index({ roomId: 1, status: 1 });
+requestSchema.index({ roomId: 1, "track.spotifyTrackId": 1 }, {
+    name: "unique_active_track_per_room",
+    unique: true,
+    partialFilterExpression: { status: { $in: ["pending", "playing"] } },
+});
 
 requestSchema.pre("save", function () {
     if (this.status === "played" && this.playedAt === null) {
