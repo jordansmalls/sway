@@ -8,6 +8,7 @@ import {
   FieldDescription,
   FieldError,
   FieldGroup,
+  FieldLabel,
 } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { getApiErrorMessage } from '@/api/client';
@@ -72,18 +73,19 @@ export function CreateUsernameForm({
     >
       <FieldGroup>
         <Field>
+          <FieldLabel htmlFor="username">Username</FieldLabel>
           <Input
-              id="username"
-              type="text"
-              placeholder="aftrhrs"
-              required
-              value={username}
-              onChange={(e) => setUsername(e.target.value.toLowerCase())}
-              minLength={3}
-              maxLength={20}
-              autoComplete="username"
-              aria-describedby="username-requirements"
-              className="h-12 rounded-xl border-zinc-200 bg-zinc-50 px-4 text-zinc-950 shadow-none placeholder:text-zinc-400 focus-visible:border-zinc-400 focus-visible:ring-zinc-300/30 dark:border-input dark:bg-secondary dark:text-foreground dark:placeholder:text-muted-foreground dark:focus-visible:border-ring dark:focus-visible:ring-ring/50"
+            id="username"
+            type="text"
+            placeholder="aftrhrs"
+            required
+            value={username}
+            onChange={(e) => setUsername(e.target.value.toLowerCase())}
+            minLength={3}
+            maxLength={20}
+            autoComplete="username"
+            aria-describedby="username-requirements"
+            className="h-12 rounded-xl border-zinc-200 bg-zinc-50 px-4 text-zinc-950 shadow-none placeholder:text-zinc-400 focus-visible:border-zinc-400 focus-visible:ring-zinc-300/30 dark:border-input dark:bg-secondary dark:text-foreground dark:placeholder:text-muted-foreground dark:focus-visible:border-ring dark:focus-visible:ring-ring/50"
           />
           {usernameMessage ? (
             <FieldDescription
@@ -96,10 +98,6 @@ export function CreateUsernameForm({
             </FieldDescription>
           ) : null}
         </Field>
-        <FieldDescription id="username-requirements" className="px-6 text-center text-xs text-zinc-500 dark:text-muted-foreground">
-          Usernames must be 3-20 characters long and can only contain letters,
-          numbers, and underscores.
-        </FieldDescription>
         <Field>
           <Button
             type="submit"
@@ -110,6 +108,13 @@ export function CreateUsernameForm({
           </Button>
           <FieldError>{formError}</FieldError>
         </Field>
+        <FieldDescription
+          id="username-requirements"
+          className="px-6 text-center text-xs text-white/50"
+        >
+          Usernames must be 3-20 characters long and can only contain letters,
+          numbers, and underscores.
+        </FieldDescription>
       </FieldGroup>
     </form>
   );

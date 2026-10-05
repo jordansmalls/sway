@@ -121,7 +121,7 @@ export function NavUser({
               </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <div className="flex items-center gap-[.1rem]">
-                  <span className="truncate font-medium">{displayName}</span>
+                  <span className="truncate font-medium text-sidebar-foreground">{displayName}</span>
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     width="16"
@@ -159,7 +159,7 @@ export function NavUser({
                 </Avatar>
                 <div className="grid min-w-0 flex-1 text-left text-sm leading-tight">
                   <div className="flex items-center gap-[.1rem]">
-                    <span className="truncate font-medium">{displayName}</span>
+                    <span className="truncate font-medium text-sidebar-foreground">{displayName}</span>
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
                       width="16"

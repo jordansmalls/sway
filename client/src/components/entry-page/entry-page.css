@@ -1,0 +1,28 @@
+.entry-page {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background: #0c0d0e;
+  color: var(--foreground);
+  color-scheme: dark;
+}
+
+.entry-page::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  background: url('./page-ending-dark-compressed.png') center bottom / cover no-repeat;
+  mask-image: linear-gradient(to bottom, transparent 20%, #000 95%);
+}
+
+.entry-page--dj::before {
+  background-image: url('./hero-dj-expanded-compressed.png');
+}
+
+@media (max-width: 760px) {
+  .entry-page--dj::before {
+    background-position: 70% bottom;
+  }
+}
