@@ -1,23 +1,15 @@
-import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { SpinnerButton } from './spinner-button';
 import { useLogoutMutation } from '@/api/auth';
 import { toast } from 'sonner';
 
-const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
 export default function LogoutButton() {
   const navigate = useNavigate();
-  const [isLocalLoading, setIsLocalLoading] = useState(false);
-
-  const { mutateAsync: logout } = useLogoutMutation();
+  const { mutateAsync: logout, isPending } = useLogoutMutation();
 
   const handleLogout = async () => {
+    if (isPending) return;
     try {
-      setIsLocalLoading(true);
-
-      await delay(1500);
-
       await logout();
 
       toast.success('See you next time!', {
@@ -30,14 +22,13 @@ export default function LogoutButton() {
         description:
           'Something went wrong on our end. Please try logging out again.',
       });
-      setIsLocalLoading(false);
     }
   };
 
   return (
     <SpinnerButton
       onClick={handleLogout}
-      isLoading={isLocalLoading}
+      isLoading={isPending}
       loadingText="Please wait..."
       variant={"destructive"}
     >

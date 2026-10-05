@@ -38,17 +38,17 @@ function TrackCard({ track }: { track: RecommendedTrack }) {
 }
 
 function RecommendationRow({ tracks, reverse = false }: { tracks: RecommendedTrack[]; reverse?: boolean }) {
+  if (tracks.length === 0) return null;
+
   return (
     <div className="min-w-0">
-      {tracks.length > 0 ? (
-        <div className="relative w-full min-w-0 overflow-hidden">
-          <Marquee reverse={reverse} pauseOnHover className="w-full py-1" style={{ '--duration': `${Math.max(24, tracks.length * 4)}s` } as CSSProperties}>
-            {tracks.map((track) => <TrackCard key={track.id} track={track} />)}
-          </Marquee>
-          <div className="pointer-events-none absolute inset-y-0 left-0 w-12 bg-gradient-to-r from-card to-transparent" />
-          <div className="pointer-events-none absolute inset-y-0 right-0 w-12 bg-gradient-to-l from-card to-transparent" />
-        </div>
-      ) : <div className="px-4 py-5 text-xs text-muted-foreground">No played tracks yet.</div>}
+      <div className="relative w-full min-w-0 overflow-hidden">
+        <Marquee reverse={reverse} pauseOnHover className="w-full py-1" style={{ '--duration': `${Math.max(24, tracks.length * 4)}s` } as CSSProperties}>
+          {tracks.map((track) => <TrackCard key={track.id} track={track} />)}
+        </Marquee>
+        <div className="pointer-events-none absolute inset-y-0 left-0 w-12 bg-gradient-to-r from-card to-transparent" />
+        <div className="pointer-events-none absolute inset-y-0 right-0 w-12 bg-gradient-to-l from-card to-transparent" />
+      </div>
     </div>
   );
 }

@@ -21,7 +21,7 @@ export default function ProtectedRoute() {
   }, [data, setUser, clearUser])
 
   if (isLoading) {
-    return <AppLoading label="Opening your workspace" />
+    return <AppLoading label="Opening your workspace" className={location.pathname === "/username" ? "dark bg-[#0c0d0e] text-foreground [color-scheme:dark]" : undefined} />
   }
 
   if (isError || !data?.user) {

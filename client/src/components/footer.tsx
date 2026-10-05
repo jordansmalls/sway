@@ -47,7 +47,7 @@ const Footer = () => {
               </li>
               <li>
                 <a
-                  href="https://www.jsmalls.net"
+                  href="https://sway.onl/contact"
                   className="hover:text-foreground transition-colors"
                   target="_blank"
                   rel="noopener noreferrer"

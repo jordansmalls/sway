@@ -80,7 +80,10 @@ export const router = createBrowserRouter(
         <Route path="/username" element={<CreateUsername />} />
         <Route element={<AppLayout />}>
           <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/dashboard-test" element={<Navigate to="/dashboard" replace />} />
+          <Route
+            path="/dashboard-test"
+            element={<Navigate to="/dashboard" replace />}
+          />
           <Route path="/insights" element={<Insights />} />
           <Route path="/create-room" element={<CreateRoom />} />
           <Route path="/settings" element={<Settings />} />

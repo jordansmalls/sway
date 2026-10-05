@@ -32,7 +32,7 @@ import { cn } from "@/lib/utils"
 import { Marquee } from "@/registry/magicui/marquee"
 import { NumberTicker } from "@/registry/magicui/number-ticker"
 import { useAuthStore } from "@/stores/auth-store"
-import { useActiveRoomSummaryQuery } from "@/api/rooms"
+import { useActiveRoomSummaryQuery, useLatestRoomsQuery } from "@/api/rooms"
 import {
   useAnalyticsTotalsQuery,
   useGlobalTracksQuery,
@@ -523,7 +523,7 @@ function MostRequestedSongsTable() {
   )
 }
 
-export default function Dashboard() {
+function DashboardOverview() {
   const user = useAuthStore((state) => state.user)
   const totalsQuery = useAnalyticsTotalsQuery(user?._id ?? "")
   const requestActivityQuery = useRequestActivityQuery(user?._id ?? "", "7d")
@@ -533,10 +533,6 @@ export default function Dashboard() {
     : undefined
 
   return (
-    <>
-      <header className="flex h-[61px] shrink-0 items-center gap-4 bg-card px-4 sm:px-6">
-        <div className="flex items-center gap-3"><SidebarTrigger className="-ml-2" /><ChartSpline className="size-4 text-violet-500 dark:text-icon-gold" /><span className="text-sm font-semibold">Dashboard</span></div>
-      </header>
       <div className="flex-1 space-y-4 overflow-y-auto overflow-x-hidden p-4">
         <section>
           <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
@@ -609,6 +605,64 @@ export default function Dashboard() {
         <ActiveRoomCard />
         <MostRequestedSongsTable />
       </div>
-    </>
   )
+}
+
+export default function Dashboard() {
+  const user = useAuthStore((state) => state.user)
+  const roomsQuery = useLatestRoomsQuery({ enabled: Boolean(user?._id) })
+
+  return (
+    <>
+      <header className="flex h-[61px] shrink-0 items-center gap-4 bg-card px-4 sm:px-6">
+        <div className="flex items-center gap-3">
+          <SidebarTrigger className="-ml-2" />
+          <ChartSpline className="size-4 text-violet-500 dark:text-icon-gold" />
+          <span className="text-sm font-semibold">Dashboard</span>
+        </div>
+      </header>
+      {roomsQuery.data ? (
+        roomsQuery.data.latestRooms.length > 0 ? (
+          <DashboardOverview />
+        ) : (
+          <div className="flex flex-1 items-center justify-center overflow-y-auto p-6 sm:p-10">
+            <section className="flex w-full max-w-lg flex-col items-center text-center">
+              <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+                Let's Get This Party Started!
+              </h1>
+              <p className="mt-3 max-w-md text-sm leading-relaxed text-muted-foreground">
+                Set up a room, share it with your audience, and let them request
+                songs instantly. It's easy!
+              </p>
+              <Button asChild className="mt-6">
+                <Link to="/create-room">Get Started</Link>
+              </Button>
+            </section>
+          </div>
+        )
+      ) : roomsQuery.isError ? (
+        <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
+          <p className="text-sm text-muted-foreground">
+            We couldn't load your rooms. Please try again.
+          </p>
+          <Button
+            variant="outline"
+            onClick={() => roomsQuery.refetch()}
+            disabled={roomsQuery.isFetching}
+          >
+            {roomsQuery.isFetching ? 'Retrying...' : 'Try again'}
+          </Button>
+        </div>
+      ) : (
+        <div
+          className="flex flex-1 items-center justify-center p-6"
+          role="status"
+        >
+          <span className="text-sm text-muted-foreground">
+            Loading your dashboard...
+          </span>
+        </div>
+      )}
+    </>
+  );
 }

@@ -1,3 +1,9 @@
+import { useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { toast } from 'sonner';
+import { useEmailAvailabilityQuery, useSignupMutation } from '@/api/auth';
+import { getApiErrorMessage } from '@/api/client';
+import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
@@ -8,171 +14,155 @@ import {
   FieldLabel,
 } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
 
-import { getApiErrorMessage } from '@/api/client';
-import {
-  useEmailAvailabilityQuery,
-  useSignupMutation,
-} from '@/api/auth';
-import { useDebouncedValue } from '@/hooks/use-debounced-value';
-import { toast } from 'sonner';
-
-import { useSearchParams } from 'react-router-dom';
-
-export function SignupForm({
-  className,
-  ...props
-}: React.ComponentProps<'form'>) {
-
+export function SignupForm({ className, ...props }: React.ComponentProps<'form'>) {
   const [searchParams] = useSearchParams();
-
-  // const [email, setEmail] = useState('');
-
-
-  const initialEmail = searchParams.get('email')?.toLowerCase() ?? '';
-  const [email, setEmail] = useState(initialEmail);
-
+  const [email, setEmail] = useState(() => searchParams.get('email')?.toLowerCase() ?? '');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [formError, setFormError] = useState('');
-  const navigate = useNavigate();
   const signupMutation = useSignupMutation();
-  const debouncedEmail = useDebouncedValue(email);
+  const navigate = useNavigate();
+  const normalizedEmail = email.trim().toLowerCase();
+  const debouncedEmail = useDebouncedValue(normalizedEmail);
   const canCheckEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(debouncedEmail);
-  const emailAvailabilityQuery = useEmailAvailabilityQuery(
-    canCheckEmail ? debouncedEmail : ''
-  );
+  const emailAvailabilityQuery = useEmailAvailabilityQuery(canCheckEmail ? debouncedEmail : '');
+  const availabilityIsCurrent = canCheckEmail && normalizedEmail === debouncedEmail;
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (signupMutation.isPending) return;
     setFormError('');
 
     if (password !== confirmPassword) {
       setFormError('Passwords do not match.');
       return;
     }
-
     if (password.length < 8) {
       setFormError('Password must be at least 8 characters.');
       return;
     }
-
-    if (emailAvailabilityQuery.data?.taken) {
+    if (availabilityIsCurrent && emailAvailabilityQuery.data?.taken) {
       setFormError('Email is already in use.');
       return;
     }
 
     try {
-      const { user } = await signupMutation.mutateAsync({ email, password });
-      toast.success("Welcome!", { description: "We're excited to get you started." })
-      navigate(user.hasUsername ? '/' : '/username');
+      const { user } = await signupMutation.mutateAsync({ email: normalizedEmail, password });
+      toast.success('Welcome!', { description: "We're excited to get you started." });
+      navigate(user.hasUsername ? '/dashboard' : '/username', { replace: true });
     } catch (error) {
-      toast.error("Oops! Something went wrong.", { description: "We were unable to create your account. Please try again." })
       setFormError(getApiErrorMessage(error, 'Unable to create your account.'));
     }
   }
 
-  const emailMessage = !canCheckEmail
+  const emailMessage = !availabilityIsCurrent
     ? null
     : emailAvailabilityQuery.isFetching
       ? 'Checking email...'
       : emailAvailabilityQuery.isError
-        ? getApiErrorMessage(
-            emailAvailabilityQuery.error,
-            'Unable to check email availability.'
-          )
+        ? getApiErrorMessage(emailAvailabilityQuery.error, 'Unable to check email availability.')
         : emailAvailabilityQuery.data
-          ? emailAvailabilityQuery.data.taken
-            ? 'Email is already in use.'
-            : 'Email is available!'
+          ? emailAvailabilityQuery.data.taken ? 'Email is already in use.' : 'Email is available!'
           : null;
-
-
-
 
   return (
     <form
-      className={cn('flex flex-col gap-5', className)}
-      onSubmit={handleSubmit}
       {...props}
+      className={cn('flex flex-col gap-6', className)}
+      onSubmit={handleSubmit}
+      aria-busy={signupMutation.isPending}
     >
       <FieldGroup>
+        <div className="flex flex-col items-center gap-2 text-center">
+          <h1 className="text-3xl tracking-tighter font-bold text-white">Create an Account.</h1>
+          <FieldDescription className="text-white/50! text-center text-xs">
+            All you need is an email and password to get started.
+          </FieldDescription>
+        </div>
         <Field>
-          {/* email */}
           <FieldLabel htmlFor="email">Email</FieldLabel>
           <Input
             id="email"
+            name="email"
             type="email"
-            placeholder="john@doe.com"
+            placeholder="your@email.com"
+            autoComplete="email"
+            autoCapitalize="none"
+            spellCheck={false}
             required
+            disabled={signupMutation.isPending}
             value={email}
-            onChange={(e) => setEmail(e.target.value.toLowerCase())}
-            className="h-12 rounded-xl border-zinc-200 bg-zinc-50 px-4 text-zinc-950 shadow-none placeholder:text-zinc-400 focus-visible:border-zinc-400 focus-visible:ring-zinc-300/30 dark:border-input dark:bg-secondary dark:text-foreground dark:placeholder:text-muted-foreground dark:focus-visible:border-ring dark:focus-visible:ring-ring/50"
+            onChange={(event) => {
+              setEmail(event.target.value);
+              setFormError('');
+            }}
+            aria-invalid={availabilityIsCurrent && Boolean(emailAvailabilityQuery.data?.taken)}
+            aria-describedby={emailMessage ? 'email-availability' : undefined}
           />
           {emailMessage ? (
             <FieldDescription
+              id="email-availability"
+              aria-live="polite"
               className={cn(
                 'text-xs',
-                (emailAvailabilityQuery.data?.taken ||
-                  emailAvailabilityQuery.isError) &&
-                  'text-destructive',
-                emailAvailabilityQuery.isSuccess &&
-                  !emailAvailabilityQuery.data.taken &&
-                  'text-emerald-600 dark:text-emerald-400'
+                (emailAvailabilityQuery.data?.taken || emailAvailabilityQuery.isError) && 'text-destructive',
+                emailAvailabilityQuery.isSuccess && !emailAvailabilityQuery.data.taken && 'text-emerald-400',
               )}
             >
               {emailMessage}
             </FieldDescription>
           ) : null}
         </Field>
-
-        {/* password */}
         <Field>
           <FieldLabel htmlFor="password">Password</FieldLabel>
           <Input
             id="password"
+            name="password"
             type="password"
             placeholder="Must be at least 8 characters"
+            autoComplete="new-password"
             required
+            minLength={8}
+            disabled={signupMutation.isPending}
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="h-12 rounded-xl border-zinc-200 bg-zinc-50 px-4 text-zinc-950 shadow-none placeholder:text-zinc-400 focus-visible:border-zinc-400 focus-visible:ring-zinc-300/30 dark:border-input dark:bg-secondary dark:text-foreground dark:placeholder:text-muted-foreground dark:focus-visible:border-ring dark:focus-visible:ring-ring/50"
+            onChange={(event) => {
+              setPassword(event.target.value);
+              setFormError('');
+            }}
+            aria-describedby={formError ? 'signup-error' : undefined}
           />
         </Field>
-
-        {/* confirm password */}
         <Field>
           <FieldLabel htmlFor="confirm-password">Confirm Password</FieldLabel>
           <Input
             id="confirm-password"
+            name="confirmPassword"
             type="password"
-            placeholder="Confirm password"
+            placeholder="Re-enter password"
+            autoComplete="new-password"
             required
+            minLength={8}
+            disabled={signupMutation.isPending}
             value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            className="h-12 rounded-xl border-zinc-200 bg-zinc-50 px-4 text-zinc-950 shadow-none placeholder:text-zinc-400 focus-visible:border-zinc-400 focus-visible:ring-zinc-300/30 dark:border-input dark:bg-secondary dark:text-foreground dark:placeholder:text-muted-foreground dark:focus-visible:border-ring dark:focus-visible:ring-ring/50"
+            onChange={(event) => {
+              setConfirmPassword(event.target.value);
+              setFormError('');
+            }}
+            aria-describedby={formError ? 'signup-error' : undefined}
           />
         </Field>
-
-        {/* submit button */}
         <Field>
-          <Button type="submit" disabled={signupMutation.isPending} className="h-12 rounded-xl bg-black text-base font-semibold text-white shadow-none hover:bg-zinc-800 dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90">
-            {signupMutation.isPending ? 'Creating account...' : 'Register'}
+          <Button type="submit" disabled={signupMutation.isPending}>
+            {signupMutation.isPending ? 'Creating account...' : 'Signup'}
           </Button>
-          <FieldError>{formError}</FieldError>
-        </Field>
-
-        <Field>
-          <FieldDescription className="text-center text-sm text-zinc-500 dark:text-muted-foreground">
-            Already have an account?{' '}
-            <Link to="/login" className="font-semibold text-zinc-950 underline underline-offset-4 dark:text-foreground">
-              Log in
-            </Link>
-          </FieldDescription>
+          <FieldError id="signup-error">{formError}</FieldError>
         </Field>
       </FieldGroup>
+      <FieldDescription className="px-6 text-center text-white/50">
+        Already have an account?{' '}
+        <Link to="/login" className="transition duration-150">Login</Link>
+      </FieldDescription>
     </form>
   );
 }

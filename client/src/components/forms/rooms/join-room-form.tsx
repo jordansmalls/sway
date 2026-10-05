@@ -73,15 +73,11 @@ export function JoinRoomForm({
           </Field>
         </FieldGroup>
       </form>
-      <FieldDescription className="px-6 text-center text-xs leading-5 text-zinc-500 dark:text-muted-foreground">
+      <FieldDescription className="px-6 text-center text-[.8rem] leading-5 text-white/50 dark:text-muted-foreground">
         By clicking continue, you agree to our{' '}
         <a href="https://www.sway.onl/terms" target="_blank" rel="noreferrer" className="font-medium text-zinc-950 underline underline-offset-4 dark:text-foreground">
-          Terms and Conditions
-        </a>{' and '}
-        <a href="https://www.sway.onl/privacy-policy" target="_blank" rel="noreferrer" className="font-medium text-zinc-950 underline underline-offset-4 dark:text-foreground">
-          Privacy Policy
-        </a>
-        .
+         Terms
+        </a>.
       </FieldDescription>
     </div>
   );
