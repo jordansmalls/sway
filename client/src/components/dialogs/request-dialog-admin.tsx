@@ -50,7 +50,7 @@ const RequestDialogAdmin = ({
     }
 
     try {
-      await createRequestMutation.mutateAsync({
+      const { alreadyQueued } = await createRequestMutation.mutateAsync({
         roomId,
         requestedBy,
         track: createRequestTrackFromSpotifyTrack(selectedTrack),
@@ -59,7 +59,9 @@ const RequestDialogAdmin = ({
       setIsOpen(false);
       setSelectedTrack(null);
 
-      toast.success("Track added", { description: `${selectedTrack.name} by ${selectedTrack.artist} has been added to the queue.` })
+      toast.success(alreadyQueued ? "Vote added" : "Track added", { description: alreadyQueued
+          ? `${selectedTrack.name} is already queued. Your vote has been added.`
+          : `${selectedTrack.name} by ${selectedTrack.artist} has been added to the queue.` })
 
     } catch (err) {
       toast.error("Oops! Your request couldn't be processed.", {

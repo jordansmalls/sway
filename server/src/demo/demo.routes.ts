@@ -118,7 +118,7 @@ demoRouter.use("/api", async (req, res) => {
         const listMatch = path.match(/^\/requests\/([^/]+)\/(requests|filter)$/);
         if (listMatch) {
             if (!ownRoom(listMatch[1])) return notFound();
-            return ok({ requests: requests.filter((r) => !req.query.status || r.status === req.query.status).sort((a, b) => b.votes - a.votes) });
+            return ok({ requests: requests.filter((r) => !req.query.status || r.status === req.query.status).sort((a, b) => b.votes - a.votes || Date.parse(a.createdAt) - Date.parse(b.createdAt) || a._id.localeCompare(b._id)) });
         }
         const requestMatch = path.match(/^\/requests\/([^/]+)$/);
         if (requestMatch) {
@@ -165,16 +165,21 @@ demoRouter.use("/api", async (req, res) => {
         if (!ownRoom(body.roomId)) return notFound();
         const trackId = body.track?.spotifyTrackId;
         if (typeof trackId !== "string" || !/^[A-Za-z0-9]{22}$/.test(trackId)) return fail(res, 400, "Choose a valid Spotify track.");
+        const existing = requests.find((r) => r.track.spotifyTrackId === trackId && ["pending", "playing"].includes(r.status));
+        if (existing) {
+            if (session.votedIds.includes(existing._id)) return fail(res, 409, "You already voted for this song.");
+            session.votedIds.push(existing._id);
+            existing.votes += 1;
+            existing.updatedAt = new Date().toISOString();
+            if (await save(session, res)) return ok({ request: existing, alreadyQueued: true });
+            return;
+        }
         if (requests.length >= 60) return fail(res, 400, "Demo request limit reached. Reset the demo to try again.");
-        if (requests.some((r) => r.track.spotifyTrackId === trackId && ["pending", "playing"].includes(r.status)))
-            return fail(res, 409, "That song is already in the queue. Give it a vote instead!");
         let track;
         try { track = await getDemoSpotifyTrack(trackId); }
         catch (error) { return sendDemoSpotifyError(error, res); }
         // Slow provider responses must not let a session outlive its fixed expiry.
         if (session.expiresAt.getTime() <= Date.now()) return fail(res, 410, "Your demo has expired. Start a new demo to keep exploring.");
-        if (requests.some((r) => r.track.spotifyTrackId === track.id && ["pending", "playing"].includes(r.status)))
-            return fail(res, 409, "That song is already in the queue. Give it a vote instead!");
         const item = demoRequest(track, room._id, String(body.requestedBy ?? "Demo guest").trim().slice(0, 40) || "Demo guest");
         requests.push(item);
         if (await save(session, res)) return res.status(201).json({ success: true, request: item });

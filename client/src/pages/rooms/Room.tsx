@@ -32,6 +32,7 @@ const Room: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: roomKeys.requests(roomCode) });
     };
     const syncRequest = (request: Parameters<typeof upsertRequestInRoomCache>[1]) => {
+      if (queryClient.isMutating({ mutationKey: requestKeys.all })) return;
       upsertRequestInRoomCache(queryClient, request);
       invalidateRequests();
     };
@@ -45,6 +46,7 @@ const Room: React.FC = () => {
     const unsubscribeCreated = onRequestCreated(({ roomId: eventRoomId, request }) => eventRoomId === roomId && syncRequest(request));
     const unsubscribeUpdated = onRequestUpdated(({ roomId: eventRoomId, request }) => eventRoomId === roomId && syncRequest(request));
     const unsubscribeDeleted = onRequestDeleted(({ requestId }) => {
+      if (queryClient.isMutating({ mutationKey: requestKeys.all })) return;
       removeRequestFromRoomCache(queryClient, roomId, requestId);
       invalidateRequests();
     });

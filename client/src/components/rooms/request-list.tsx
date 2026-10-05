@@ -2,7 +2,7 @@ import React from 'react';
 import { ThumbsUp, ListMusic } from 'lucide-react';
 import { toast } from 'sonner';
 import { Spinner } from '../ui/spinner';
-import { useRequestsByRoomQuery, useUpvoteRequestMutation } from '@/api/requests';
+import { sortRequestsForQueue, useRequestsByRoomQuery, useUpvoteRequestMutation } from '@/api/requests';
 import type { SongRequest } from '@/api/types';
 import { getApiErrorMessage } from '@/api/client';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
@@ -12,9 +12,8 @@ interface Props { roomId: string; }
 const RequestList: React.FC<Props> = ({ roomId }) => {
   const requestsQuery = useRequestsByRoomQuery(roomId);
   const upvoteMutation = useUpvoteRequestMutation();
-  const pending = [...(requestsQuery.data?.requests ?? [])]
-    .filter((request) => request.status === 'pending')
-    .sort((a, b) => b.votes - a.votes);
+  const pending = sortRequestsForQueue(requestsQuery.data?.requests ?? [])
+    .filter((request) => request.status === 'pending');
 
   const handleUpvote = async (requestId: string) => {
     try {

@@ -1,5 +1,5 @@
 import {
-  type QueryClient,
+  useIsMutating,
   useMutation,
   useQuery,
   useQueryClient,
@@ -16,15 +16,20 @@ import type {
   SpotifyTrack,
 } from "@/api/types"
 
+import {
+  requestKeys,
+  optimisticallyUpdateRequest,
+  upsertRequestInRoomCache,
+  type RequestAction,
+  type RequestsResponse,
+} from "./request-cache"
+export { requestKeys, getSongRequestRoomId, sortRequestsForQueue, upsertRequestInRoomCache, removeRequestFromRoomCache } from "./request-cache"
+
 type RequestResponse = {
   success: true
   message?: string
+  alreadyQueued?: boolean
   request: SongRequest
-}
-
-type RequestsResponse = {
-  success: true
-  requests: SongRequest[]
 }
 
 export type CreateRequestInput = {
@@ -40,15 +45,6 @@ export type RequestIdInput = {
 export type FilterRequestsInput = {
   roomId: string
   status?: RequestStatus
-}
-
-export const requestKeys = {
-  all: ["requests"] as const,
-  byRoom: (roomId: string) => [...requestKeys.all, "room", roomId] as const,
-  detail: (requestId: string) =>
-    [...requestKeys.all, "detail", requestId] as const,
-  filter: (roomId: string, status?: RequestStatus) =>
-    [...requestKeys.byRoom(roomId), "filter", status ?? "all"] as const,
 }
 
 export async function createRequest(input: CreateRequestInput) {
@@ -81,54 +77,6 @@ export function createRequestTrackFromSpotifyTrack(
     uri: spotifyURI,
     duration_ms: track.duration_ms,
   }
-}
-
-export function getSongRequestRoomId(request: SongRequest) {
-  return typeof request.roomId === "string" ? request.roomId : request.roomId._id
-}
-
-export function sortRequestsForQueue(requests: SongRequest[]) {
-  return [...requests].sort((a, b) => b.votes - a.votes)
-}
-
-export function upsertRequestInRoomCache(
-  queryClient: QueryClient,
-  request: SongRequest
-) {
-  const roomId = getSongRequestRoomId(request)
-
-  queryClient.setQueryData<RequestsResponse>(
-    requestKeys.byRoom(roomId),
-    (current) => {
-      const requests = sortRequestsForQueue([
-        ...(current?.requests ?? []).filter((item) => item._id !== request._id),
-        request,
-      ])
-
-      return {
-        success: true,
-        requests,
-      }
-    }
-  )
-}
-
-export function removeRequestFromRoomCache(
-  queryClient: QueryClient,
-  roomId: string,
-  requestId: string
-) {
-  queryClient.setQueryData<RequestsResponse>(
-    requestKeys.byRoom(roomId),
-    (current) => {
-      if (!current) return current
-
-      return {
-        ...current,
-        requests: current.requests.filter((item) => item._id !== requestId),
-      }
-    }
-  )
 }
 
 export async function upvoteRequest(input: RequestIdInput) {
@@ -187,64 +135,80 @@ export async function filterRequests({ roomId, status }: FilterRequestsInput) {
 
 function useInvalidateRequests() {
   const queryClient = useQueryClient()
-
-  return () => {
-    queryClient.invalidateQueries({ queryKey: analyticsKeys.all })
-    queryClient.invalidateQueries({ queryKey: requestKeys.all })
-    queryClient.invalidateQueries({ queryKey: roomKeys.all })
+  return async () => {
+    // The last mutation refreshes the queue. Earlier completions must not
+    // replace another mutation's optimistic changes with an older response.
+    if (queryClient.isMutating({ mutationKey: requestKeys.all }) > 1) return
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: analyticsKeys.all }),
+      queryClient.invalidateQueries({ queryKey: requestKeys.all }),
+      queryClient.invalidateQueries({ queryKey: roomKeys.all }),
+    ])
   }
 }
 
 export function useCreateRequestMutation() {
+  const queryClient = useQueryClient()
   const invalidateRequests = useInvalidateRequests()
-
   return useMutation({
+    mutationKey: requestKeys.all,
     mutationFn: createRequest,
-    onSuccess: invalidateRequests,
+    onMutate: async (input) => {
+      await queryClient.cancelQueries({ queryKey: requestKeys.all })
+      const existing = queryClient.getQueryData<RequestsResponse>(requestKeys.byRoom(input.roomId))?.requests.find(
+        (item) => item.track.spotifyTrackId === input.track.id && ["pending", "playing"].includes(item.status)
+      )
+      return existing ? optimisticallyUpdateRequest(queryClient, existing._id, "vote") : undefined
+    },
+    onError: (_error, _input, rollback) => rollback?.(),
+    onSuccess: ({ request }) => upsertRequestInRoomCache(queryClient, request),
+    onSettled: invalidateRequests,
+  })
+}
+
+function useRequestActionMutation<T extends RequestResponse | ApiMessageResponse>(
+  mutationFn: (input: RequestIdInput) => Promise<T>,
+  action: RequestAction
+) {
+  const queryClient = useQueryClient()
+  const invalidateRequests = useInvalidateRequests()
+  return useMutation({
+    mutationKey: requestKeys.all,
+    mutationFn,
+    onMutate: async ({ requestId }) => {
+      await queryClient.cancelQueries({ queryKey: requestKeys.all })
+      return optimisticallyUpdateRequest(queryClient, requestId, action)
+    },
+    onError: (_error, _input, rollback) => rollback?.(),
+    onSuccess: (data) => {
+      if ("request" in data) upsertRequestInRoomCache(queryClient, data.request)
+    },
+    onSettled: invalidateRequests,
   })
 }
 
 export function useUpvoteRequestMutation() {
-  const invalidateRequests = useInvalidateRequests()
-
-  return useMutation({
-    mutationFn: upvoteRequest,
-    onSuccess: invalidateRequests,
-  })
+  return useRequestActionMutation(upvoteRequest, "vote")
 }
 
 export function useMarkRequestPlayingMutation() {
-  const invalidateRequests = useInvalidateRequests()
-
-  return useMutation({
-    mutationFn: markRequestPlaying,
-    onSuccess: invalidateRequests,
-  })
+  return useRequestActionMutation(markRequestPlaying, "playing")
 }
 
 export function useMarkRequestPlayedMutation() {
-  const invalidateRequests = useInvalidateRequests()
-
-  return useMutation({
-    mutationFn: markRequestPlayed,
-    onSuccess: invalidateRequests,
-  })
+  return useRequestActionMutation(markRequestPlayed, "played")
 }
 
 export function useRemoveRequestMutation() {
-  const invalidateRequests = useInvalidateRequests()
-
-  return useMutation({
-    mutationFn: removeRequest,
-    onSuccess: invalidateRequests,
-  })
+  return useRequestActionMutation(removeRequest, "delete")
 }
 
 export function useRequestsByRoomQuery(roomId: string) {
+  const pendingMutations = useIsMutating({ mutationKey: requestKeys.all })
   return useQuery({
     queryKey: requestKeys.byRoom(roomId),
     queryFn: () => getRequestsByRoom(roomId),
-    enabled: roomId.length > 0,
+    enabled: roomId.length > 0 && pendingMutations === 0,
   })
 }
 
