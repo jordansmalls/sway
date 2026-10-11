@@ -23,10 +23,10 @@ export const clearAuthToken = (res: Response) => {
  * @returns {object} the express response object with the cookie set
  */
 
-const generateToken = (res: Response, userId: string) => {
+const generateToken = (res: Response, userId: string, sessionVersion: number) => {
     if (!config.jwt_secret) throw new Error("JWT_SECRET is required");
 
-    const token = jwt.sign({ userId }, config.jwt_secret, {
+    const token = jwt.sign({ userId, sessionVersion }, config.jwt_secret, {
         expiresIn: "30d",
     });
 

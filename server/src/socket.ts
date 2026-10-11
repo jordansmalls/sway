@@ -5,8 +5,6 @@ import { initSocketIO } from "./controllers/request.controller.js";
 
 const allowedOrigins = [config.frontend_url];
 
-
-
 export const initSocket = (httpServer: HttpServer): Server => {
     const io = new Server(httpServer, {
         cors: {
@@ -25,24 +23,22 @@ export const initSocket = (httpServer: HttpServer): Server => {
 
     // Connection Handler
     io.on("connection", (socket: Socket) => {
-        // console.log("🔌 New client connected:", socket.id);
+        const changeRoom = async (action: "join" | "leave", roomId: unknown) => {
+            if (typeof roomId !== "string" || !/^[a-fA-F0-9]{24}$/.test(roomId)) {
+                return;
+            }
 
-        socket.on("join-room", (roomId: string) => {
-            socket.join(`room-${roomId}`);
-            // console.log(`✅ Client ${socket.id} joined room-${roomId}`);
-        });
+            try {
+                await socket[action](`room-${roomId}`);
+            } catch {
+                socket.emit("room:error", { message: "Unable to change room subscription." });
+            }
+        };
 
-        socket.on("leave-room", (roomId: string) => {
-            socket.leave(`room-${roomId}`);
-            // console.log(`👋 Client ${socket.id} left room-${roomId}`);
-        });
+        socket.on("join-room", (roomId: unknown) => changeRoom("join", roomId));
+        socket.on("leave-room", (roomId: unknown) => changeRoom("leave", roomId));
 
-        socket.on("room:update", (updatedRoom: { _id?: string }) => {
-            if (!updatedRoom?._id) return;
-            io.to(`room-${updatedRoom._id}`).emit("room:updated", updatedRoom);
-            // console.log(`🛰️ Room ${updatedRoom._id} updated and broadcasted`);
-        });
-
+        // Room updates are emitted only by server controllers.
         socket.on("disconnect", () => {
             console.log("❌ Client disconnected:", socket.id);
         });

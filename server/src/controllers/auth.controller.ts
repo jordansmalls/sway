@@ -63,7 +63,7 @@ export const createUserAccount = async (req, res) => {
             });
         }
 
-        generateToken(res, user._id);
+        generateToken(res, user._id.toString(), user.sessionVersion);
 
         return res.status(201).json({
             success: true,
@@ -306,7 +306,7 @@ export const loginUserAccount = async (req, res) => {
         }).select("+password"); // Explicitly include password if it's set to select: false
 
         if (user && user.active && (await user.comparePassword(password))) {
-            generateToken(res, user._id);
+            generateToken(res, user._id.toString(), user.sessionVersion);
             return res.status(200).json({
                 success: true,
                 message: "You've been successfully logged in.",

@@ -141,7 +141,12 @@ export const updatePassword = async (req, res) => {
     try {
         const { currentPassword, newPassword } = req.body;
 
-        if (!currentPassword || !newPassword) {
+        if (
+            typeof currentPassword !== "string" ||
+            typeof newPassword !== "string" ||
+            !currentPassword ||
+            !newPassword
+        ) {
             return res.status(400).json({
                 success: false,
                 error: "Invalid Credentials: missing current or new password",
@@ -149,7 +154,7 @@ export const updatePassword = async (req, res) => {
             });
         }
 
-        if (newPassword.length < 6) {
+        if (newPassword.length < 8) {
             return res.status(400).json({
                 success: false,
                 error: "Invalid Credentials: invalid new password length",
@@ -181,6 +186,7 @@ export const updatePassword = async (req, res) => {
         // Set new password (will be hashed by pre-save middleware)
         user.password = newPassword;
         await user.save();
+        clearAuthToken(res);
 
         return res.status(200).json({
             success: true,
