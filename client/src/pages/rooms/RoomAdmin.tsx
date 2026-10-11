@@ -8,7 +8,7 @@ import { EditRoomDialog } from '../../components/dialogs/edit-room-dialog';
 import EndRoomDialog from '../../components/dialogs/end-room-dialog';
 import RequestDialogAdmin from '../../components/dialogs/request-dialog-admin';
 import RequestListAdmin from '../../components/rooms/request-list-admin';
-import { joinRoom, onRoomEnded, onRoomUpdated } from '@/lib/socket';
+import { joinRoom, onReconnect, onRoomEnded, onRoomUpdated } from '@/lib/socket';
 import { toast } from 'sonner';
 import { Button } from '../../components/ui/button';
 import { Folder, MonitorUp, SquareArrowOutUpRight } from 'lucide-react';
@@ -49,6 +49,9 @@ const RoomAdmin = () => {
     if (!room?._id) return;
 
     const leaveRoom = joinRoom(room._id);
+    const unsubscribeReconnect = onReconnect(() => {
+      queryClient.invalidateQueries({ queryKey: roomKeys.detail(roomCode) });
+    });
 
     const unsubscribeUpdated = onRoomUpdated(({ roomId }) => {
       if (roomId !== room._id) return;
@@ -65,6 +68,7 @@ const RoomAdmin = () => {
 
     return () => {
       leaveRoom();
+      unsubscribeReconnect();
       unsubscribeUpdated();
       unsubscribeEnded();
     };
@@ -147,7 +151,7 @@ const RoomAdmin = () => {
             <RequestDialogAdmin
               roomId={room._id}
               triggerText="Add Song to Request List"
-              requestedBy={user.username ?? user.email}
+              requestedBy={user.username || 'DJ'}
             />
           </div>
           <RecommendedTracks userId={user._id} />

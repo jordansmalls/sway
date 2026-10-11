@@ -12,7 +12,7 @@ import Footer from '../../components/footer';
 import RequestList from '../../components/rooms/request-list';
 import MakeRequest from '../../components/rooms/make-request';
 import NowPlaying from '../../components/rooms/now-playing';
-import { joinRoom, onRequestCreated, onRequestDeleted, onRequestPlayed, onRequestPlaying, onRequestUpdated, onRoomEnded, onRoomUpdated } from '@/lib/socket';
+import { joinRoom, onReconnect, onRequestCreated, onRequestDeleted, onRequestPlayed, onRequestPlaying, onRequestUpdated, onRoomEnded, onRoomUpdated } from '@/lib/socket';
 
 const Room: React.FC = () => {
   const demo = useDemoSession();
@@ -37,6 +37,7 @@ const Room: React.FC = () => {
       invalidateRequests();
     };
     const leaveRoom = joinRoom(roomId);
+    const unsubscribeReconnect = onReconnect(() => { invalidateRoom(); invalidateRequests(); });
     const unsubscribeRoomUpdated = onRoomUpdated(({ roomId: eventRoomId }) => eventRoomId === roomId && invalidateRoom());
     const unsubscribeRoomEnded = onRoomEnded(({ roomId: eventRoomId }) => {
       if (eventRoomId !== roomId) return;
@@ -53,7 +54,7 @@ const Room: React.FC = () => {
     const unsubscribePlaying = onRequestPlaying(({ roomId: eventRoomId, request }) => eventRoomId === roomId && syncRequest(request));
     const unsubscribePlayed = onRequestPlayed(({ roomId: eventRoomId, request }) => eventRoomId === roomId && syncRequest(request));
     return () => {
-      leaveRoom();
+      leaveRoom(); unsubscribeReconnect();
       unsubscribeRoomUpdated(); unsubscribeRoomEnded(); unsubscribeCreated(); unsubscribeUpdated();
       unsubscribeDeleted(); unsubscribePlaying(); unsubscribePlayed();
     };

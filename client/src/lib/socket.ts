@@ -81,27 +81,57 @@ export function disconnectSocket() {
   }
 }
 
-/** Join a room once the socket is connected; returns cleanup that leaves the room. */
+/** Reference counts for rooms this client wants to receive events for. */
+const joinedRooms = new Map<string, number>()
+
+// Socket.IO drops room membership whenever the connection drops, so re-join
+// every active room on each (re)connect, not just the first one.
+socket.on("connect", () => {
+  for (const roomId of joinedRooms.keys()) {
+    socket.emit("join-room", roomId)
+  }
+})
+
+/**
+ * Join a room's live channel; returns cleanup that releases this reference.
+ * Several components can hold the same room — the socket only leaves once the
+ * last one releases it.
+ */
 export function joinRoom(roomId: string) {
   // Demo data refreshes through its isolated API; never join live room channels.
   if (isDemoExperience() || roomId.startsWith("demo-room-")) return () => {}
-  connectSocket()
 
-  const emitJoin = () => {
+  const count = joinedRooms.get(roomId) ?? 0
+  joinedRooms.set(roomId, count + 1)
+
+  if (count === 0 && socket.connected) {
     socket.emit("join-room", roomId)
   }
+  connectSocket()
 
-  if (socket.connected) {
-    emitJoin()
-  } else {
-    socket.once("connect", emitJoin)
-  }
-
+  let released = false
   return () => {
-    socket.off("connect", emitJoin)
+    if (released) return
+    released = true
+
+    const remaining = (joinedRooms.get(roomId) ?? 1) - 1
+    if (remaining > 0) {
+      joinedRooms.set(roomId, remaining)
+      return
+    }
+
+    joinedRooms.delete(roomId)
     if (socket.connected) {
       socket.emit("leave-room", roomId)
     }
+  }
+}
+
+/** Fires after an automatic reconnect, when events may have been missed. */
+export function onReconnect(callback: () => void) {
+  socket.io.on("reconnect", callback)
+  return () => {
+    socket.io.off("reconnect", callback)
   }
 }
 

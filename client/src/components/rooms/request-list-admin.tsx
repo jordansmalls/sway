@@ -25,6 +25,7 @@ import {
 import type { RequestStatus, SongRequest } from '@/api/types';
 import {
   joinRoom,
+  onReconnect,
   onRequestCreated,
   onRequestDeleted,
   onRequestPlayed,
@@ -236,6 +237,7 @@ const RequestListAdmin: React.FC = () => {
     };
 
     const leaveRoom = joinRoom(roomId);
+    const unsubscribeReconnect = onReconnect(invalidateRequests);
 
     const unsubscribeCreated = onRequestCreated(
       ({ roomId: eventRoomId, request }) => {
@@ -275,6 +277,7 @@ const RequestListAdmin: React.FC = () => {
 
     return () => {
       leaveRoom();
+      unsubscribeReconnect();
       unsubscribeCreated();
       unsubscribeUpdated();
       unsubscribeDeleted();
