@@ -10,22 +10,7 @@ import { TracklistExportDropdown } from '@/components/dropdowns/tracklist-export
 import Footer from '@/components/footer';
 import { Button } from '@/components/ui/button';
 import { useDemoSession } from '@/components/demo/demo-context';
-
-function sortByTime(timeA: string, timeB: string) {
-  const parseTime = (time: string) => {
-    const match = time.match(/(\d+):(\d+)\s*(AM|PM)/i);
-    if (!match) return 0;
-    let hours = Number(match[1]);
-    const minutes = Number(match[2]);
-    const period = match[3].toUpperCase();
-    if (period === 'PM' && hours !== 12) hours += 12;
-    if (period === 'AM' && hours === 12) hours = 0;
-    if (period === 'AM') hours += 24;
-    return hours * 60 + minutes;
-  };
-
-  return parseTime(timeA) - parseTime(timeB);
-}
+import { compareTimestamps, formatTimeOfDay } from '@/lib/format';
 
 export default function Tracklist() {
   const demo = useDemoSession();
@@ -42,7 +27,7 @@ export default function Tracklist() {
   const isOwner = !demo && Boolean(currentUser && roomCreatorId === currentUser._id);
   const backHref = demo ? `/demo/room/admin/${roomCode}` : currentUser ? '/dashboard' : 'https://sway.onl';
   const tracks = [...(tracklistQuery.data?.data ?? [])].sort((a, b) =>
-    sortByTime(a.playedAt ?? '', b.playedAt ?? ''),
+    compareTimestamps(a.playedAt, b.playedAt),
   );
 
   if (tracklistQuery.isLoading || roomDetailsQuery.isLoading) {
@@ -176,6 +161,7 @@ function SetStack({ tracks }: { tracks: QueueRequest[] }) {
 
 function TrackRow({ track, index }: { track: QueueRequest; index: number }) {
   const spotifyHref = track.spotifyLink || track.spotifyUri;
+  const playedAt = formatTimeOfDay(track.playedAt);
 
   return (
     <li className="group border-b last:border-b-0">
@@ -200,14 +186,14 @@ function TrackRow({ track, index }: { track: QueueRequest; index: number }) {
           <div className="truncate text-sm font-semibold">{track.title}</div>
           <div className="mt-0.5 truncate text-xs text-muted-foreground">{track.artist}</div>
           <div className="mt-1 flex items-center gap-2 text-[11px] text-muted-foreground sm:hidden">
-            {track.playedAt ? <span>{track.playedAt}</span> : null}
+            {playedAt ? <span>{playedAt}</span> : null}
             {track.votes ? <span className="flex items-center gap-1"><Vote className="size-3" />{track.votes}</span> : null}
           </div>
         </div>
         <div className="hidden items-center gap-4 text-xs text-muted-foreground sm:flex">
           {track.requestedBy ? <span className="max-w-32 truncate">Requested by {track.requestedBy}</span> : null}
           {track.votes ? <span className="flex items-center gap-1"><Vote className="size-3.5" />{track.votes}</span> : null}
-          {track.playedAt ? <span className="tabular-nums">{track.playedAt}</span> : null}
+          {playedAt ? <span className="tabular-nums">{playedAt}</span> : null}
         </div>
         <ExternalLink className="size-4 text-muted-foreground transition-colors group-hover:text-foreground" />
       </a>

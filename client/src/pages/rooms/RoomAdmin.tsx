@@ -1,6 +1,4 @@
-import { useEffect } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
-import { roomKeys, useRoomDetailsQuery } from '../../api';
+import { useRoomDetailsQuery } from '../../api';
 import { useCurrentUserQuery } from '../../api/users';
 import { useParams, Navigate, useNavigate } from 'react-router-dom';
 import { ShareDialog } from '../../components/dialogs/share-dialog';
@@ -8,7 +6,7 @@ import { EditRoomDialog } from '../../components/dialogs/edit-room-dialog';
 import EndRoomDialog from '../../components/dialogs/end-room-dialog';
 import RequestDialogAdmin from '../../components/dialogs/request-dialog-admin';
 import RequestListAdmin from '../../components/rooms/request-list-admin';
-import { joinRoom, onReconnect, onRoomEnded, onRoomUpdated } from '@/lib/socket';
+import { useRoomRealtime } from '@/hooks/use-room-realtime';
 import { toast } from 'sonner';
 import { Button } from '../../components/ui/button';
 import { Folder, MonitorUp, SquareArrowOutUpRight } from 'lucide-react';
@@ -28,7 +26,6 @@ const RoomAdmin = () => {
   const demo = useDemoSession();
   const { roomCode: rawRoomCode } = useParams<{ roomCode: string }>();
   const roomCode = rawRoomCode?.toUpperCase() ?? '';
-  const queryClient = useQueryClient();
   const navigate = useNavigate();
 
   const {
@@ -45,34 +42,19 @@ const RoomAdmin = () => {
   const room = roomData?.roomDetails;
   const user = userData?.user;
 
-  useEffect(() => {
-    if (!room?._id) return;
-
-    const leaveRoom = joinRoom(room._id);
-    const unsubscribeReconnect = onReconnect(() => {
-      queryClient.invalidateQueries({ queryKey: roomKeys.detail(roomCode) });
-    });
-
-    const unsubscribeUpdated = onRoomUpdated(({ roomId }) => {
-      if (roomId !== room._id) return;
-
-      queryClient.invalidateQueries({ queryKey: roomKeys.detail(roomCode) });
-    });
-
-    const unsubscribeEnded = onRoomEnded(({ roomId }) => {
-      if (roomId !== room._id) return;
-      toast.info("Party's over.", { description: 'This room is now over, feel free to check out the tracklist.',  });
-      queryClient.invalidateQueries({ queryKey: roomKeys.detail(roomCode) });
+  // The whole admin page shares one live subscription (the request list included).
+  useRoomRealtime(room?._id ?? '', roomCode, {
+    onRequestCreated: (request) => {
+      toast.success('You Have a New Request!', { description: `${request.track.title} by ${request.track.artist}` });
+    },
+    onRequestPlaying: (request) => {
+      toast.success('Now Playing:', { description: `${request.track.title} by ${request.track.artist}` });
+    },
+    onRoomEnded: () => {
+      toast.info("Party's over.", { description: 'This room is now over, feel free to check out the tracklist.' });
       navigate(demo ? `/demo/${roomCode}/tracklist` : '/dashboard');
-    });
-
-    return () => {
-      leaveRoom();
-      unsubscribeReconnect();
-      unsubscribeUpdated();
-      unsubscribeEnded();
-    };
-  }, [demo, navigate, queryClient, room?._id, roomCode]);
+    },
+  });
 
   const guestClick = () => {
     navigate(roomExperiencePath(`/room/${roomCode}`))

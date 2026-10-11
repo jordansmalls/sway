@@ -31,7 +31,7 @@ import { SidebarTrigger } from "@/components/ui/sidebar"
 import { cn } from "@/lib/utils"
 import { Marquee } from "@/registry/magicui/marquee"
 import { NumberTicker } from "@/registry/magicui/number-ticker"
-import { useAuthStore } from "@/stores/auth-store"
+import { useCurrentUser } from "@/api/users"
 import { useActiveRoomSummaryQuery, useLatestRoomsQuery } from "@/api/rooms"
 import {
   useAnalyticsTotalsQuery,
@@ -169,7 +169,7 @@ function TopSongCard({ song }: { song: import("@/api/analytics").AnalyticsSong }
 }
 
 function TopSongs() {
-  const user = useAuthStore((state) => state.user)
+  const user = useCurrentUser()
   const songsQuery = useMostRequestedSongsQuery(user?._id ?? "")
   const songs = (songsQuery.data?.songs ?? []).slice(0, 12)
   const splitAt = Math.ceil(songs.length / 2)
@@ -302,7 +302,7 @@ function RequestConversionCard({
 }
 
 function ActiveRoomCard() {
-  const user = useAuthStore((state) => state.user)
+  const user = useCurrentUser()
   const summaryQuery = useActiveRoomSummaryQuery({
     enabled: Boolean(user?.hasActiveRoom),
   })
@@ -420,7 +420,7 @@ function formatSongActivity(value?: string | null) {
 }
 
 function MostRequestedSongsTable() {
-  const user = useAuthStore((state) => state.user)
+  const user = useCurrentUser()
   const [query, setQuery] = useState("")
   const [scope, setScope] = useState<"personal" | "global">("personal")
   const personalQuery = useMostRequestedSongsQuery(user?._id ?? "")
@@ -524,7 +524,7 @@ function MostRequestedSongsTable() {
 }
 
 function DashboardOverview() {
-  const user = useAuthStore((state) => state.user)
+  const user = useCurrentUser()
   const totalsQuery = useAnalyticsTotalsQuery(user?._id ?? "")
   const requestActivityQuery = useRequestActivityQuery(user?._id ?? "", "7d")
   const requestActivity = requestActivityQuery.data?.data ?? []
@@ -609,7 +609,7 @@ function DashboardOverview() {
 }
 
 export default function Dashboard() {
-  const user = useAuthStore((state) => state.user)
+  const user = useCurrentUser()
   const roomsQuery = useLatestRoomsQuery({ enabled: Boolean(user?._id) })
 
   return (

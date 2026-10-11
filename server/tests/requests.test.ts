@@ -76,3 +76,17 @@ describe("Request queue", () => {
         expect(second.body.request._id).not.toBe(first.body.request._id);
     });
 });
+
+describe("Played tracklist", () => {
+    it("returns ISO timestamps in play order, even across noon", async () => {
+        const times = ["2026-10-10T14:00:00.000Z", "2026-10-10T10:00:00.000Z", "2026-10-10T12:30:00.000Z"];
+        for (const [index, playedAt] of times.entries()) {
+            const created = await add({ ...track, id: `track-${index}`, name: `Song ${index}` });
+            await SongRequest.findByIdAndUpdate(created.body.request._id, { status: "played", playedAt: new Date(playedAt) });
+        }
+        const response = await request(app).get("/api/rooms/QUEUE/fetch/spotify/played");
+        expect(response.status).toBe(200);
+        expect(response.body.data.map((item) => item.playedAt)).toEqual([...times].sort());
+        expect(Number.isNaN(Date.parse(response.body.data[0].requestedAt))).toBe(false);
+    });
+});

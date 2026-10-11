@@ -6,6 +6,7 @@ import { Spinner } from '../ui/spinner';
 import { useSearchTracksQuery } from '@/api/spotify';
 import { useDemoSession } from '@/components/demo/demo-context';
 import { getApiErrorMessage } from '@/api/client';
+import { formatDuration } from '@/lib/format';
 
 export interface SpotifySearchTrack {
   id: string;
@@ -87,10 +88,7 @@ const SpotifySearch = ({ onTrackSelect }: SpotifySearchTestProps) => {
                   <div className="truncate text-xs text-muted-foreground">{track.artist}</div>
                 </div>
                 <div className="shrink-0 text-xs tabular-nums text-muted-foreground">
-                  {Math.floor(track.duration_ms / 60000)}:
-                  {((track.duration_ms % 60000) / 1000)
-                    .toFixed(0)
-                    .padStart(2, '0')}
+                  {formatDuration(track.duration_ms)}
                 </div>
               </button>
             ))}

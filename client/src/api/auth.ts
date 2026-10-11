@@ -2,8 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
 import { apiClient } from "@/api/client"
 import type { ApiMessageResponse, User } from "@/api/types"
-import { userKeys } from "@/api/users"
-import { useAuthStore } from "@/stores/auth-store"
+import { clearSession, userKeys } from "@/api/users"
 
 export type AuthUser = User
 
@@ -80,12 +79,10 @@ export async function checkUsernameAvailability(username: string) {
 
 export function useSignupMutation() {
   const queryClient = useQueryClient()
-  const setUser = useAuthStore((state) => state.setUser)
 
   return useMutation({
     mutationFn: signup,
     onSuccess: ({ user }) => {
-      setUser(user)
       queryClient.setQueryData(userKeys.me(), { success: true, user })
     },
   })
@@ -93,12 +90,10 @@ export function useSignupMutation() {
 
 export function useLoginMutation() {
   const queryClient = useQueryClient()
-  const setUser = useAuthStore((state) => state.setUser)
 
   return useMutation({
     mutationFn: login,
     onSuccess: ({ user }) => {
-      setUser(user)
       queryClient.setQueryData(userKeys.me(), { success: true, user })
     },
   })
@@ -106,12 +101,10 @@ export function useLoginMutation() {
 
 export function useCreateUsernameMutation() {
   const queryClient = useQueryClient()
-  const setUser = useAuthStore((state) => state.setUser)
 
   return useMutation({
     mutationFn: createUsername,
     onSuccess: ({ user }) => {
-      setUser(user)
       queryClient.setQueryData(userKeys.me(), { success: true, user })
       queryClient.invalidateQueries({ queryKey: userKeys.all })
     },
@@ -120,14 +113,10 @@ export function useCreateUsernameMutation() {
 
 export function useLogoutMutation() {
   const queryClient = useQueryClient()
-  const clearUser = useAuthStore((state) => state.clearUser)
 
   return useMutation({
     mutationFn: logout,
-    onSuccess: () => {
-      clearUser()
-      queryClient.clear()
-    },
+    onSuccess: () => clearSession(queryClient),
   })
 }
 

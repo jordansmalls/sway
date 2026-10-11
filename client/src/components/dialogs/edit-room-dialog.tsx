@@ -18,7 +18,7 @@ import { useState, useEffect, type FormEvent } from 'react';
 import { toast } from 'sonner';
 import { useUpdateRoomMutation } from '@/api/rooms';
 import type { Room } from '@/api/types';
-import { useAuthStore } from '@/stores/auth-store';
+import { useCurrentUser } from '@/api/users';
 import { useDemoSession } from '@/components/demo/demo-context';
 
 interface EditRoomDialogProps {
@@ -39,7 +39,7 @@ export function EditRoomDialog({
   const [roomDescription, setRoomDescription] = useState(
     roomData.roomDescription
   );
-  const realUser = useAuthStore((state) => state.user);
+  const realUser = useCurrentUser();
   const demo = useDemoSession();
   const user = demo?.user ?? realUser;
   const updateRoomMutation = useUpdateRoomMutation();

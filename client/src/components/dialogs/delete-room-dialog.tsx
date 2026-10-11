@@ -15,7 +15,7 @@ import { toast } from 'sonner';
 import { Trash2 } from 'lucide-react';
 import { getApiErrorMessage } from '@/api/client';
 import { useDeleteRoomMutation } from '@/api/rooms';
-import { useAuthStore } from '@/stores/auth-store';
+import { useCurrentUser } from '@/api/users';
 
 interface DeleteRoomDialogProps {
   roomCode: string;
@@ -52,7 +52,7 @@ const DeleteRoomDialog: React.FC<DeleteRoomDialogProps> = ({
   title = 'Are you absolutely sure?',
   description = 'This action cannot be undone. This will permanently delete the room and all associated data.',
 }) => {
-  const user = useAuthStore((state) => state.user);
+  const user = useCurrentUser();
   const deleteRoomMutation = useDeleteRoomMutation();
   const [open, setOpen] = useState(false);
 

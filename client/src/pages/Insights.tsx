@@ -42,7 +42,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { useAuthStore } from "@/stores/auth-store"
+import { useCurrentUser } from "@/api/users"
 
 const artistChartConfig = {
   playCount: {
@@ -319,7 +319,7 @@ function SongsTable({
 }
 
 export default function Insights() {
-  const user = useAuthStore((state) => state.user)
+  const user = useCurrentUser()
   const userId = user?._id ?? ""
   const totalsQuery = useAnalyticsTotalsQuery(userId)
   const artistsQuery = useMostPlayedArtistsQuery(userId)

@@ -5,8 +5,7 @@ import { toast } from 'sonner';
 import { getApiErrorMessage } from '@/api/client';
 import { exportRequestsJson } from '@/api/exports';
 import { useActiveRoomSummaryQuery } from '@/api/rooms';
-import { useInactiveRoomsQuery } from '@/api/users';
-import { useAuthStore } from '@/stores/auth-store';
+import { useCurrentUser, useInactiveRoomsQuery } from '@/api/users';
 import DeleteRoomDialog from '../dialogs/delete-room-dialog';
 import { EditRoomDialog } from '../dialogs/edit-room-dialog';
 import { TracklistExportDropdown } from '../dropdowns/tracklist-export-dropdown';
@@ -33,7 +32,7 @@ const RoomStatusCell = ({ status }: { status: RoomStatus }) => {
 };
 
 const InactiveRoomsTable = () => {
-  const user = useAuthStore((state) => state.user);
+  const user = useCurrentUser();
   const { data, isLoading, isError, refetch } = useInactiveRoomsQuery(user?._id ?? '');
   const { data: activeData, isLoading: isLoadingActive, isError: isActiveError, refetch: refetchActive } = useActiveRoomSummaryQuery({ enabled: Boolean(user?._id) });
   const [exportingId, setExportingId] = useState<string | null>(null);

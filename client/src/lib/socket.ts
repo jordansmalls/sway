@@ -1,6 +1,6 @@
 import { io, type Socket } from "socket.io-client"
 
-import { getSongRequestRoomId } from "@/api/requests"
+import { getSongRequestRoomId } from "@/api/request-cache"
 import type { Room, SongRequest } from "@/api/types"
 import { isDemoExperience } from "@/lib/demo-session"
 
@@ -56,10 +56,13 @@ export type ClientToServerEvents = {
 
 export type SwaySocket = Socket<ServerToClientEvents, ClientToServerEvents>
 
-/** Same origin in dev (Vite proxies /socket.io); override with VITE_SOCKET_URL if needed. */
+/**
+ * Same origin in dev (Vite proxies /socket.io); override with VITE_SOCKET_URL if needed.
+ * Uses `||` so empty values (e.g. a copied `.env.example`) fall through too.
+ */
 const socketUrl =
-  import.meta.env.VITE_SOCKET_URL ??
-  import.meta.env.VITE_API_URL ??
+  import.meta.env.VITE_SOCKET_URL ||
+  import.meta.env.VITE_API_URL ||
   (typeof window !== "undefined" ? window.location.origin : "/")
 
 export const socket: SwaySocket = io(socketUrl, {
