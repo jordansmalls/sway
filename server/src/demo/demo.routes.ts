@@ -138,8 +138,8 @@ demoRouter.use("/api", async (req, res) => {
             try { return ok({ track: await getDemoSpotifyTrack(trackMatch[1]!) }); }
             catch (error) { return sendDemoSpotifyError(error, res); }
         }
-        if (path === `/analytics/${user._id}/most-played-songs`) return ok({ songs: demoRecommendations("personal") });
-        if (path === "/global/tracks/played") return ok({ data: demoRecommendations("global"), cached: false });
+        if (path === `/analytics/${user._id}/recommended-tracks`)
+            return ok({ source: "personal", tracks: [...demoRecommendations("personal"), ...demoRecommendations("global")] });
         return fail(res, 403, "This feature is not available in the room demo.");
     }
 

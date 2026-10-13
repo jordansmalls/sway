@@ -11,6 +11,7 @@ import {
     mostPlayedSongs,
     mostRequestedSongs,
     mostUpvotedSongs,
+    recommendedTracks,
     requestActivity,
 } from "../controllers/analytics.controller";
 
@@ -69,5 +70,12 @@ router.get("/:userId/most-played-songs", mostPlayedSongs);
  * @access  PUBLIC
  */
 router.get("/:userId/most-upvoted-songs", mostUpvotedSongs);
+
+/**
+ * @desc    20 Recommended Tracks (personal once a DJ has 20+ unique plays, global/pop otherwise)
+ * @route   GET /api/analytics/:userId/recommended-tracks
+ * @access  PUBLIC
+ */
+router.get("/:userId/recommended-tracks", recommendedTracks);
 
 export default router;

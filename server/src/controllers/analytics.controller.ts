@@ -2,6 +2,8 @@ import mongoose from "mongoose";
 import User from "../models/user.model";
 import Room from "../models/room.model";
 import Request from "../models/request.model";
+import { fetchMostPlayedTracks } from "./global.controller";
+import { popularTracks } from "../utils/popular.tracks";
 
 const validateAnalyticsUser = async (userId: string): Promise<any> => {
     if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
@@ -251,7 +253,7 @@ const songProjectStage = {
     },
 };
 
-const aggregateSongsForUser = async (userId: any, match: any, sort: any): Promise<any[]> => {
+const aggregateSongsForUser = async (userId: any, match: any, sort: any, limit = 10): Promise<any[]> => {
     const roomIds = await fetchUserRoomIds(userId);
 
     if (!roomIds.length) {
@@ -267,7 +269,7 @@ const aggregateSongsForUser = async (userId: any, match: any, sort: any): Promis
         },
         songGroupStage,
         { $sort: sort },
-        { $limit: 10 },
+        { $limit: limit },
         songProjectStage,
     ]);
 };
@@ -372,6 +374,59 @@ export const mostUpvotedSongs = async (req: any, res: any) => {
         });
     } catch (err) {
         console.error("There was an error attempting to fetch a user's most upvoted songs:", err);
+        return res.status(500).json({
+            success: false,
+            error: "Internal Server Error",
+            message: "We're having trouble, please try again soon.",
+        });
+    }
+};
+
+const RECOMMENDED_TRACK_COUNT = 20;
+const MIN_UNIQUE_PLAYED_FOR_PERSONAL = 20;
+
+/**
+ * @desc    20 Recommended Tracks: the DJ's most played songs once they have 20+ unique plays,
+ *          otherwise Sway's most played songs, topped up with a curated pop list
+ * @route   GET /api/analytics/:userId/recommended-tracks
+ * @access  PUBLIC
+ */
+
+export const recommendedTracks = async (req: any, res: any) => {
+    const { userId } = req.params;
+
+    try {
+        const validation = await validateAnalyticsUser(userId);
+
+        if (validation.status) {
+            return res.status(validation.status).json(validation.body);
+        }
+
+        const personalSongs = await aggregateSongsForUser(
+            validation.user._id,
+            { status: "played" },
+            { playCount: -1, latestPlayedAt: -1, title: 1 },
+            RECOMMENDED_TRACK_COUNT,
+        );
+
+        if (personalSongs.length >= MIN_UNIQUE_PLAYED_FOR_PERSONAL) {
+            return res.status(200).json({ success: true, source: "personal", tracks: personalSongs });
+        }
+
+        const globalTracks = (await fetchMostPlayedTracks()).map(({ _id, ...track }) => track);
+        const seen = new Set(globalTracks.map((track) => track.spotifyTrackId));
+        const tracks = [
+            ...globalTracks,
+            ...popularTracks.filter((track) => !seen.has(track.spotifyTrackId)),
+        ].slice(0, RECOMMENDED_TRACK_COUNT);
+
+        return res.status(200).json({
+            success: true,
+            source: globalTracks.length ? "global" : "popular",
+            tracks,
+        });
+    } catch (err) {
+        console.error("There was an error attempting to fetch a user's recommended tracks:", err);
         return res.status(500).json({
             success: false,
             error: "Internal Server Error",

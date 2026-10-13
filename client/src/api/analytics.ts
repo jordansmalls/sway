@@ -27,6 +27,23 @@ type AnalyticsSongsResponse = {
   songs: AnalyticsSong[]
 }
 
+export type RecommendationSource = "personal" | "global" | "popular"
+
+export type RecommendedTrack = {
+  spotifyTrackId: string
+  title: string
+  artist: string
+  albumArtUrl?: string
+  spotifyLink?: string
+  playCount: number
+}
+
+type RecommendedTracksResponse = {
+  success: true
+  source: RecommendationSource
+  tracks: RecommendedTrack[]
+}
+
 type GlobalTopItemsResponse<T> = {
   success: true
   cached: boolean
@@ -146,6 +163,8 @@ export const analyticsKeys = {
     [...analyticsKeys.byUser(userId), "most-played-songs"] as const,
   mostUpvotedSongs: (userId: string) =>
     [...analyticsKeys.byUser(userId), "most-upvoted-songs"] as const,
+  recommendedTracks: (userId: string) =>
+    [...analyticsKeys.byUser(userId), "recommended-tracks"] as const,
 }
 
 function analyticsPath(userId: string, endpoint: string) {
@@ -275,6 +294,13 @@ export async function getMostUpvotedSongs(userId: string) {
   return data
 }
 
+export async function getRecommendedTracks(userId: string) {
+  const { data } = await apiClient.get<RecommendedTracksResponse>(
+    analyticsPath(userId, "recommended-tracks")
+  )
+  return data
+}
+
 export function useTotalRoomsHostedQuery(userId: string) {
   return useQuery({
     queryKey: analyticsKeys.totalRoomsHosted(userId),
@@ -388,6 +414,14 @@ export function useMostUpvotedSongsQuery(userId: string) {
   return useQuery({
     queryKey: analyticsKeys.mostUpvotedSongs(userId),
     queryFn: () => getMostUpvotedSongs(userId),
+    enabled: userId.length > 0,
+  })
+}
+
+export function useRecommendedTracksQuery(userId: string) {
+  return useQuery({
+    queryKey: analyticsKeys.recommendedTracks(userId),
+    queryFn: () => getRecommendedTracks(userId),
     enabled: userId.length > 0,
   })
 }

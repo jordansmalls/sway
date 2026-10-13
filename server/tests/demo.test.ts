@@ -64,17 +64,15 @@ describe("Isolated room demos", () => {
         expect(queue.body.requests.filter((r: DemoRequest) => r.status !== "played").map((r: DemoRequest) => r.track.title)).toEqual(defaultQueueTitles);
         expect(queue.body.requests.filter((r: DemoRequest) => r.status === "pending")).toHaveLength(4);
         expect(queue.body.requests.filter((r: DemoRequest) => r.status === "played")).toHaveLength(3);
-        const analytics = await request(app).get(api(`/analytics/${demo.user._id}/most-played-songs`)).set("X-Demo-Token", demo.djToken);
-        expect(analytics.body.songs).toHaveLength(10);
+        const analytics = await request(app).get(api(`/analytics/${demo.user._id}/recommended-tracks`)).set("X-Demo-Token", demo.djToken);
+        expect(analytics.body.tracks).toHaveLength(19);
     });
 
     it("provides distinct recommendation rows with varied simulated play counts", async () => {
         const demo = await start();
-        const personal = await request(app).get(api(`/analytics/${demo.user._id}/most-played-songs`)).set("X-Demo-Token", demo.djToken);
-        const global = await request(app).get(api("/global/tracks/played")).set("X-Demo-Token", demo.djToken);
-        const tracks = [...personal.body.songs, ...global.body.data];
-        expect(personal.body.songs).toHaveLength(10);
-        expect(global.body.data).toHaveLength(9);
+        const recommended = await request(app).get(api(`/analytics/${demo.user._id}/recommended-tracks`)).set("X-Demo-Token", demo.djToken);
+        const tracks: any[] = recommended.body.tracks;
+        expect(recommended.body.source).toBe("personal");
         expect(new Set(tracks.map((track) => track.spotifyTrackId)).size).toBe(19);
         expect(tracks.map((track) => track.playCount)).toEqual(expect.arrayContaining([203, 331, 98, 121]));
         expect(tracks.map((track) => `${track.title} - ${track.artist}`)).toEqual(expect.arrayContaining([
