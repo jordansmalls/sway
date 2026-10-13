@@ -10,7 +10,7 @@ import { DemoContext } from "@/components/demo/demo-context"
 import { getApiErrorMessage } from "@/api/client"
 import { activeDemoToken, readDemoSession, saveDemoSession, type DemoSession } from "@/lib/demo-session"
 
-const demoApi = axios.create({ baseURL: import.meta.env.VITE_API_URL ?? "", withCredentials: false })
+const demoApi = axios.create({ baseURL: import.meta.env.VITE_API_URL || "", withCredentials: false })
 let opening: Promise<DemoSession> | null = null
 
 function openDemo(allowCreate: boolean) {

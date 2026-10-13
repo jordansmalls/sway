@@ -12,7 +12,6 @@ import {
 import { useCurrentUserQuery, useFetchUserIdQuery } from '@/api/users';
 import { cn } from '@/lib/utils';
 import { SwayLogo } from '@/components/sway-logo';
-import { useAuthStore } from '@/stores/auth-store';
 import NotFound from './def/NotFound';
 
 type ProfileTab = 'requested' | 'played' | 'upvoted';
@@ -26,7 +25,6 @@ const tabs: { id: ProfileTab; label: string; icon: React.ElementType }[] = [
 export default function Profile() {
   const { username = '' } = useParams();
   const [activeTab, setActiveTab] = useState<ProfileTab>('requested');
-  const storedUser = useAuthStore((state) => state.user);
   const currentUserQuery = useCurrentUserQuery();
   const userIdQuery = useFetchUserIdQuery(username);
   const userId = userIdQuery.data?.userId ?? '';
@@ -56,8 +54,8 @@ export default function Profile() {
   }[activeTab];
 
   const totals = totalsQuery.data;
-  const isAuthenticated = Boolean(storedUser || currentUserQuery.data?.user);
-  const isResolvingSession = currentUserQuery.isLoading && !storedUser;
+  const isAuthenticated = Boolean(currentUserQuery.data?.user);
+  const isResolvingSession = currentUserQuery.isLoading;
   const backHref = isAuthenticated
     ? '/dashboard'
     : 'https://sway.onl';

@@ -2,7 +2,7 @@ import axios from "axios"
 import { activeDemoToken, isDemoExperience } from "@/lib/demo-session"
 
 export const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL ?? "",
+  baseURL: import.meta.env.VITE_API_URL || "",
   withCredentials: true,
 })
 

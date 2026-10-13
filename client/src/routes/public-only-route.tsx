@@ -1,23 +1,10 @@
-import { useEffect } from "react"
 import { Navigate, Outlet } from "react-router-dom"
 
 import { useCurrentUserQuery } from "@/api/users"
-import { useAuthStore } from "@/stores/auth-store"
 import { AppLoading } from "@/components/app-loading"
 
 export default function PublicOnlyRoute() {
-  const setUser = useAuthStore((state) => state.setUser)
-  const clearUser = useAuthStore((state) => state.clearUser)
-
   const { data, isLoading } = useCurrentUserQuery()
-
-  useEffect(() => {
-    if (data?.user) {
-      setUser(data.user)
-    } else {
-      clearUser()
-    }
-  }, [data, setUser, clearUser])
 
   if (isLoading) {
     return <AppLoading label="Loading Sway" className="dark bg-[#0c0d0e] text-foreground [color-scheme:dark]" />

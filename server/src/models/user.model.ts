@@ -43,6 +43,10 @@ const userSchema = new mongoose.Schema(
             type: Boolean,
             default: true,
         },
+        sessionVersion: {
+            type: Number,
+            default: 0,
+        },
         hasActiveRoom: {
             type: Boolean,
             default: false,
@@ -65,6 +69,13 @@ const userSchema = new mongoose.Schema(
 userSchema.methods.comparePassword = async function (enteredPassword) {
     return await bcrypt.compare(enteredPassword, this.password);
 };
+
+// Revoke existing sessions in the same write as password or account-state changes.
+userSchema.pre("save", function () {
+    if (!this.isNew && (this.isModified("password") || this.isModified("active"))) {
+        this.$inc("sessionVersion", 1);
+    }
+});
 
 // encrypt password using bcrypt
 userSchema.pre("save", async function () {

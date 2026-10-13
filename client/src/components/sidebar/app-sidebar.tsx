@@ -49,7 +49,6 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { useAuthStore } from "@/stores/auth-store"
 import { toast } from "sonner"
 import { NavUser } from "./nav-user"
 import { SwayLogo } from "@/components/sway-logo"
@@ -62,13 +61,11 @@ type AppSidebarProps = React.ComponentProps<typeof Sidebar> & {
 }
 
 export function AppSidebar({
-  user: suppliedUser,
+  user,
   showNewRoomAction = true,
   ...props
 }: AppSidebarProps) {
-  const storedUser = useAuthStore((state) => state.user)
   const demo = useDemoSession()
-  const user = suppliedUser ?? storedUser
   const location = useLocation()
   const hasActiveRoom = Boolean(user?.hasActiveRoom)
   const latestRoomsQuery = useLatestRoomsQuery({ enabled: Boolean(user?._id) })

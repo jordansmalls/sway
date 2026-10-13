@@ -1,7 +1,8 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query"
 
 import { apiClient } from "@/api/client"
 import type { ApiMessageResponse, Room, User } from "@/api/types"
+import { disconnectSocket } from "@/lib/socket"
 
 type UserResponse = {
   success: true
@@ -124,6 +125,17 @@ export function useCurrentUserQuery() {
   })
 }
 
+/** The signed-in user, read from the cached `/users/me` query (the single source of truth). */
+export function useCurrentUser() {
+  return useCurrentUserQuery().data?.user ?? null
+}
+
+/** Drops everything tied to the old session: live room channels and all cached server data. */
+export function clearSession(queryClient: QueryClient) {
+  disconnectSocket()
+  queryClient.clear()
+}
+
 export function useUpdateProfileMutation() {
   const queryClient = useQueryClient()
 
@@ -146,7 +158,7 @@ export function useDeleteAccountMutation() {
 
   return useMutation({
     mutationFn: deleteAccount,
-    onSuccess: () => queryClient.clear(),
+    onSuccess: () => clearSession(queryClient),
   })
 }
 

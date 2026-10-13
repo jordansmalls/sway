@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Check, Laptop, Moon, Sun } from 'lucide-react';
 import { toast } from 'sonner';
 import { getApiErrorMessage } from '@/api/client';
@@ -32,6 +33,7 @@ export function SettingsForm() {
   const updateProfile = useUpdateProfileMutation();
   const updatePassword = useUpdatePasswordMutation();
   const deleteAccount = useDeleteAccountMutation();
+  const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
   const { position, setPosition } = useToastPosition();
   const [username, setUsername] = useState<string | null>(null);
@@ -89,6 +91,7 @@ export function SettingsForm() {
     try {
       await deleteAccount.mutateAsync();
       toast.success('Account deleted', { description: 'Your account has been removed and you have been signed out.' });
+      navigate('/login', { replace: true });
     } catch (error) {
       console.error("There was an error deleting the user's account:", error);
       toast.error('Could not delete your account', { description: getApiErrorMessage(error, 'Your account is still active. Please try again.') });

@@ -98,7 +98,6 @@ demoRouter.use("/api", async (req, res) => {
     const ownRoom = (id: unknown) => id === room._id || id === room.roomCode;
     const dj = () => res.locals.role === "dj";
     const notFound = () => fail(res, 404, "That item is not part of your demo.");
-    const formatTime = (value: string | null) => value ? new Date(value).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true }) : "";
 
     if (req.method === "GET") {
         if (path === "/users/me") return ok({ user });
@@ -107,12 +106,14 @@ demoRouter.use("/api", async (req, res) => {
         if (roomMatch) {
             if (!ownRoom(roomMatch[1])) return notFound();
             if (!roomMatch[2]) return ok({ roomDetails: { ...room, roomQr: await demoDisplayQr() } });
-            return ok({ data: requests.filter((r) => roomMatch[3] !== "spotify/played" || r.status === "played").map((r) => ({
+            const played = roomMatch[3] === "spotify/played";
+            const rows = played
+                ? requests.filter((r) => r.status === "played").sort((a, b) => Date.parse(a.playedAt ?? "") - Date.parse(b.playedAt ?? ""))
+                : requests;
+            return ok({ data: rows.map((r) => ({
                 id: r._id, title: r.track.title, artist: r.track.artist, albumArtUrl: r.track.albumArtUrl,
                 spotifyUri: r.track.spotifyURI, spotifyLink: r.track.spotifyLink, status: r.status, votes: r.votes,
-                requestedAt: roomMatch[3] === "spotify/played" ? formatTime(r.createdAt) : r.createdAt,
-                requestedBy: r.requestedBy,
-                playedAt: roomMatch[3] === "spotify/played" ? formatTime(r.playedAt) : r.playedAt,
+                requestedAt: r.createdAt, requestedBy: r.requestedBy, playedAt: r.playedAt,
             })) });
         }
         const listMatch = path.match(/^\/requests\/([^/]+)\/(requests|filter)$/);

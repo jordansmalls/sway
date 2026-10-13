@@ -1,7 +1,6 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { Play, Check, Trash2, Music, ThumbsUp, PackageOpen } from 'lucide-react';
 import { useParams } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -11,26 +10,15 @@ import { AnimatedList } from '@/registry/magicui/animated-list';
 import { toast } from 'sonner';
 import { getApiErrorMessage } from '@/api/client';
 import { useDemoSession } from '@/components/demo/demo-context';
-import { roomKeys, useRoomDetailsQuery } from '@/api/rooms';
+import { useRoomDetailsQuery } from '@/api/rooms';
 import {
   sortRequestsForQueue,
-  removeRequestFromRoomCache,
-  requestKeys,
-  upsertRequestInRoomCache,
   useMarkRequestPlayedMutation,
   useMarkRequestPlayingMutation,
   useRemoveRequestMutation,
   useRequestsByRoomQuery,
 } from '@/api/requests';
 import type { RequestStatus, SongRequest } from '@/api/types';
-import {
-  joinRoom,
-  onRequestCreated,
-  onRequestDeleted,
-  onRequestPlayed,
-  onRequestPlaying,
-  onRequestUpdated,
-} from '@/lib/socket';
 
 const statusOrder: Record<RequestStatus, number> = {
   playing: 0,
@@ -211,7 +199,6 @@ const RequestListAdmin: React.FC = () => {
   const demo = useDemoSession();
   const { roomCode: rawRoomCode } = useParams<{ roomCode: string }>();
   const roomCode = rawRoomCode?.toUpperCase() || '';
-  const queryClient = useQueryClient();
 
   const roomQuery = useRoomDetailsQuery(roomCode);
   const roomId = roomQuery.data?.roomDetails._id ?? '';
@@ -219,69 +206,6 @@ const RequestListAdmin: React.FC = () => {
   const markPlayingMutation = useMarkRequestPlayingMutation();
   const markPlayedMutation = useMarkRequestPlayedMutation();
   const removeRequestMutation = useRemoveRequestMutation();
-
-  useEffect(() => {
-    if (!roomId) return;
-
-    const invalidateRequests = () => {
-      queryClient.invalidateQueries({ queryKey: requestKeys.byRoom(roomId) });
-      queryClient.invalidateQueries({ queryKey: roomKeys.requests(roomCode) });
-    };
-    const syncRequest = (
-      request: Parameters<typeof upsertRequestInRoomCache>[1]
-    ) => {
-      if (queryClient.isMutating({ mutationKey: requestKeys.all })) return;
-      upsertRequestInRoomCache(queryClient, request);
-      invalidateRequests();
-    };
-
-    const leaveRoom = joinRoom(roomId);
-
-    const unsubscribeCreated = onRequestCreated(
-      ({ roomId: eventRoomId, request }) => {
-        if (eventRoomId !== roomId) return;
-
-        syncRequest(request);
-        toast.success('You Have a New Request!', {
-          description: `${request.track.title} by ${request.track.artist}`,
-        });
-      }
-    );
-    const unsubscribeUpdated = onRequestUpdated(
-      ({ roomId: eventRoomId, request }) => {
-        if (eventRoomId === roomId) syncRequest(request);
-      }
-    );
-    const unsubscribeDeleted = onRequestDeleted(({ requestId }) => {
-      if (queryClient.isMutating({ mutationKey: requestKeys.all })) return;
-      removeRequestFromRoomCache(queryClient, roomId, requestId);
-      invalidateRequests();
-    });
-    const unsubscribePlaying = onRequestPlaying(
-      ({ roomId: eventRoomId, request }) => {
-        if (eventRoomId !== roomId) return;
-
-        syncRequest(request);
-        toast.success('Now Playing:', {
-          description: `${request.track.title} by ${request.track.artist}`,
-        });
-      }
-    );
-    const unsubscribePlayed = onRequestPlayed(
-      ({ roomId: eventRoomId, request }) => {
-        if (eventRoomId === roomId) syncRequest(request);
-      }
-    );
-
-    return () => {
-      leaveRoom();
-      unsubscribeCreated();
-      unsubscribeUpdated();
-      unsubscribeDeleted();
-      unsubscribePlaying();
-      unsubscribePlayed();
-    };
-  }, [queryClient, roomCode, roomId]);
 
   const handleMarkAsPlaying = async (requestId: string) => {
     try {

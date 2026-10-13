@@ -18,7 +18,8 @@ import { Textarea } from '../../ui/textarea';
 import { toast } from 'sonner';
 import { useState } from 'react';
 import { useCreateRoomMutation } from '@/api/rooms';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { getApiErrorMessage } from '@/api/client';
 
 export function CreateRoomForm({
   className,
@@ -37,18 +38,13 @@ export function CreateRoomForm({
       { roomName, roomDescription },
       {
         onSuccess: (data) => {
-          console.log('Create room response:', data);
           toast.success("Success!",{ description: `The ${data.newRoom.roomName} room has been created and is now active.` })
-          setRoomName('');
-          setRoomDescription('');
-          setTimeout(() => {
-            navigate(`/room/admin/${data.newRoom.roomCode}`);
-          }, 1500);
+          navigate(`/room/admin/${data.newRoom.roomCode}`);
         },
-        onError: () => {
-          toast.error('You already have an active room!', { description: "You must end your active room before creating another." });
-
-          // navigate("/dashboard")
+        onError: (error) => {
+          toast.error("Couldn't create room", {
+            description: getApiErrorMessage(error, 'Failed to create room, please try again.'),
+          });
         },
       }
     );
@@ -118,7 +114,7 @@ export function CreateRoomForm({
         .
       </FieldDescription>
       <FieldDescription className="text-center">
-        <a href="/dashboard">Back to Dashboard</a>
+        <Link to="/dashboard">Back to Dashboard</Link>
       </FieldDescription>
     </div>
   );

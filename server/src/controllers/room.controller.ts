@@ -7,7 +7,6 @@ import { emitRoomEnded, emitRoomUpdated } from "./request.controller";
 import { setRoomInactive } from "../utils/set.room.inactive";
 import Request from "../models/request.model";
 import { createSpotifyLink, createSpotifyUriLink } from "../utils/formatters/format.spotify";
-import { formatTo12HourTime } from "../utils/formatters/format.times";
 import { generateRoomQr } from "../utils/room.qr";
 
 /**
@@ -383,8 +382,8 @@ export const deleteRoom = async (req, res) => {
         // get room ID from URL params
         const { roomId } = req.params;
 
-        // get user ID from request body
-        const { userId } = req.body;
+        // Use the authenticated identity, never a client-supplied owner ID.
+        const userId = req.user._id;
 
         if (!roomId) {
             return res.status(400).json({
@@ -424,7 +423,10 @@ export const deleteRoom = async (req, res) => {
         }
 
         // delete room
-        await Room.findByIdAndDelete(room._id);
+        const deletedRoom = await Room.findOneAndDelete({ _id: room._id, roomCreator: userId });
+        if (!deletedRoom) {
+            return res.status(404).json({ success: false, message: "Room not found." });
+        }
 
         // delete the requests that were created in the room
         await Request.deleteMany({ roomId: room._id });
@@ -595,10 +597,10 @@ export const fetchRoomPlayedRequests = async (req, res) => {
             });
         }
 
-        // find only played requests
-        const requests = await Request.find({ roomId: room._id, status: "played" }).populate(
-            "track",
-        );
+        // find only played requests, in play order
+        const requests = await Request.find({ roomId: room._id, status: "played" })
+            .sort({ playedAt: 1 })
+            .populate("track");
 
         const data = requests.map((req) => ({
             id: req._id,
@@ -609,9 +611,10 @@ export const fetchRoomPlayedRequests = async (req, res) => {
             spotifyLink: createSpotifyLink(req.track.spotifyTrackId),
             status: req.status,
             votes: req.votes,
-            requestedAt: formatTo12HourTime(req.createdAt),
+            // ISO timestamps; the client formats them in the viewer's time zone
+            requestedAt: req.createdAt,
             requestedBy: req.requestedBy,
-            playedAt: req.playedAt ? formatTo12HourTime(req.playedAt) : "",
+            playedAt: req.playedAt,
         }));
 
         return res.status(200).json({
