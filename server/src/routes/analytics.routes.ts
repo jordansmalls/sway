@@ -1,5 +1,5 @@
 import express from "express";
-import generalLimiter from "../middlewares/rate-limiters/general.limiter";
+import { publicReadLimiter } from "../middlewares/rate-limiters/public-read.limiter";
 import { protect } from "../middlewares/auth.middleware";
 import {
     mostPlayedArtists,
@@ -19,8 +19,8 @@ const router = express.Router();
 
 router.get("/:userId/request-activity", protect, requestActivity);
 
-// TODO: add general rate limiter back in production env
-// router.use(generalLimiter);
+// The public profile page reads these, so they stay public but rate limited per IP.
+router.use(publicReadLimiter);
 
 /**
  * @desc    Total Rooms/Events Hosted

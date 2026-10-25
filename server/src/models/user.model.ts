@@ -62,13 +62,14 @@ const userSchema = new mongoose.Schema(
     },
     {
         timestamps: true,
+        methods: {
+            // compare user entered password to hashed password in database
+            async comparePassword(enteredPassword: string) {
+                return await bcrypt.compare(enteredPassword, this.password);
+            },
+        },
     },
 );
-
-// compare user entered password to hashed password in database
-userSchema.methods.comparePassword = async function (enteredPassword) {
-    return await bcrypt.compare(enteredPassword, this.password);
-};
 
 // Revoke existing sessions in the same write as password or account-state changes.
 userSchema.pre("save", function () {

@@ -4,9 +4,10 @@ import { Check, Laptop, Moon, Sun } from 'lucide-react';
 import { toast } from 'sonner';
 import { getApiErrorMessage } from '@/api/client';
 
-import { useCurrentUserQuery, useDeleteAccountMutation, useUpdatePasswordMutation, useUpdateProfileMutation, type UpdatePasswordInput, type UpdateProfileInput } from '@/api';
+import { useCurrentUserQuery, useDeleteAccountMutation, useUpdatePasswordMutation, useUpdateProfileMutation, type UpdatePasswordInput } from '@/api';
 import { useToastPosition, type ToastPosition } from '@/hooks/use-toast-position';
 import { cn } from '@/lib/utils';
+import { buildProfileUpdate, isEmailChange } from '@/lib/profile-update';
 import { useTheme } from '@/components/theme/theme-provider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,7 +15,7 @@ import { Label } from '@/components/ui/label';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
 type Section = 'account' | 'security' | 'appearance';
-type ProfileErrors = { username?: string; email?: string };
+type ProfileErrors = { username?: string; email?: string; profilePassword?: string };
 type PasswordErrors = { currentPassword?: string; newPassword?: string; confirmPassword?: string };
 
 const sections: { id: Section; label: string }[] = [
@@ -39,6 +40,7 @@ export function SettingsForm() {
   const [username, setUsername] = useState<string | null>(null);
   const [email, setEmail] = useState<string | null>(null);
   const [profileErrors, setProfileErrors] = useState<ProfileErrors>({});
+  const [profilePassword, setProfilePassword] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -48,16 +50,19 @@ export function SettingsForm() {
   const usernameValue = username ?? userData?.user.username ?? '';
   const emailValue = email ?? userData?.user.email ?? '';
   const hasProfileChanges = usernameValue !== (userData?.user.username ?? '') || emailValue !== (userData?.user.email ?? '');
+  const emailChanged = isEmailChange(emailValue, userData?.user.email ?? '');
 
   async function handleProfileSubmit(event: React.FormEvent) {
     event.preventDefault();
     const errors: ProfileErrors = {};
     if (usernameValue.length < 2) errors.username = 'Username must be at least 2 characters';
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailValue)) errors.email = 'Please enter a valid email';
+    if (emailChanged && !profilePassword) errors.profilePassword = 'Enter your current password to change your email';
     setProfileErrors(errors);
     if (Object.keys(errors).length) return;
     try {
-      await updateProfile.mutateAsync({ username: usernameValue, email: emailValue } as UpdateProfileInput);
+      await updateProfile.mutateAsync(buildProfileUpdate({ username: usernameValue, email: emailValue, currentPassword: profilePassword }, userData?.user.email ?? ''));
+      setProfilePassword('');
       toast.success('Account updated', { description: 'Your profile changes have been saved.' });
     } catch (error) {
       console.error("There was an error updating a user's profile:", error);
@@ -110,6 +115,7 @@ export function SettingsForm() {
           <div className="space-y-4">{isLoading ? <div className="h-24 animate-pulse rounded-lg bg-muted" /> : <>
             <TextField id="username" label="Username" value={usernameValue} error={profileErrors.username} onChange={(value) => { setUsername(value); setProfileErrors((old) => ({ ...old, username: undefined })); }} />
             <TextField id="email" label="Email address" type="email" value={emailValue} error={profileErrors.email} onChange={(value) => { setEmail(value); setProfileErrors((old) => ({ ...old, email: undefined })); }} />
+            {emailChanged && <TextField id="profilePassword" label="Current password" type="password" value={profilePassword} error={profileErrors.profilePassword} onChange={(value) => { setProfilePassword(value); setProfileErrors((old) => ({ ...old, profilePassword: undefined })); }} />}
             <Button type="submit" disabled={!hasProfileChanges || updateProfile.isPending}>{updateProfile.isPending ? 'Saving…' : 'Save changes'}</Button>
           </>}</div>
         </form>

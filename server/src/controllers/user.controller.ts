@@ -13,7 +13,7 @@ import { userHasActiveRoom } from "../utils/user.has.active.room";
 
 export const updateProfile = async (req, res) => {
     try {
-        const user = await User.findById(req.user._id);
+        const user = await User.findById(req.user._id).select("+password");
 
         if (!user) {
             return res.status(404).json({
@@ -23,7 +23,7 @@ export const updateProfile = async (req, res) => {
             });
         }
 
-        const { username, email } = req.body;
+        const { username, email, currentPassword } = req.body;
 
         // Check if at least one field is provided
         if (!username && !email) {
@@ -82,6 +82,23 @@ export const updateProfile = async (req, res) => {
         }
 
         if (trimmedEmail && trimmedEmail.toLowerCase() !== user.email) {
+            // The email receives password resets, so a stolen session alone must not be able to change it.
+            if (typeof currentPassword !== "string" || !currentPassword) {
+                return res.status(400).json({
+                    success: false,
+                    error: "Invalid Credentials: missing current password",
+                    message: "Enter your current password to change your email.",
+                });
+            }
+
+            if (!(await user.comparePassword(currentPassword))) {
+                return res.status(400).json({
+                    success: false,
+                    error: "Invalid Credentials: invalid password",
+                    message: "Current password is incorrect.",
+                });
+            }
+
             const emailExists = await User.findOne({
                 email: trimmedEmail.toLowerCase(),
                 _id: { $ne: user._id },

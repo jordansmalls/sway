@@ -11,6 +11,11 @@ vi.mock("../src/middlewares/rate-limiters/vote.limiter.ts", () => ({
     voteLimiter: (req: any, res: any, next: any) => next(),
 }));
 
+vi.mock("../src/middlewares/rate-limiters/public-read.limiter.ts", () => ({
+    PUBLIC_READ_LIMIT: 300,
+    publicReadLimiter: (req: any, res: any, next: any) => next(),
+}));
+
 let mongod: MongoMemoryServer;
 
 beforeAll(async () => {
