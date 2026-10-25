@@ -1,4 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { Server } from "node:http";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import request from "supertest";
 import { ipKeyGenerator } from "express-rate-limit";
 import { app } from "../src/app";
@@ -12,12 +13,25 @@ vi.unmock("../src/middlewares/rate-limiters/dj.limiter.ts");
 vi.unmock("../src/middlewares/rate-limiters/public-read.limiter.ts");
 
 const loopbackKey = ipKeyGenerator("127.0.0.1");
+// One server bound to 127.0.0.1 for the whole suite. Supertest's per-request wildcard listeners can share a
+// port with another process's loopback listener on macOS, which misroutes requests during large bursts.
+let server: Server;
+
+beforeAll(async () => {
+    server = await new Promise<Server>((resolve) => {
+        const listening = app.listen(0, "127.0.0.1", () => resolve(listening));
+    });
+});
+
+afterAll(async () => {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+});
 // Credential keys include the email, so each test uses fresh addresses instead of resetting them.
 let prefix = 0;
 const email = (name: string) => `${name}-${prefix}@example.com`;
 
 const register = async (address: string) => {
-    const response = await request(app).post("/api/auth").send({ email: address, password: "password123" });
+    const response = await request(server).post("/api/auth").send({ email: address, password: "password123" });
     expect(response.status).toBe(201);
     const cookies = response.headers["set-cookie"];
     const cookie = (Array.isArray(cookies) ? cookies[0] : cookies)?.split(";")[0];
@@ -25,12 +39,12 @@ const register = async (address: string) => {
     return cookie;
 };
 const login = (identifier: string, password = "wrong-password") =>
-    request(app).post("/api/auth/login").send({ identifier, password });
+    request(server).post("/api/auth/login").send({ identifier, password });
 const expectLimited = (response: request.Response) => {
     expect(response.status).toBe(429);
     expect(response.body).toMatchObject({ success: false, error: "Too Many Requests", message: expect.any(String) });
 };
-// Overlapping requests in batches, so hundreds of calls don't exhaust local sockets.
+// Overlapping requests in batches of 100: macOS caps the listen backlog at 128 connections.
 const burst = async (count: number, send: (index: number) => request.Test) => {
     const responses: request.Response[] = [];
     for (let start = 0; start < count; start += 100) {
@@ -70,7 +84,7 @@ describe("Login and signup limits", () => {
     it("limits repeated signups for the same email", async () => {
         const address = email("signup");
         const responses = await Promise.all(Array.from({ length: CREDENTIAL_LIMIT + 2 }, () =>
-            request(app).post("/api/auth").send({ email: address, password: "password123" })));
+            request(server).post("/api/auth").send({ email: address, password: "password123" })));
 
         const statuses = responses.map((response) => response.status);
         expect(statuses.filter((status) => status === 429)).toHaveLength(2);
@@ -92,14 +106,14 @@ describe("Authenticated DJ limits", () => {
         const first = await register(email("first"));
         const second = await register(email("second"));
 
-        const responses = await burst(DJ_LIMIT, () => request(app).get("/api/users/me").set("Cookie", first));
+        const responses = await burst(DJ_LIMIT, () => request(server).get("/api/users/me").set("Cookie", first));
 
-        expect(responses.every((response) => response.status === 200)).toBe(true);
+        expect(responses.filter((response) => response.status !== 200).map((response) => [response.status, response.text])).toEqual([]);
         expect(responses[0]!.headers["ratelimit-limit"]).toBe(String(DJ_LIMIT));
-        expectLimited(await request(app).get("/api/rooms/recent").set("Cookie", first));
-        await request(app).get("/api/users/me").set("Cookie", second).expect(200);
+        expectLimited(await request(server).get("/api/rooms/recent").set("Cookie", first));
+        await request(server).get("/api/users/me").set("Cookie", second).expect(200);
         // Public reads have their own per-IP budget.
-        await request(app).get("/api/global/rooms").expect(200);
+        await request(server).get("/api/global/rooms").expect(200);
     });
 });
 
@@ -107,12 +121,12 @@ describe("Guest read limits", () => {
     it(`shares a ${PUBLIC_READ_LIMIT}-request per-IP budget across public reads`, async () => {
         const reads = ["/api/global/rooms", "/api/global/requests", `/api/auth/username/dj${prefix}`, `/api/auth/email/${email("free")}`];
 
-        const responses = await burst(PUBLIC_READ_LIMIT, (index) => request(app).get(reads[index % reads.length]!));
+        const responses = await burst(PUBLIC_READ_LIMIT, (index) => request(server).get(reads[index % reads.length]!));
 
-        expect(responses.every((response) => response.status === 200)).toBe(true);
+        expect(responses.filter((response) => response.status !== 200).map((response) => [response.status, response.text])).toEqual([]);
         expect(responses[0]!.headers["ratelimit-limit"]).toBe(String(PUBLIC_READ_LIMIT));
-        expectLimited(await request(app).get("/api/users/someone/id"));
+        expectLimited(await request(server).get("/api/users/someone/id"));
         // Guest room reads and joins are not behind this limiter: a venue can put every guest behind one IP.
-        await request(app).post("/api/rooms/join").send({ roomCode: "NONE1" }).expect(404);
+        await request(server).post("/api/rooms/join").send({ roomCode: "NONE1" }).expect(404);
     });
 });

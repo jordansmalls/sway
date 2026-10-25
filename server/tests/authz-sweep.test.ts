@@ -1,4 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { Server } from "node:http";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import request from "supertest";
 import { ipKeyGenerator } from "express-rate-limit";
 import { app } from "../src/app";
@@ -9,17 +10,38 @@ import { PUBLIC_READ_LIMIT, publicReadLimiter } from "../src/middlewares/rate-li
 vi.unmock("../src/middlewares/rate-limiters/public-read.limiter.ts");
 
 const loopbackKey = ipKeyGenerator("127.0.0.1");
+// One server bound to 127.0.0.1 for the whole suite. Supertest's per-request wildcard listeners can share a
+// port with another process's loopback listener on macOS, which misroutes requests during large bursts.
+let server: Server;
+
+beforeAll(async () => {
+    server = await new Promise<Server>((resolve) => {
+        const listening = app.listen(0, "127.0.0.1", () => resolve(listening));
+    });
+});
+
+afterAll(async () => {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+});
 
 const register = async (email = "owner@example.com") => {
-    const response = await request(app).post("/api/auth").send({ email, password: "password123" });
+    const response = await request(server).post("/api/auth").send({ email, password: "password123" });
     expect(response.status).toBe(201);
     const cookies = response.headers["set-cookie"];
     const cookie = (Array.isArray(cookies) ? cookies[0] : cookies)?.split(";")[0];
     if (!cookie) throw new Error("Registration did not set an auth cookie.");
     return { id: String(response.body.user._id), cookie };
 };
+// Overlapping requests in batches of 100: macOS caps the listen backlog at 128 connections.
+const burst = async (count: number, send: (index: number) => request.Test) => {
+    const responses: request.Response[] = [];
+    for (let start = 0; start < count; start += 100) {
+        responses.push(...await Promise.all(Array.from({ length: Math.min(100, count - start) }, (_, offset) => send(start + offset))));
+    }
+    return responses;
+};
 const updateProfile = (cookie: string, body: Record<string, unknown>) =>
-    request(app).put("/api/users/profile").set("Cookie", cookie).send(body);
+    request(server).put("/api/users/profile").set("Cookie", cookie).send(body);
 
 beforeEach(async () => {
     await publicReadLimiter.resetKey(loopbackKey);
@@ -49,8 +71,8 @@ describe("Changing the account email requires the current password", () => {
 
         expect(response.body.user).toMatchObject({ email: "new@example.com", hasActiveRoom: false });
         expect(response.body.user.password).toBeUndefined();
-        await request(app).get("/api/users/me").set("Cookie", owner.cookie).expect(200);
-        await request(app).post("/api/auth/login").send({ identifier: "new@example.com", password: "password123" }).expect(200);
+        await request(server).get("/api/users/me").set("Cookie", owner.cookie).expect(200);
+        await request(server).post("/api/auth/login").send({ identifier: "new@example.com", password: "password123" }).expect(200);
     });
 
     it("does not require the password for username-only changes or an unchanged email", async () => {
@@ -66,10 +88,10 @@ describe("Changing the account email requires the current password", () => {
 describe("Public analytics rate limit", () => {
     it(`allows ${PUBLIC_READ_LIMIT} overlapping reads per IP, then returns a JSON 429`, async () => {
         const owner = await register();
-        const read = (path: string) => request(app).get(`/api/analytics/${owner.id}/${path}`);
+        const read = (path: string) => request(server).get(`/api/analytics/${owner.id}/${path}`);
         const paths = ["total-rooms-hosted", "total-requests-received", "most-played-artists", "most-upvoted-songs"];
 
-        const responses = await Promise.all(Array.from({ length: PUBLIC_READ_LIMIT + 10 }, (_, index) => read(paths[index % paths.length]!)));
+        const responses = await burst(PUBLIC_READ_LIMIT + 10, (index) => read(paths[index % paths.length]!));
 
         const statuses = responses.map((response) => response.status);
         expect(statuses.filter((status) => status === 200)).toHaveLength(PUBLIC_READ_LIMIT);
@@ -79,7 +101,7 @@ describe("Public analytics rate limit", () => {
         expect(limited.headers["ratelimit-limit"] ?? limited.headers["ratelimit"]).toBeDefined();
 
         // The private request-activity route sits before the limiter and still answers with auth errors.
-        await request(app).get(`/api/analytics/${owner.id}/request-activity`).expect(401);
+        await request(server).get(`/api/analytics/${owner.id}/request-activity`).expect(401);
         await publicReadLimiter.resetKey(loopbackKey);
         await read("total-rooms-hosted").expect(200);
     });
