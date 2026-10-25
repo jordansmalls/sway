@@ -450,7 +450,7 @@ Stop the old server, for example by scaling the service to zero, before running 
 3. **Index repairs, before deploying code that adds the indexes.** Each script is a dry run by default and changes data only with `--apply`. Run the dry run, read the output, then stop the old server (scale the service to zero) and apply, so no write races the repair. The server calls `Request.init()` and `Room.init()` at boot and won't start while duplicates block an index. Run them in this order:
    1. `bun run scripts/repair-playing.ts` (from the Phase 1.1 work) demotes all but the newest `playing` request per room, for `one_playing_per_room`.
    2. `bun run scripts/repair-active-rooms.ts` ends all but each DJ's newest active room, for `one_active_room_per_creator`.
-   3. `bun run scripts/recount-votes.ts` (from the Phase 1.3 work) recalculates `votes` from the `Vote` collection. Run it when a crash between a vote insert and its counter update could have left counts off by one. Read its header first for what it does to requests created before votes were tracked.
+   3. `bun run scripts/recount-votes.ts --since <guest-vote rollout ISO time>` (from the Phase 1.3 work) recalculates `votes` from the `Vote` collection for requests created after that time. Older requests have no `Vote` rows and keep their totals. Run it when a crash between a vote insert and its counter update could have left counts off by one. It's a dry run unless you add `--apply`, and guest writes must be stopped first.
 
    `scripts/merge-duplicate-requests.ts` is the older repair for `unique_active_track_per_room`. You only need it if `Request.init()` reports duplicate active tracks.
 4. **Deploy**, then confirm `GET /health/ready` returns `200` and the logs show `Server is live`.
