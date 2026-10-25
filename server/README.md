@@ -392,6 +392,8 @@ bun run scripts/repair-active-rooms.ts          # dry run: counts the rooms it w
 bun run scripts/repair-active-rooms.ts --apply  # ends all but each DJ's newest active room, then builds the index
 ```
 
+Stop the old server, for example by scaling the service to zero, before running `--apply`, and only resume traffic when the new server starts. While the old code is still serving, a create can add a duplicate after the repair reads its snapshot, and then the index build fails. If that happens, run `--apply` again. It is safe to repeat.
+
 Keep one Railway replica until Socket.IO has a multi-instance adapter and the process-local rate limits and caches have shared backing stores. Preserve the `X-Demo-Token` request header through any additional proxy or CDN layer.
 
 ## Contact
