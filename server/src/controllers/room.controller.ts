@@ -25,7 +25,7 @@ export const fetchUserLatestRooms = async (req, res) => {
             latestRooms,
         });
     } catch (err) {
-        console.error("There was an error fetching the user's latest rooms:", err);
+        req.log.error({ err }, "There was an error fetching the user's latest rooms");
         return res.status(500).json({
             success: false,
             error: "Internal Server Error",
@@ -94,7 +94,7 @@ export const fetchActiveRoomSummary = async (req, res) => {
             },
         });
     } catch (err) {
-        console.error("There was an error fetching the active room summary:", err);
+        req.log.error({ err }, "There was an error fetching the active room summary");
         return res.status(500).json({
             success: false,
             error: "Internal Server Error",
@@ -136,6 +136,9 @@ export const createRoom = async (req, res) => {
             active: true,
         });
 
+        // The new room has no ID in the URL or body; expose it to the request log.
+        res.locals.roomId = String(newRoom._id);
+
         //  generate room QR code
         await Room.generateRoomQr(newRoom._id);
 
@@ -153,7 +156,7 @@ export const createRoom = async (req, res) => {
             });
         }
 
-        console.error("There was an error attempting to create a room:", err);
+        req.log.error({ err }, "There was an error attempting to create a room");
         return res.status(500).json({
             success: false,
             error: "Internal Server Error",
@@ -223,7 +226,7 @@ export const updateRoom = async (req, res) => {
             // emit the live event update to all connected clients in the room
             emitRoomUpdated(roomId, updatedRoom);
         } catch (err) {
-            console.error("There was an error: Failed to emit room updated event: ", err);
+            req.log.error({ err }, "There was an error: Failed to emit room updated event");
         }
 
         return res.status(200).json({
@@ -232,7 +235,7 @@ export const updateRoom = async (req, res) => {
             updatedRoom,
         });
     } catch (err) {
-        console.error("There was an error attempting to update the details of a room:", err);
+        req.log.error({ err }, "There was an error attempting to update the details of a room");
         return res.status(500).json({
             success: false,
             error: "Internal Server Error",
@@ -298,7 +301,7 @@ export const joinRoom = async (req, res) => {
             roomDetails,
         });
     } catch (err) {
-        console.error("There was an error attempting to connect a user to a room:", err);
+        req.log.error({ err }, "There was an error attempting to connect a user to a room");
         return res.status(500).json({
             success: false,
             error: "Internal Server Error",
@@ -420,7 +423,7 @@ export const deleteRoom = async (req, res) => {
             room,
         });
     } catch (err) {
-        console.error("There was an error attempting to delete a room:", err);
+        req.log.error({ err }, "There was an error attempting to delete a room");
         return res.status(500).json({
             success: false,
             error: "Internal Server Error",
@@ -469,7 +472,7 @@ export const fetchRoomDetails = async (req, res) => {
             });
         }
     } catch (err) {
-        console.error("There was an error fetching a room's details:", err);
+        req.log.error({ err }, "There was an error fetching a room's details");
         return res.status(500).json({
             success: false,
             error: "Internal Server Error",
@@ -528,7 +531,7 @@ export const fetchRoomRequests = async (req, res) => {
             data,
         });
     } catch (err) {
-        console.error("There was an error fetching a room's requests:", err);
+        req.log.error({ err }, "There was an error fetching a room's requests");
         return res.status(500).json({
             success: false,
             error: "Internal Server Error",
@@ -590,10 +593,7 @@ export const fetchRoomPlayedRequests = async (req, res) => {
             data
         });
     } catch (err) {
-        console.error(
-            "There was an error fetching a room's played requests with spotify information:",
-            err,
-        );
+        req.log.error({ err }, "There was an error fetching a room's played requests with spotify information");
         return res
             .status(500)
             .json({ message: "We're having trouble, please try again. Thank you." });

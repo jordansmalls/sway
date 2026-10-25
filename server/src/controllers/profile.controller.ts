@@ -59,7 +59,7 @@ export const totalRoomsHosted = async (req: any, res: any) => {
             roomsHosted,
         });
     } catch (err) {
-        console.error("There was an error fetching total rooms hosted:", err);
+        req.log.error({ err }, "There was an error fetching total rooms hosted");
         return res.status(500).json({
             success: false,
             error: "Internal Server Error",
@@ -94,7 +94,7 @@ export const totalRequestsReceived = async (req: any, res: any) => {
             requestsReceived,
         });
     } catch (err) {
-        console.error("There was an error fetching total requests received:", err);
+        req.log.error({ err }, "There was an error fetching total requests received");
         return res.status(500).json({
             success: false,
             error: "Internal Server Error",
@@ -129,7 +129,7 @@ export const totalRequestsPlayed = async (req: any, res: any) => {
             requestsPlayed,
         });
     } catch (err) {
-        console.error("There was an error fetching total requests played:", err);
+        req.log.error({ err }, "There was an error fetching total requests played");
         return res.status(500).json({
             success: false,
             error: "Internal Server Error",
@@ -186,7 +186,7 @@ export const mostPlayedArtists = async (req: any, res: any) => {
             artists,
         });
     } catch (err) {
-        console.error("There was an error fetching most played artists:", err);
+        req.log.error({ err }, "There was an error fetching most played artists");
         return res.status(500).json({
             success: false,
             error: "Internal Server Error",

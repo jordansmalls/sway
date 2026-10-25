@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import config from "./config";
+import { logger } from "./logger";
 
 /**
  * @description establishes a connection to mongoDB using the URI provided in the environment variable
@@ -10,9 +11,9 @@ import config from "./config";
 const connectDB = async () => {
     try {
         const conn = await mongoose.connect(config.mongo_uri);
-        console.log(`✅ MongoDB Connection Success: ${conn.connection.host}`);
+        logger.info({ host: conn.connection.host }, "MongoDB connected");
     } catch (err) {
-        console.error(`🚨 MongoDB Connection Error: ${err.message}`);
+        logger.fatal({ err }, "MongoDB connection failed");
         process.exit(1);
     }
 };

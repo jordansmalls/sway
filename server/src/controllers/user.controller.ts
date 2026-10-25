@@ -131,7 +131,7 @@ export const updateProfile = async (req, res) => {
             },
         });
     } catch (err) {
-        console.error("There was an error updating a user's profile:", err);
+        req.log.error({ err }, "There was an error updating a user's profile");
 
         if (err.code === 11000) {
             const field = Object.keys(err.keyValue)[0];
@@ -211,7 +211,7 @@ export const updatePassword = async (req, res) => {
             message: "Password updated successfully.",
         });
     } catch (err) {
-        console.error("There was an error attempting to update a user's password:", err);
+        req.log.error({ err }, "There was an error attempting to update a user's password");
         return res.status(500).json({
             success: false,
             error: "Internal Server Error",
@@ -251,7 +251,7 @@ export const getUserProfile = async (req, res) => {
             },
         });
     } catch (err) {
-        console.error("There was an error fetching a user's profile:", err);
+        req.log.error({ err }, "There was an error fetching a user's profile");
         return res.status(500).json({
             success: false,
             error: "Internal Server Error",
@@ -289,7 +289,7 @@ export const deleteAccount = async (req, res) => {
             message: "Account deactivated successfully.",
         });
     } catch (err) {
-        console.error("There was an error attempting to deactivate a user's account:", err);
+        req.log.error({ err }, "There was an error attempting to deactivate a user's account");
         return res.status(500).json({
             success: false,
             error: "Internal Server Error",
@@ -341,7 +341,7 @@ export const fetchUserActiveRoom = async (req, res) => {
             activeRoom,
         });
     } catch (err) {
-        console.error("There was an error fetching a user's active room:", err);
+        req.log.error({ err }, "There was an error fetching a user's active room");
 
         return res.status(500).json({
             success: false,
@@ -377,7 +377,7 @@ export const fetchUserHasActiveRoom = async (req, res) => {
             hasActiveRoom,
         });
     } catch (err) {
-        console.error("There was an error fetching a user's active room:", err);
+        req.log.error({ err }, "There was an error fetching a user's active room");
         return res.status(500).json({
             success: false,
             error: `Internal Server Error - ${err.message}`,
@@ -445,7 +445,7 @@ export const fetchUserInactiveRooms = async (req, res) => {
             inactiveRooms: inactiveRoomsWithPlayRate,
         });
     } catch (err) {
-        console.error("There was an error attempting to fetch a user's inactive rooms:", err);
+        req.log.error({ err }, "There was an error attempting to fetch a user's inactive rooms");
         return res.status(500).json({
             success: false,
             error: `Internal Server Error - ${err.message}`,
@@ -481,7 +481,7 @@ export const fetchUserId = async (req, res) => {
             userId: user._id,
         });
     } catch (err) {
-        console.error("There was an error attempting to fetch a user's ID:", err);
+        req.log.error({ err }, "There was an error attempting to fetch a user's ID");
         return res.status(500).json({
             success: false,
             error: `Internal Server Error`,

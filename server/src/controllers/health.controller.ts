@@ -91,7 +91,7 @@ export const fetchServerHealth = async (req, res) => {
             process_version: process.version,
         });
     } catch (err) {
-        console.error("There was an error fetching server health:", err);
+        req.log.error({ err }, "There was an error fetching server health");
         return res.status(500).json({
             success: false,
             error: "Internal Server Error",
@@ -107,7 +107,7 @@ export const fetchServerHealth = async (req, res) => {
  */
 
 export const notFound = (req, res) => {
-    console.error(`404 ERROR: CANNOT ${req.method.toUpperCase()} ${req.originalUrl.toUpperCase()}`);
+    // pino-http logs the 404 with the request ID.
     return res.status(404).json({
         success: false,
         error: "4O4 ROUTE NOT FOUND",

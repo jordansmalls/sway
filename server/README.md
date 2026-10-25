@@ -55,6 +55,7 @@ COOKIE_DOMAIN=
 | `NODE_ENV` | Controls cookie security, proxy handling, and error details; use `development` for local HTTP |
 | `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET` | Server-side Spotify app credentials; required for live catalog requests in real and demo rooms |
 | `FRONTEND_URL` | Exact frontend origin used by Express CORS and Socket.IO CORS; omit a trailing slash. QR codes always use `https://app.sway.onl`. |
+| `LOG_LEVEL` | Optional pino level (`debug`, `info`, `warn`, `error`). Defaults to `info`, and to `silent` under tests |
 | `COOKIE_DOMAIN` | Optional cookie domain override; omit locally. Production defaults to `.sway.onl` for the `app.sway.onl`/`api.sway.onl` deployment |
 
 There are no additional demo environment variables or shared demo credentials. Seeded demo tracks require no upstream Spotify calls, searching or submitting a new track requires valid Spotify credentials.
@@ -74,7 +75,8 @@ Demo requests use `X-Demo-Token`, which is included in the API's allowed headers
 
 | Location | Responsibility |
 | --- | --- |
-| [src/server.ts](src/server.ts) | Database connection, cleanup startup, HTTP listener, and sockets |
+| [src/server.ts](src/server.ts) | Database connection, index builds, cleanup startup, HTTP listener, sockets, and signal handling |
+| [src/shutdown.ts](src/shutdown.ts) | Graceful shutdown on `SIGTERM`/`SIGINT` |
 | [src/app.ts](src/app.ts) | Express middleware, router registration, demo-token guard, and errors |
 | [src/config](src/config/) | Environment configuration, MongoDB, and logging |
 | [src/models](src/models/) | User, Room, and Request schemas |
@@ -84,6 +86,8 @@ Demo requests use `X-Demo-Token`, which is included in the API's allowed headers
 | [src/demo](src/demo/) | Demo model, seed data, restricted routes, display QR, Spotify cache, and limits |
 | [src/socket.ts](src/socket.ts) | Real-room Socket.IO subscriptions and broadcasts |
 | [tests](tests/) | Vitest/Supertest integration tests and temporary MongoDB setup |
+| [scripts](scripts/) | Data repairs and index migrations, plus the TypeScript error guard |
+| [load](load/) | Artillery load test and a post-run consistency check |
 
 ## Database models
 
@@ -325,6 +329,18 @@ Limits are split by audience ([rate-limiters](src/middlewares/rate-limiters/)). 
 
 Guest room reads (`/api/rooms/join`, `/api/rooms/:roomCode/...`, request lists) have no limiter: a venue's Wi-Fi can put every guest behind one IP. The normal Spotify router has no dedicated limiter mounted yet. Demo limits are separate and do not cover these normal routes.
 
+## Logging
+
+[logger.ts](src/config/logger.ts) writes one JSON line per event to stdout with [pino](https://getpino.io). Railway's log explorer can filter on any field.
+
+- **Requests:** [pino-http](https://github.com/pinojs/pino-http) logs one line per response, with method, URL, status, and `responseTime`. 5xx responses log at `error`, 4xx at `warn`, and everything else at `info`.
+- **Request IDs:** every response carries `X-Request-Id`. A well-formed incoming `X-Request-Id` is reused; otherwise the server generates a UUID. The ID appears as `req.id`, and controller logs written with `req.log` carry it too.
+- **Room and user context:** mutation requests (`POST`, `PUT`, `PATCH`, `DELETE`) add `userId` for authenticated DJs and `roomId` from the route, the body, or a newly created room. To answer "what happened in room X at 22:14?", filter on `roomId` and the time.
+- **Redaction:** `cookie`, `authorization`, and `Set-Cookie` headers are replaced with `[Redacted]`.
+- **Errors:** controllers log caught errors with `req.log.error({ err }, ...)`. Unhandled errors reach the error middleware, which attaches them to the request's completion line, so each one is logged once with its stack.
+
+`request.controller.ts`, `spotify.controller.ts` and `src/demo/*` still use `console.*`. They will be converted once the Phase 1.1/1.3/1.4 rewrites of those files land.
+
 ## Socket.IO
 
 The server supports WebSocket and polling transports. A client emits `join-room` or `leave-room` with the MongoDB room ID, not the short room code. The channel name is `room-${roomId}`.
@@ -348,6 +364,39 @@ Any client can join any room's channel by its ID without logging in. That is del
 
 Revisit this before adding a DJ-only realtime event. That event needs socket authentication, using the `jwt` cookie at handshake, and a separate owner-only channel.
 
+## Load testing
+
+[load/guests.yml](load/guests.yml) is an [Artillery](https://www.artillery.io/) scenario for one live room. Each virtual user is a guest's phone: it holds a Socket.IO subscription to the room, joins over HTTP, and loads the queue. It then searches, submits and votes five times, about 8 seconds apart. The run has three phases:
+
+1. 150 guests arrive over two minutes.
+2. A 10 second burst adds 150 more, like a room reacting to a drop.
+3. Two minutes of steady traffic.
+
+The run fails if HTTP p95 exceeds 500 ms, p99 exceeds 1.5 s, or more than 1% of requests error. Expected policy responses don't count as errors: `409` (ended room, queue caps) and `429` (limits).
+
+Run it against **staging only, never production**. It creates real requests and votes in the target room. Every search also calls Spotify with the target's credentials (about 1,500 searches per run), so use a staging Spotify app.
+
+1. On staging, create a DJ account and an active room. Note its room code and its ID (the `_id` from `GET /api/rooms/:roomCode`).
+2. Run the scenario from `server/`:
+   ```bash
+   TARGET=https://<staging-api> ROOM_CODE=<code> ROOM_ID=<id> \
+     npx artillery@latest run load/guests.yml --output load/report.json
+   npx artillery@latest report load/report.json   # HTML report
+   ```
+3. While it runs, play the DJ in the staging dashboard: mark tracks playing and played, so broadcasts fan out to every socket. Watch the Railway CPU and memory graphs and the `error`-level logs.
+4. Afterwards, check the database state (read-only):
+   ```bash
+   MONGO_URI=<staging uri> bun run load/check-consistency.ts <roomId>
+   ```
+   It fails if more than one request is playing, a track is queued twice, any vote count is negative, any DJ has two active rooms, or (once the `votes` collection exists) vote counts differ from their `Vote` documents.
+
+Check these in the Artillery summary:
+- `http.response_time` p95 and p99 per endpoint (`metrics-by-endpoint`).
+- `vusers.failed` and `errors.*`.
+- `socketio.emit` and `engine.socketio` counters, to confirm every virtual user kept its socket.
+
+Requests from a single load generator share one IP, so the per-IP vote limit (5 per 30 seconds) throttles votes in this run. A venue on shared Wi-Fi behaves the same way until Phase 1.3 keys limits on a guest ID. The `429`s are expected; their volume shows how much the current policy would throttle a real venue.
+
 ## Tests
 
 ```bash
@@ -364,7 +413,7 @@ For UI verification, run `pnpm build` from `client/` and follow its [build and d
 
 [CI](../.github/workflows/ci.yml) installs frozen lockfiles and runs the server tests and `bun run typecheck:check`, plus client lint, build, and unit tests. Dependency audits report findings without blocking these checks.
 
-The server's full typecheck still fails on 217 existing semantic errors. The guard in [scripts/check-typecheck.ts](scripts/check-typecheck.ts) counts TypeScript diagnostic objects and compares the count with [typecheck-baseline.json](typecheck-baseline.json). Compiler, configuration, syntax, and global failures always fail the guard. It forces semantic checking even if `noCheck` is enabled. Twelve CLI integration tests verify the guard against isolated project fixtures. Fix new diagnostics instead of increasing `maxErrors`. When a change reduces the count, lower the baseline to preserve that improvement. At zero, any TypeScript error fails CI.
+The server's full typecheck still fails on 215 existing semantic errors. The guard in [scripts/check-typecheck.ts](scripts/check-typecheck.ts) counts TypeScript diagnostic objects and compares the count with [typecheck-baseline.json](typecheck-baseline.json). Compiler, configuration, syntax, and global failures always fail the guard. It forces semantic checking even if `noCheck` is enabled. Twelve CLI integration tests verify the guard against isolated project fixtures. Fix new diagnostics instead of increasing `maxErrors`. When a change reduces the count, lower the baseline to preserve that improvement. At zero, any TypeScript error fails CI.
 
 ## Deployment notes
 
@@ -391,6 +440,25 @@ Before deploying the one-active-room index, end duplicate active rooms. The serv
 bun run scripts/repair-active-rooms.ts          # dry run: counts the rooms it would end
 bun run scripts/repair-active-rooms.ts --apply  # ends all but each DJ's newest active room, then builds the index
 ```
+
+### Deploy checklist
+
+1. **Environment.** `NODE_ENV=production`, `MONGO_URI`, `JWT_SECRET` (keep the existing one so sessions stay valid), `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET`, and `FRONTEND_URL=https://app.sway.onl`. Optional: `COOKIE_DOMAIN` (defaults to `.sway.onl`) and `LOG_LEVEL` (defaults to `info`). The server refuses to start if a required variable is missing.
+2. **Railway settings.** Set the healthcheck path to `/health/ready`, run one replica, set the start command to `bun run start`, and set the root directory to `/server`.
+3. **Index repairs, before deploying code that adds the indexes.** Each script is a dry run by default and changes data only with `--apply`. Run the dry run, read the output, then apply. The server calls `Request.init()` and `Room.init()` at boot and won't start while duplicates block an index. Run them in this order:
+   1. `bun run scripts/repair-playing.ts` (from the Phase 1.1 work) demotes all but the newest `playing` request per room, for `one_playing_per_room`.
+   2. `bun run scripts/repair-active-rooms.ts` ends all but each DJ's newest active room, for `one_active_room_per_creator`.
+   3. `bun run scripts/recount-votes.ts` (from the Phase 1.3 work) recalculates `votes` from the `Vote` collection. Run it when a crash between a vote insert and its counter update could have left counts off by one. Read its header first for what it does to requests created before votes were tracked.
+
+   `scripts/merge-duplicate-requests.ts` is the older repair for `unique_active_track_per_room`. You only need it if `Request.init()` reports duplicate active tracks.
+4. **Deploy**, then confirm `GET /health/ready` returns `200` and the logs show `Server is live`.
+5. **Smoke test** on production with a throwaway room:
+   1. As a DJ, create a room. Only one active room is allowed, so end any open one first.
+   2. Open the room link on a phone (not logged in) and join it.
+   3. Submit a track from the phone, then vote on another request. The DJ dashboard should update live without a refresh.
+   4. As the DJ, mark a request playing, then played. The phone should show the change live.
+   5. End the room, then export its requests (JSON, CSV, TXT) and tracklist from room history. Each should download, and the guest's submission should be in it.
+   6. Delete the throwaway room.
 
 Keep one Railway replica until Socket.IO has a multi-instance adapter and the process-local rate limits and caches have shared backing stores. Preserve the `X-Demo-Token` request header through any additional proxy or CDN layer.
 

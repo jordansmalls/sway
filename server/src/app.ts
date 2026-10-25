@@ -1,6 +1,6 @@
 import express from "express";
 import config from "./config/config";
-import { logger } from "./config/logger";
+import { httpLogger } from "./config/logger";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 
@@ -25,7 +25,7 @@ export const app = express();
 if (config.node_env === "production") app.set("trust proxy", 1);
 
 app.use(express.json());
-app.use(logger);
+app.use(httpLogger);
 app.use(cookieParser());
 app.use(cors(config.cors_options));
 
