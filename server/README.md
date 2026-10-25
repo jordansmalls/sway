@@ -317,7 +317,7 @@ Limits are split by audience ([rate-limiters](src/middlewares/rate-limiters/)). 
 
 | Limiter | Routes | Key | Limit |
 | --- | --- | --- | --- |
-| Credentials | `POST /api/auth` (signup), `POST /api/auth/login` | IP plus the lowercased `email`/`identifier` | 10 per 15 minutes |
+| Credentials | `POST /api/auth` (signup), `POST /api/auth/login` | IP plus the lowercased account the route uses (`email` for signup, `identifier` for login), with a separate budget per route | 10 per 15 minutes |
 | Credential IP ceiling | The same two routes | IP | 50 per 15 minutes, so rotating emails can't get around the first limit |
 | DJ | Every authenticated route under `/api/auth`, `/api/users`, `/api/rooms`, `/api/exports`, and `/api/analytics/:userId/request-activity` | User ID (mounted after `protect`) | 600 per 15 minutes per DJ, so a long set with focus refetches never locks a DJ out, and DJs sharing a venue IP don't share a budget |
 | Public reads | Global analytics, public profile analytics, public user lookups, username/email availability | IP | 300 per 15 minutes, shared across those routes |

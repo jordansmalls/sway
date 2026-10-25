@@ -70,15 +70,27 @@ describe("Login and signup limits", () => {
         const attempts = await Promise.all(Array.from({ length: CREDENTIAL_LIMIT + 3 }, (_, index) =>
             login(index % 2 ? ` ${target.toUpperCase()} ` : target)));
 
-        // Registration used one of the target's attempts.
         const statuses = attempts.map((response) => response.status);
-        expect(statuses.filter((status) => status === 401)).toHaveLength(CREDENTIAL_LIMIT - 1);
-        expect(statuses.filter((status) => status === 429)).toHaveLength(4);
+        expect(statuses.filter((status) => status === 401)).toHaveLength(CREDENTIAL_LIMIT);
+        expect(statuses.filter((status) => status === 429)).toHaveLength(3);
         expectLimited(attempts.find((response) => response.status === 429)!);
         // Even the right password is refused until the window resets.
         expectLimited(await login(target, "password123"));
 
         await login(other, "password123").expect(200);
+    });
+
+    it("keys login on the identifier the controller checks, ignoring extra body fields", async () => {
+        const target = email("decoy-target");
+        await register(target);
+
+        // Rotating an ignored `email` field must not reset the target's budget.
+        const attempts = await Promise.all(Array.from({ length: CREDENTIAL_LIMIT + 2 }, (_, index) =>
+            request(server).post("/api/auth/login").send({ identifier: target, email: email(`decoy-${index}`), password: "wrong" })));
+
+        const statuses = attempts.map((response) => response.status);
+        expect(statuses.filter((status) => status === 401)).toHaveLength(CREDENTIAL_LIMIT);
+        expect(statuses.filter((status) => status === 429)).toHaveLength(2);
     });
 
     it("limits repeated signups for the same email", async () => {
