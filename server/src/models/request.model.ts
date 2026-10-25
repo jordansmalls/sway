@@ -25,6 +25,7 @@ const requestSchema = new Schema(
             type: String,
             required: false,
         },
+        guestId: { type: String, select: false },
         replayOf: {
             type: Schema.Types.ObjectId,
             ref: "Request",

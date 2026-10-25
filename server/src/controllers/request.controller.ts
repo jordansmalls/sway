@@ -1,3 +1,7 @@
+import type { NextFunction, Response } from "express";
+import type { HydratedDocument, InferSchemaType } from "mongoose";
+import Vote from "../models/vote.model.js";
+import { castVote, checkQueueCapacity, withQueueAdmission } from "../services/guest-votes.js";
 import { ownedRequestFilter, transitionRequestStatus } from "../services/request-transitions.js";
 import Room from "../models/room.model.js";
 import Request from "../models/request.model.js";
@@ -45,7 +49,7 @@ export const emitRoomUpdated = (roomId, updatedData) => {
  * @route   POST /api/requests
  * @access  PUBLIC
  */
-export const createRequest = async (req, res) => {
+export const createRequest = async (req: any, res: Response, next: NextFunction) => {
     const { track, roomId, requestedBy } = req.body;
 
     // Validate required fields
@@ -88,72 +92,40 @@ export const createRequest = async (req, res) => {
     }
 
     try {
-        const filter = {
-            roomId,
-            "track.spotifyTrackId": spotifyTrackId,
-            status: { $in: ["pending", "playing"] },
-        };
-        const update = {
-            $inc: { votes: 1 },
-            $setOnInsert: {
-                roomId,
-                status: "pending",
-                playedAt: null,
-                completedAt: null,
-                requestedBy: requestedBy || null,
-                track: {
-                    spotifyTrackId,
-                    title,
-                    artist,
-                    albumArtUrl,
-                    spotifyLink: createSpotifyLink(spotifyTrackId),
-                    spotifyURI: createSpotifyUriLink(spotifyTrackId),
-                },
-            },
-        };
-        let result;
-        try {
-            result = await Request.findOneAndUpdate(filter, update, {
-                upsert: true, returnDocument: "after", includeResultMetadata: true,
-                setDefaultsOnInsert: false,
-                runValidators: true,
-            });
-        } catch (error) {
-            // Another guest can insert the same track while this upsert is running.
-            if (error.code !== 11000) throw error;
-            result = await Request.findOneAndUpdate(filter, { $inc: { votes: 1 } }, {
-                returnDocument: "after", includeResultMetadata: true,
-            });
-        }
-        const request = result.value;
-        const alreadyQueued = Boolean(result.lastErrorObject?.updatedExisting);
-
-        if (request) {
-            // Emit socket event for new request
-            emitToRoom(roomId, alreadyQueued ? "request:updated" : "request:created", request);
-
+        return await withQueueAdmission(String(roomId), async () => {
+            const guestId = req.cookies.sway_guest;
+            const filter = { roomId, "track.spotifyTrackId": spotifyTrackId, status: { $in: ["pending", "playing"] as const } };
+            const queued = await Request.findOne(filter);
+            if (!queued) await checkQueueCapacity(roomId, guestId);
+            let request = queued;
+            let alreadyQueued = Boolean(queued);
+            if (!request) {
+                try {
+                    const result = await Request.findOneAndUpdate(filter, { $setOnInsert: {
+                        roomId, guestId, status: "pending", votes: 0, playedAt: null, completedAt: null,
+                        requestedBy: requestedBy || null,
+                        track: { spotifyTrackId, title, artist, albumArtUrl, spotifyLink: createSpotifyLink(spotifyTrackId), spotifyURI: createSpotifyUriLink(spotifyTrackId) },
+                    } }, { upsert: true, returnDocument: "after", includeResultMetadata: true, setDefaultsOnInsert: false, runValidators: true });
+                    request = result.value;
+                    alreadyQueued = Boolean(result.lastErrorObject?.updatedExisting);
+                } catch (error) {
+                    if ((error as { code?: number }).code !== 11000) throw error;
+                    request = await Request.findOne(filter);
+                    alreadyQueued = true;
+                }
+            }
+            if (!request) throw Object.assign(new Error("The queue changed. Please try again."), { status: 409, expose: true });
+            const result = await castVote(String(request._id), guestId);
+            if (!result.alreadyVoted) emitToRoom(roomId, alreadyQueued ? "request:updated" : "request:created", result.request);
             return res.status(alreadyQueued ? 200 : 201).json({
-                success: true,
-                alreadyQueued,
-                message: alreadyQueued
-                    ? `Your upvote on ${request.track.title} has been counted!`
-                    : `Success! ${request.track.title} has been added to the queue.`,
-                request,
+                success: true, alreadyQueued, alreadyVoted: result.alreadyVoted,
+                message: result.alreadyVoted ? "You already voted for this request." : `Success! Your vote for ${result.request.track!.title} has been counted.`,
+                request: { ...result.request.toObject(), hasVoted: true },
             });
-        } else {
-            return res.status(400).json({
-                success: false,
-                error: "Invalid Credentials: missing request data",
-                message: "Oops! Invalid request data.",
-            });
-        }
+        });
     } catch (err) {
         console.error("There was a database error while attempting to create a request:", err);
-        return res.status(500).json({
-            success: false,
-            error: "Internal Server Error - database error",
-            message: "We had trouble submitting your request, please try again.",
-        });
+        next(err);
     }
 };
 
@@ -162,66 +134,18 @@ export const createRequest = async (req, res) => {
  * @route   PUT /api/requests/vote
  * @access  PUBLIC
  */
-export const upvoteRequest = async (req, res) => {
-    const { requestId } = req.body;
-
+export const upvoteRequest = async (req: any, res: Response, next: NextFunction) => {
     try {
-        const existing = await Request.findById(requestId).select("roomId");
-
-        if (!existing) {
-            return res.status(404).json({
-                success: false,
-                error: "Resource not found",
-                message: "Request not found!",
-            });
-        }
-
-        // Votes on an ended room would rewrite its history.
-        const room = await Room.findById(existing.roomId).select("active");
-        if (!room) {
-            return res.status(404).json({
-                success: false,
-                error: "Resource not found",
-                message: "Room not found.",
-            });
-        }
-        if (!room.active) {
-            return res.status(409).json({
-                success: false,
-                error: "Conflict - room has ended",
-                message: "This room has ended and is no longer accepting votes.",
-            });
-        }
-
-        const request = await Request.findByIdAndUpdate(
-            requestId,
-            { $inc: { votes: 1 } },
-            { returnDocument: "after" },
-        );
-
-        if (!request) {
-            return res.status(404).json({
-                success: false,
-                error: "Resource not found",
-                message: "Request not found!",
-            });
-        }
-
-        // Emit socket event for upvote
-        emitToRoom(request.roomId, "request:updated", request);
-
+        const result = await castVote(req.body.requestId, req.cookies.sway_guest);
+        if (!result.alreadyVoted) emitToRoom(result.request.roomId, "request:updated", result.request);
         return res.status(200).json({
-            success: true,
-            message: `Your upvote on ${request.track.title} has been counted!`,
-            request,
+            success: true, alreadyVoted: result.alreadyVoted,
+            message: result.alreadyVoted ? "You already voted for this request." : `Your upvote on ${result.request.track!.title} has been counted!`,
+            request: { ...result.request.toObject(), hasVoted: true },
         });
     } catch (err) {
         console.error("There was an error while attempting to log an upvote on a request:", err);
-        return res.status(500).json({
-            success: false,
-            error: "Internal Server Error",
-            message: "We're having trouble, please try again soon.",
-        });
+        next(err);
     }
 };
 
@@ -230,7 +154,7 @@ export const upvoteRequest = async (req, res) => {
  * @route   PUT /api/requests/:requestId/mark-playing
  * @access  PRIVATE
  */
-const markRequestStatus = (to: "playing" | "played") => async (req, res, next) => {
+const markRequestStatus = (to: "playing" | "played") => async (req: any, res: Response, next: NextFunction) => {
     try {
         const result = await transitionRequestStatus(req.params.requestId, req.user.id, to);
         for (const previous of result.demoted) emitToRoom(previous.roomId, "request:played", previous);
@@ -249,7 +173,7 @@ export const markRequestPlayed = markRequestStatus("played");
  * @route   DELETE /api/requests/:requestId/delete
  * @access  PRIVATE
  */
-export const deleteRequest = async (req, res, next) => {
+export const deleteRequest = async (req: any, res: Response, next: NextFunction) => {
     const { requestId } = req.params;
 
     try {
@@ -257,6 +181,7 @@ export const deleteRequest = async (req, res, next) => {
         const request = await Request.findOneAndDelete(filter);
         if (!request) return res.status(404).json({ success: false, error: "Resource not found", message: "Request not found." });
 
+        await Vote.deleteMany({ requestId });
         const roomId = request.roomId; // Store roomId before deletion
 
         // Emit socket event for deletion
@@ -295,7 +220,7 @@ export const fetchRoomRequests = async (req, res) => {
 
         return res.status(200).json({
             success: true,
-            requests,
+            requests: await withVotedState(requests, roomId, req.cookies.sway_guest),
         });
     } catch (err) {
         console.error("There was an error while fetching the requests for a room:", err);
@@ -379,7 +304,7 @@ export const filterRequests = async (req, res) => {
         const requests = await Request.find(filter).sort({ votes: -1, createdAt: 1, _id: 1 });
         return res.status(200).json({
             success: true,
-            requests,
+            requests: await withVotedState(requests, roomId, req.cookies.sway_guest),
         });
     } catch (err) {
         console.error("There was an error attempting to filter requests:", err);
@@ -390,3 +315,9 @@ export const filterRequests = async (req, res) => {
         });
     }
 };
+
+async function withVotedState(requests: HydratedDocument<InferSchemaType<typeof Request.schema>>[], roomId: string, guestId: string) {
+    const votes = await Vote.find({ roomId, guestId }).select("requestId").lean();
+    const voted = new Set(votes.map((vote) => String(vote.requestId)));
+    return requests.map((request) => ({ ...request.toObject(), hasVoted: voted.has(String(request._id)) }));
+}

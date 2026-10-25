@@ -16,6 +16,14 @@ function setup() {
 }
 
 describe("Optimistic request cache", () => {
+    it("preserves personal voted state through public socket updates", () => {
+        const { client, rows } = setup();
+        optimisticallyUpdateRequest(client, "a", "vote");
+        upsertRequestInRoomCache(client, { ...song("a", 0), votes: 3 });
+        expect(rows().find((row) => row._id === "a")?.hasVoted).toBe(true);
+        optimisticallyUpdateRequest(client, "a", "vote");
+        expect(rows().find((row) => row._id === "a")?.votes).toBe(3);
+    });
     it("preserves played history while a replay is in flight", () => {
         const { client, rows } = setup();
         const original = { ...song("history", 0, "played"), playedAt: "2026-01-01T00:00:00.000Z" };
