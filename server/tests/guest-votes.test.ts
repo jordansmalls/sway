@@ -141,14 +141,20 @@ describe("Guest vote semantics", () => {
     });
 
     it("recounts materialized votes from Vote rows, including zero-vote requests", async () => {
+        const legacy = await SongRequest.create(seed("legacy"));
+        await SongRequest.collection.updateOne({ _id: legacy._id }, { $set: { createdAt: new Date("2020-01-01") } });
+        const since = new Date(Date.now() - 60_000).toISOString();
         const first = await submit(guestCookie()).expect(201);
         const zero = await SongRequest.create(seed("zero"));
         await SongRequest.updateMany({}, { votes: 99 });
         const options = { env: { ...process.env, MONGO_URI: process.env.MONGO_URI! }, cwd: process.cwd() };
-        await exec("bun", ["run", "scripts/recount-votes.ts"], options);
+        await expect(exec("bun", ["run", "scripts/recount-votes.ts", "--apply"], options)).rejects.toThrow();
+        await exec("bun", ["run", "scripts/recount-votes.ts", "--since", since], options);
         expect((await SongRequest.findById(zero._id))?.votes).toBe(99);
-        await exec("bun", ["run", "scripts/recount-votes.ts", "--apply"], options);
+        await exec("bun", ["run", "scripts/recount-votes.ts", "--since", since, "--apply"], options);
         expect((await SongRequest.findById(first.body.request._id))?.votes).toBe(1);
         expect((await SongRequest.findById(zero._id))?.votes).toBe(0);
+        // Requests from before the rollout have no Vote rows and keep their totals.
+        expect((await SongRequest.findById(legacy._id))?.votes).toBe(99);
     });
 });
