@@ -100,7 +100,6 @@ export type EndRoomInput = {
 
 export type DeleteRoomInput = {
   roomId: string
-  userId: string
 }
 
 export const roomKeys = {
@@ -146,10 +145,9 @@ export async function endRoom(input: EndRoomInput) {
   return data
 }
 
-export async function deleteRoom({ roomId, userId }: DeleteRoomInput) {
+export async function deleteRoom({ roomId }: DeleteRoomInput) {
   const { data } = await apiClient.delete<DeleteRoomResponse>(
-    `/api/rooms/${encodeURIComponent(roomId)}`,
-    { data: { userId } }
+    `/api/rooms/${encodeURIComponent(roomId)}`
   )
   return data
 }

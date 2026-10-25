@@ -376,19 +376,17 @@ export const fetchUserHasActiveRoom = async (req, res) => {
  */
 
 export const fetchUserInactiveRooms = async (req, res) => {
-    const { userId } = req.params;
+    // Room history is private: only the authenticated user may read their own.
+    const userId = req.user._id;
+    if (req.params.userId !== userId.toString()) {
+        return res.status(403).json({
+            success: false,
+            error: "Forbidden - not authorized",
+            message: "You can only view your own room history.",
+        });
+    }
 
     try {
-        const user = await User.findById(userId);
-
-        if (!user) {
-            return res.status(404).json({
-                success: false,
-                error: "Resource not found",
-                message: "User not found.",
-            });
-        }
-
         const inactiveRooms = await Room.find({ roomCreator: userId, active: false }).lean();
 
         if (inactiveRooms.length === 0) {

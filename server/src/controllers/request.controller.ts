@@ -77,6 +77,15 @@ export const createRequest = async (req, res) => {
         });
     }
 
+    // Ended rooms are history; neither new requests nor duplicate upvotes may change them.
+    if (!room.active) {
+        return res.status(409).json({
+            success: false,
+            error: "Conflict - room has ended",
+            message: "This room has ended and is no longer accepting requests.",
+        });
+    }
+
     try {
         const filter = {
             roomId,
@@ -156,28 +165,37 @@ export const upvoteRequest = async (req, res) => {
     const { requestId } = req.body;
 
     try {
-        // const request = await Request.findById(requestId);
+        const existing = await Request.findById(requestId).select("roomId");
 
-        // if (!request) {
-        //     console.error(
-        //         "There was an error attempting to log an upvote on a request:",
-        //         requestId,
-        //     );
-        //     return res.status(404).json({
-        //         success: false,
-        //         error: "Resource not found",
-        //         message: "Song request not found!",
-        //     });
-        // }
+        if (!existing) {
+            return res.status(404).json({
+                success: false,
+                error: "Resource not found",
+                message: "Request not found!",
+            });
+        }
 
-        // request.votes += 1;
-
-        // await request.save();
+        // Votes on an ended room would rewrite its history.
+        const room = await Room.findById(existing.roomId).select("active");
+        if (!room) {
+            return res.status(404).json({
+                success: false,
+                error: "Resource not found",
+                message: "Room not found.",
+            });
+        }
+        if (!room.active) {
+            return res.status(409).json({
+                success: false,
+                error: "Conflict - room has ended",
+                message: "This room has ended and is no longer accepting votes.",
+            });
+        }
 
         const request = await Request.findByIdAndUpdate(
             requestId,
             { $inc: { votes: 1 } },
-            { new: true },
+            { returnDocument: "after" },
         );
 
         if (!request) {
@@ -317,6 +335,13 @@ export const markRequestPlayed = async (req, res) => {
 
         // Check if user is room creator
         const room = await Room.findById(request.roomId);
+        if (!room) {
+            return res.status(404).json({
+                success: false,
+                error: "Resource not found",
+                message: "Room not found.",
+            });
+        }
         if (room.roomCreator.toString() !== req.user.id.toString()) {
             return res.status(403).json({
                 success: false,
@@ -372,6 +397,13 @@ export const deleteRequest = async (req, res) => {
 
         // Check if user is room creator
         const room = await Room.findById(request.roomId);
+        if (!room) {
+            return res.status(404).json({
+                success: false,
+                error: "Resource not found",
+                message: "Room not found.",
+            });
+        }
         if (room.roomCreator.toString() !== req.user.id.toString()) {
             return res.status(403).json({
                 success: false,

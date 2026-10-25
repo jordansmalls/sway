@@ -40,7 +40,7 @@ Never put Spotify credentials, JWT secrets, or demo tokens in `VITE_*` variables
 | `pnpm lint` | Run ESLint |
 | `pnpm preview` | Preview the production build; configure API/socket access separately |
 
-There is no client test script currently. Demo API integration tests live in [server/tests](../server/tests/).
+Run `pnpm test` with Bun installed for the formatting and request-cache unit tests. Demo API integration tests live in [server/tests](../server/tests/). [CI](../.github/workflows/ci.yml) runs client lint, build, and tests on every pull request.
 
 ## Current interface
 
@@ -132,7 +132,7 @@ For the current Netlify deployment, use `client` as the base directory, `pnpm bu
 
 Use the [server deployment notes](../server/README.md#deployment-notes) for HTTPS, authentication cookies, rate-limit stores, and trusted proxy configuration.
 
-Sway does not play audio. Marking a song as playing changes queue state only. The current request CSV/plaintext export helpers also do not match the registered server routes. See [export limitations](../server/README.md#exporting-data) before exposing those formats in the UI.
+Sway does not play audio. Marking a song as playing changes queue state only. Request and tracklist file helpers use the server's `csv` and `txt` routes. All [exports](../server/README.md#exporting-data) require the room owner's login and an ended room.
 
 
 ## Contact

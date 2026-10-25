@@ -3,6 +3,15 @@ import Request from "../models/request.model.js";
 import { formatTo12HourTime, formatToFullDate12Hour } from "../utils/formatters/format.times.js";
 import { createObjectCsvStringifier } from "csv-writer";
 import { pad, truncate } from "../utils/formatters/plaintext-helpers.js";
+import { isObjectIdOrHexString } from "mongoose";
+
+const neutralizeCsvCell = (value: string | null | undefined) => {
+    const text = value ?? "";
+    // Preserve the cell's text, including whitespace that may conceal a formula.
+    return /^[=+\-@\x00-\x1f\x7f]/.test(text) || /^[\s\x00-\x1f\x7f]+[=+\-@]/.test(text)
+        ? `'${text}`
+        : text;
+};
 
 /**
  * @desc    Export Room Tracklist JSON (Played songs only)
@@ -23,6 +32,14 @@ export const exportTracklistJson = async (req, res) => {
             });
         }
 
+        if (!isObjectIdOrHexString(roomId)) {
+            return res.status(400).json({
+                success: false,
+                error: "Invalid Credentials: room ID invalid",
+                message: "Room ID is invalid.",
+            });
+        }
+
         const room = await Room.findById(roomId);
 
         if (!room) {
@@ -30,14 +47,6 @@ export const exportTracklistJson = async (req, res) => {
                 success: false,
                 error: "Resource not found",
                 message: "Room not found.",
-            });
-        }
-
-        if (room.active == true) {
-            return res.status(400).json({
-                success: false,
-                error: "Invalid Credentials: room is active",
-                message: "A room must be inactive to export the tracklist.",
             });
         }
 
@@ -49,6 +58,14 @@ export const exportTracklistJson = async (req, res) => {
                 error: "Forbidden - Not authorized",
                 message:
                     "You are not authorized to export tracklists for rooms you did not create.",
+            });
+        }
+
+        if (room.active == true) {
+            return res.status(400).json({
+                success: false,
+                error: "Invalid Credentials: room is active",
+                message: "A room must be inactive to export the tracklist.",
             });
         }
 
@@ -94,6 +111,14 @@ export const exportTracklistCsv = async (req, res) => {
     }
 
     try {
+        if (!isObjectIdOrHexString(roomId)) {
+            return res.status(400).json({
+                success: false,
+                error: "Invalid Credentials: room ID invalid",
+                message: "Room ID is invalid.",
+            });
+        }
+
         const room = await Room.findById(roomId);
 
         if (!room) {
@@ -104,14 +129,6 @@ export const exportTracklistCsv = async (req, res) => {
             });
         }
 
-        if (room.active) {
-            return res.status(400).json({
-                success: false,
-                error: "Invalid Credentials: room is active",
-                message: "A room must be inactive to export the tracklist.",
-            });
-        }
-
         const user = req.user._id;
         if (room.roomCreator.toString() !== user.toString()) {
             return res.status(403).json({
@@ -119,6 +136,14 @@ export const exportTracklistCsv = async (req, res) => {
                 error: "Forbidden - not authorized",
                 message:
                     "You are not authorized to export tracklists for rooms you did not create.",
+            });
+        }
+
+        if (room.active) {
+            return res.status(400).json({
+                success: false,
+                error: "Invalid Credentials: room is active",
+                message: "A room must be inactive to export the tracklist.",
             });
         }
 
@@ -134,13 +159,15 @@ export const exportTracklistCsv = async (req, res) => {
 
         // --- Prepare rows --- \\
         const rows = playedSongs.map((request) => ({
-            title: request.track.title,
-            artist: request.track.artist,
+            title: neutralizeCsvCell(request.track.title),
+            artist: neutralizeCsvCell(request.track.artist),
             playedAt: formatTo12HourTime(request.playedAt),
         }));
 
         // --- CSV writer --- \\
         const csvStringifier = createObjectCsvStringifier({
+            // csv-writer otherwise leaves lone carriage returns unquoted.
+            alwaysQuote: true,
             header: [
                 { id: "title", title: "Title" },
                 { id: "artist", title: "Artist" },
@@ -188,6 +215,14 @@ export const exportTracklistTxt = async (req, res) => {
             });
         }
 
+        if (!isObjectIdOrHexString(roomId)) {
+            return res.status(400).json({
+                success: false,
+                error: "Invalid Credentials: room ID invalid",
+                message: "Room ID is invalid.",
+            });
+        }
+
         const room = await Room.findById(roomId);
 
         if (!room) {
@@ -198,14 +233,6 @@ export const exportTracklistTxt = async (req, res) => {
             });
         }
 
-        if (room.active) {
-            return res.status(400).json({
-                success: false,
-                error: "Invalid Credentials: room is active",
-                message: "A room must be inactive to export the tracklist.",
-            });
-        }
-
         const user = req.user._id;
         if (room.roomCreator.toString() !== user.toString()) {
             return res.status(403).json({
@@ -213,6 +240,14 @@ export const exportTracklistTxt = async (req, res) => {
                 error: "Forbidden - not authorized",
                 message:
                     "You are not authorized to export tracklists for rooms you did not create.",
+            });
+        }
+
+        if (room.active) {
+            return res.status(400).json({
+                success: false,
+                error: "Invalid Credentials: room is active",
+                message: "A room must be inactive to export the tracklist.",
             });
         }
 
@@ -263,8 +298,8 @@ export const exportTracklistTxt = async (req, res) => {
 /**
  * @desc    Exporting a Room's Requests as JSON
  * @route   GET /api/exports/:roomCode/export/json
- * @access  PUBLIC
- * @feats   If Room active -> false: Exports a list of the requests (will implement played songs only later) for a Room in csv or json?
+ * @access  PRIVATE
+ * @feats   Exports all requests from an inactive room for its owner.
  */
 
 export const exportRoomRequestsJson = async (req, res) => {
@@ -287,6 +322,14 @@ export const exportRoomRequestsJson = async (req, res) => {
                 success: false,
                 error: "Resource not found",
                 message: "Room does not exist.",
+            });
+        }
+
+        if (room.roomCreator.toString() !== req.user._id.toString()) {
+            return res.status(403).json({
+                success: false,
+                error: "Forbidden - Not authorized",
+                message: "You are not authorized to export requests for rooms you did not create.",
             });
         }
 
@@ -339,8 +382,8 @@ export const exportRoomRequestsJson = async (req, res) => {
 /**
  * @desc    Exporting a Room's Requests as CSV
  * @route   GET /api/exports/:roomCode/export/csv
- * @access  PUBLIC
- * @feats   If Room active -> false: Exports a list of the requests (will implement played songs only later) for a Room in csv or json?
+ * @access  PRIVATE
+ * @feats   Exports all requests from an inactive room for its owner.
  */
 
 export const exportRoomRequestsCsv = async (req, res) => {
@@ -362,6 +405,14 @@ export const exportRoomRequestsCsv = async (req, res) => {
                 success: false,
                 error: "Resource not found",
                 message: "Room does not exist.",
+            });
+        }
+
+        if (room.roomCreator.toString() !== req.user._id.toString()) {
+            return res.status(403).json({
+                success: false,
+                error: "Forbidden - Not authorized",
+                message: "You are not authorized to export requests for rooms you did not create.",
             });
         }
 
@@ -388,19 +439,20 @@ export const exportRoomRequestsCsv = async (req, res) => {
         // --- Prepare rows --- \\
 
         const rows = requests.map((r) => ({
-            title: r.track.title,
-            artist: r.track.artist,
+            title: neutralizeCsvCell(r.track.title),
+            artist: neutralizeCsvCell(r.track.artist),
             votes: r.votes,
             status: r.status,
             // playedAt: r.playedAt ? formatTo12HourTime(r.playedAt) : '',
             playedAt: r.playedAt ? formatTo12HourTime(r.playedAt) : "",
             requestedAt: formatToFullDate12Hour(r.createdAt),
-            requestedBy: r.requestedBy,
+            requestedBy: neutralizeCsvCell(r.requestedBy),
         }));
 
         // --- CSV writer --- \\
 
         const csvStringifier = createObjectCsvStringifier({
+            alwaysQuote: true,
             header: [
                 { id: "title", title: "Title" },
                 { id: "artist", title: "Artist" },
@@ -433,9 +485,9 @@ export const exportRoomRequestsCsv = async (req, res) => {
 
 /**
  * @desc    Exporting a Room's Requests as Plain text
- * @route   GET /api/exports/:roomCode/export/plaintext
- * @access  PUBLIC
- * @feats   If Room active -> false: Exports a list of the requests (will implement played songs only later) for a Room in csv or json?
+ * @route   GET /api/exports/:roomCode/export/txt
+ * @access  PRIVATE
+ * @feats   Exports all requests from an inactive room for its owner.
  */
 
 export const exportRoomRequestsTxt = async (req, res) => {
@@ -457,6 +509,14 @@ export const exportRoomRequestsTxt = async (req, res) => {
                 success: false,
                 error: "Resource not found",
                 message: "Room does not exist.",
+            });
+        }
+
+        if (room.roomCreator.toString() !== req.user._id.toString()) {
+            return res.status(403).json({
+                success: false,
+                error: "Forbidden - Not authorized",
+                message: "You are not authorized to export requests for rooms you did not create.",
             });
         }
 

@@ -40,22 +40,22 @@ router.get("/:roomId/tracklist/txt", protect, exportTracklistTxt);
 /**
  * @desc    Exporting a Room's Requests as JSON
  * @route   GET /api/exports/:roomCode/export/json
- * @access  PUBLIC
+ * @access  PRIVATE
  */
-router.get("/:roomCode/export/json", exportRoomRequestsJson);
+router.get("/:roomCode/export/json", protect, exportRoomRequestsJson);
 
 /**
  * @desc    Exporting a Room's Requests as CSV
  * @route   GET /api/exports/:roomCode/export/csv
- * @access  PUBLIC
+ * @access  PRIVATE
  */
-router.get("/:roomCode/export/json", exportRoomRequestsCsv);
+router.get("/:roomCode/export/csv", protect, exportRoomRequestsCsv);
 
 /**
  * @desc    Exporting a Room's Requests as Plain text
- * @route   GET /api/exports/:roomCode/export/plaintext
- * @access  PUBLIC
+ * @route   GET /api/exports/:roomCode/export/txt
+ * @access  PRIVATE
  */
-router.get("/:roomCode/export/txt", exportRoomRequestsTxt);
+router.get("/:roomCode/export/txt", protect, exportRoomRequestsTxt);
 
 export default router;

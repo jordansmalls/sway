@@ -8,6 +8,7 @@ import { setRoomInactive } from "../utils/set.room.inactive";
 import Request from "../models/request.model";
 import { createSpotifyLink, createSpotifyUriLink } from "../utils/formatters/format.spotify";
 import { generateRoomQr } from "../utils/room.qr";
+import type { NextFunction } from "express";
 
 /**
  * @desc    Fetch the authenticated user's five most recently created rooms
@@ -344,7 +345,7 @@ export const joinRoom = async (req, res) => {
  * @access  PRIVATE
  */
 
-export const endRoom = async (req, res) => {
+export const endRoom = async (req, res, next: NextFunction) => {
 
     const { roomId } = req.body;
     const userId = req.user._id;
@@ -361,12 +362,7 @@ export const endRoom = async (req, res) => {
             message: "The room is now over.",
         });
     } catch (err) {
-        console.error("There was an error attempting to end a room:", err);
-        return res.status(500).json({
-            success: false,
-            error: "Internal Server Error",
-            message: "We're having trouble, please try again soon.",
-        });
+        return next(err);
     }
 };
 

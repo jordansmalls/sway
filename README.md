@@ -86,10 +86,14 @@ Run these from their respective directories:
 | --- | --- | --- |
 | `client` | `pnpm build` | Type-check and build the frontend into `dist/` |
 | `client` | `pnpm lint` | Run ESLint |
+| `client` | `pnpm test` | Run the Bun unit tests |
 | `server` | `bun run test:run` | Run the Vitest API suite once |
 | `server` | `bun run test` | Watch the API tests |
+| `server` | `bun run typecheck:check` | Reject increases in the existing TypeScript error count |
 
 Server tests use temporary MongoDB instances and mocked Spotify responses. A first test run may need to download a MongoDB binary. Live Spotify behavior needs a separate smoke test with working app credentials.
+
+[CI](.github/workflows/ci.yml) runs these server and client checks on every pull request and push to `main`. Dependency audits run as non-blocking reports.
 
 ## Tech stack
 

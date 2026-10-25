@@ -119,7 +119,6 @@ export function AppSidebar({
     try {
       await deleteRoomMutation.mutateAsync({
         roomId: roomToDelete._id,
-        userId: user._id,
       })
       toast.success("Room deleted", {
         description: `${roomToDelete.roomName} has been permanently deleted.`,
