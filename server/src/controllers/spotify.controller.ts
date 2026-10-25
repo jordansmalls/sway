@@ -8,6 +8,14 @@ const CLIENT_SECRET = config.spotify_client_secret;
 let cachedToken: string | null = null;
 let tokenExpiration: number | null = null;
 
+function logSpotifyError(endpoint: string, error: unknown) {
+    console.error("Spotify request failed:", {
+        endpoint,
+        status: axios.isAxiosError(error) ? error.response?.status : undefined,
+        code: axios.isAxiosError(error) ? error.code : undefined,
+    });
+}
+
 export const getAccessToken = async () => {
     // check for valid cached token
     if (cachedToken && tokenExpiration && Date.now() < tokenExpiration) {
@@ -37,7 +45,7 @@ export const getAccessToken = async () => {
 
         return cachedToken;
     } catch (err) {
-        console.error("Spotify token request failed:", axios.isAxiosError(err) ? err.response?.status ?? err.code : "Unknown error");
+        logSpotifyError("/api/token", err);
         throw err;
     }
 };
@@ -89,7 +97,7 @@ export const searchTracks = async (req, res) => {
             tracks,
         });
     } catch (err) {
-        console.error("There was an error searching tracks:", err);
+        logSpotifyError("/v1/search", err);
         return res.status(500).json({
             success: false,
             error: "Internal Server Error",
@@ -142,7 +150,7 @@ export const fetchTrackDetails = async (req, res) => {
             track,
         });
     } catch (err) {
-        console.error("There was an error fetching the details of a track:", err);
+        logSpotifyError("/v1/tracks/:id", err);
         return res.status(500).json({
             success: false,
             error: "Internal Server Error",
@@ -196,7 +204,7 @@ export const fetchArtistTopTracks = async (req, res) => {
             tracks,
         });
     } catch (err) {
-        console.error("There was an error fetching an artist's top tracks:", err);
+        logSpotifyError("/v1/artists/:id/top-tracks", err);
         return res.status(500).json({
             success: false,
             error: "Internal Server Error",

@@ -65,7 +65,6 @@ const DeleteRoomDialog: React.FC<DeleteRoomDialogProps> = ({
     try {
       await deleteRoomMutation.mutateAsync({
         roomId: roomId || roomCode,
-        userId: user._id,
       });
 
       toast.success('Deletion Complete', {

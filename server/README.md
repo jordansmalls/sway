@@ -26,6 +26,8 @@ Run commands from `server/` so dotenv can load the intended `.env`. The server c
 | `bun run start` | Run the server without watch mode |
 | `bun run test` | Run Vitest in watch mode |
 | `bun run test:run` | Run the API tests once |
+| `bun run typecheck` | Run the full TypeScript check, which still reports existing errors |
+| `bun run typecheck:check` | Fail if the TypeScript error count exceeds the checked-in baseline |
 | `bun run format` | Run Prettier with writes across the server directory |
 
 There is no server build script. Production startup runs [src/server.ts](src/server.ts) directly with Bun.
@@ -131,7 +133,7 @@ Prefix: `/api/users`.
 | DELETE | `/profile` | Private | Deactivate the account and clear its cookie |
 | GET | `/:userId/rooms/active` | Public | `activeRoom` |
 | GET | `/:userId/has-active-room` | Private | `hasActiveRoom` |
-| GET | `/:userId/inactive` | Private | `inactiveRooms`, including `requestsTotal` and `requestsPlayed` for play-rate display |
+| GET | `/:userId/inactive` | Private, owner only | `inactiveRooms`, including `requestsTotal` and `requestsPlayed` for play-rate display |
 | GET | `/:username/id` | Public | Resolve a public profile's `userId` |
 
 ### Rooms
@@ -146,7 +148,7 @@ Prefix: `/api/rooms`.
 | GET | `/recent` | Private | `latestRooms`: up to five rooms, active first, then newest |
 | GET | `/active/summary` | Private | `activeRoom` with summary metrics, or `null` |
 | PUT | `/:roomId` | Private | `roomName` and/or `roomDescription`; returns `updatedRoom` |
-| DELETE | `/:roomId` | Private | Requires `userId` in the body; removes the room and its requests |
+| DELETE | `/:roomId` | Private, owner only | Removes the room and its requests; no body required |
 | GET | `/:roomCode` | Public | `roomDetails` |
 | GET | `/:roomCode/fetch/requests` | Public | Normalized queue in `data`, including Spotify links and status |
 | GET | `/:roomCode/fetch/spotify/played` | Public | Played tracklist in `data` with formatted request/play times |
@@ -170,7 +172,7 @@ Prefix: `/api/requests`.
 | GET | `/:requestId` | Public | One `request` |
 | GET | `/:roomId/filter?status=pending` | Public | `requests` matching the status |
 
-The normal create handler accepts Spotify search fields `track.id`, `track.name`, `track.artist`, and optional `track.albumImage`. It stores normalized track fields and derived Spotify links. Use the shared client track mapper rather than assuming search and stored track shapes are identical.
+The normal create handler accepts Spotify search fields `track.id`, `track.name`, `track.artist`, and optional `track.albumImage`. It stores normalized track fields and derived Spotify links. Use the shared client track mapper rather than assuming search and stored track shapes are identical. New requests, duplicate submissions, and votes return 409 after the room has ended.
 
 Demo submissions instead require `track.spotifyTrackId` and resolve canonical metadata server side. The client mapper supplies the aliases needed by both contracts. This server verification is specific to the demo path, not a guarantee of the legacy normal request handler.
 
@@ -229,15 +231,16 @@ Prefix: `/api/exports`.
 
 | Method | Registered path | Access | Result |
 | --- | --- | --- | --- |
-| GET | `/:roomId/tracklist/json` | Private | Played songs in `tracklist` |
-| GET | `/:roomId/tracklist/csv` | Private | Played-track CSV download |
-| GET | `/:roomId/tracklist/txt` | Private | Played-track text download |
-| GET | `/:roomCode/export/json` | Public | Room requests in `data` |
-| GET | `/:roomCode/export/txt` | Public | Room-request text download |
+| GET | `/:roomId/tracklist/json` | Private, room owner | Played songs in `tracklist` |
+| GET | `/:roomId/tracklist/csv` | Private, room owner | Played-track CSV download |
+| GET | `/:roomId/tracklist/txt` | Private, room owner | Played-track text download |
+| GET | `/:roomCode/export/json` | Private, room owner | Room requests in `data` |
+| GET | `/:roomCode/export/csv` | Private, room owner | Room-request CSV download |
+| GET | `/:roomCode/export/txt` | Private, room owner | Room-request text download |
 
 Exports require an ended room, and demo exports are unavailable.
 
-Known wiring limitation: [export.routes.ts](src/routes/export.routes.ts) registers the request CSV controller under a second `/export/json` route, so the first JSON handler wins and `/export/csv` is not available. The text route is `/export/txt`, not `/export/plaintext`. The client's generic request file helpers still use the CSV/plaintext paths. The current room history UI exposes request JSON export instead. Played tracklist JSON/CSV/TXT routes are registered separately.
+Guests receive 401 and other DJs receive 403. CSV exports quote every field and prefix formula-like or leading control-character text with an apostrophe. JSON and text exports preserve the original text. The current room history UI exposes request JSON export; the file helpers also support CSV and TXT.
 
 ### Server health
 
@@ -332,9 +335,15 @@ bun run test:run
 
 [vitest.config.ts](vitest.config.ts) runs [tests](tests/) with Supertest and temporary MongoDB instances. Tests cover auth and health behavior, plus demo isolation, role permissions, fixed expiry, cleanup, reset, real-login preservation, voting, playback, room editing/ending, display behavior, Spotify metadata, caching, endpoint/upstream quotas, and provider errors.
 
-Spotify responses are mocked in the demo tests. The normal general/vote limiters are mocked in shared test setup and demo limits have dedicated coverage. A first run may require network access to download a MongoDB binary. Live catalog verification requires working app credentials and is separate from this suite.
+Spotify responses are mocked in the demo tests. The normal general/vote limiters are mocked in shared test setup, while [guest-write-limits.test.ts](tests/guest-write-limits.test.ts) enables the real production vote limiter on the real app. It checks sequential and concurrent limits, database effects, and broadcasts. This covers the current IP limit; guest IDs, vote deduplication, and a limiter on submissions still need Phase 1.3. Demo limits have separate coverage. A first run may require network access to download a MongoDB binary. Live catalog verification requires working app credentials and is separate from this suite.
 
 For UI verification, run `pnpm build` from `client/` and follow its [build and deployment guidance](../client/README.md#build-and-deployment).
+
+### CI and TypeScript debt
+
+[CI](../.github/workflows/ci.yml) installs frozen lockfiles and runs the server tests and `bun run typecheck:check`, plus client lint, build, and unit tests. Dependency audits report findings without blocking these checks.
+
+The server's full typecheck still fails on 223 existing semantic errors. The guard in [scripts/check-typecheck.ts](scripts/check-typecheck.ts) counts TypeScript diagnostic objects and compares the count with [typecheck-baseline.json](typecheck-baseline.json). Compiler, configuration, syntax, and global failures always fail the guard. It forces semantic checking even if `noCheck` is enabled. Twelve CLI integration tests verify the guard against isolated project fixtures. Fix new diagnostics instead of increasing `maxErrors`. When a change reduces the count, lower the baseline to preserve that improvement. At zero, any TypeScript error fails CI.
 
 ## Deployment notes
 

@@ -18,19 +18,19 @@ type RequestsJsonResponse = {
   data: RequestsExportItem[]
 }
 
-export type ExportFormat = "csv" | "txt" | "plaintext"
+export type ExportFormat = "csv" | "txt"
 
 export const exportKeys = {
   all: ["exports"] as const,
   tracklistJson: (roomId: string) =>
     [...exportKeys.all, "tracklist", roomId, "json"] as const,
-  tracklistFile: (roomId: string, format: Exclude<ExportFormat, "plaintext">) =>
+  tracklistFile: (roomId: string, format: ExportFormat) =>
     [...exportKeys.all, "tracklist", roomId, format] as const,
   requestsJson: (roomCode: string) =>
     [...exportKeys.all, "requests", roomCode, "json"] as const,
   requestsFile: (
     roomCode: string,
-    format: Exclude<ExportFormat, "txt">
+    format: ExportFormat
   ) => [...exportKeys.all, "requests", roomCode, format] as const,
 }
 
@@ -43,7 +43,7 @@ export async function exportTracklistJson(roomId: string) {
 
 export async function exportTracklistFile(
   roomId: string,
-  format: Exclude<ExportFormat, "plaintext">
+  format: ExportFormat
 ) {
   const { data } = await apiClient.get<Blob>(
     `/api/exports/${encodeURIComponent(roomId)}/tracklist/${format}`,
@@ -61,7 +61,7 @@ export async function exportRequestsJson(roomCode: string) {
 
 export async function exportRequestsFile(
   roomCode: string,
-  format: Exclude<ExportFormat, "txt">
+  format: ExportFormat
 ) {
   const { data } = await apiClient.get<Blob>(
     `/api/exports/${encodeURIComponent(roomCode)}/export/${format}`,
