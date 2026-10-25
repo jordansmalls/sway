@@ -1,6 +1,6 @@
 import express from "express";
 import { protect } from "../middlewares/auth.middleware";
-import { fetchRootRoute, fetchServerHealth } from "../controllers/health.controller";
+import { fetchReadiness, fetchRootRoute, fetchServerHealth } from "../controllers/health.controller";
 
 const router = express.Router();
 
@@ -11,6 +11,14 @@ const router = express.Router();
  */
 
 router.get("/", fetchRootRoute);
+
+/**
+ * @desc    Readiness check (200 once MongoDB is connected, 503 otherwise or while shutting down)
+ * @route   GET /health/ready
+ * @access  PUBLIC
+ */
+
+router.get("/health/ready", fetchReadiness);
 
 /**
  * @desc    Fetch server health

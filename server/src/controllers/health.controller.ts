@@ -1,3 +1,5 @@
+import mongoose from "mongoose";
+import type { Request, Response } from "express";
 import User from "../models/user.model.js";
 import config from "../config/config.js";
 import formatUptime from "../utils/formatters/format.uptime.js";
@@ -17,6 +19,31 @@ export const fetchRootRoute = (req, res) => {
         version: "1.0.2",
         development: "https://www.jsmalls.net",
         timestamp: new Date().toISOString(),
+    });
+};
+
+let shuttingDown = false;
+
+/** Readiness fails once shutdown starts, so the platform stops routing new traffic here. */
+export const setShuttingDown = (value: boolean) => {
+    shuttingDown = value;
+};
+
+/**
+ * @desc    Readiness check for the platform healthcheck
+ * @route   GET /health/ready
+ * @access  PUBLIC
+ */
+
+export const fetchReadiness = (req: Request, res: Response) => {
+    const database = mongoose.connection.readyState === 1;
+    const ready = database && !shuttingDown;
+
+    return res.status(ready ? 200 : 503).json({
+        success: ready,
+        status: ready ? "ready" : "unavailable",
+        database: database ? "connected" : "disconnected",
+        shuttingDown,
     });
 };
 

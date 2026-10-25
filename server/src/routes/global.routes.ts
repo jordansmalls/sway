@@ -1,10 +1,10 @@
 import express from "express"
-import generalLimiter from "../middlewares/rate-limiters/general.limiter";
+import { publicReadLimiter } from "../middlewares/rate-limiters/public-read.limiter";
 import { mostRequestedTracks, mostPlayedTracks, mostRequestedArtists, totalSongsRequested, totalRoomsCreated } from "../controllers/global.controller";
 const router = express.Router();
 
 
-router.use(generalLimiter)
+router.use(publicReadLimiter)
 
 
 /**

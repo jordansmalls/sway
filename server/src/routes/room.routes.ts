@@ -12,7 +12,7 @@ import {
     fetchUserLatestRooms,
     fetchActiveRoomSummary,
 } from "../controllers/room.controller";
-import generalLimiter from "../middlewares/rate-limiters/general.limiter";
+import { djLimiter } from "../middlewares/rate-limiters/dj.limiter";
 
 const router = express.Router();
 
@@ -21,7 +21,7 @@ const router = express.Router();
  * @route   POST /api/rooms
  * @access  PRIVATE
  */
-router.post("/", protect, generalLimiter, createRoom);
+router.post("/", protect, djLimiter, createRoom);
 
 /**
  * @desc    Join a Room
@@ -35,35 +35,35 @@ router.post("/join", joinRoom);
  * @route   PUT /api/rooms/end
  * @access  PRIVATE
  */
-router.put("/end", protect, endRoom);
+router.put("/end", protect, djLimiter, endRoom);
 
 /**
  * @desc    Fetch authenticated user's five latest rooms
  * @route   GET /api/rooms/recent
  * @access  PRIVATE
  */
-router.get("/recent", protect, fetchUserLatestRooms);
+router.get("/recent", protect, djLimiter, fetchUserLatestRooms);
 
 /**
  * @desc    Fetch authenticated user's active room summary
  * @route   GET /api/rooms/active/summary
  * @access  PRIVATE
  */
-router.get("/active/summary", protect, fetchActiveRoomSummary);
+router.get("/active/summary", protect, djLimiter, fetchActiveRoomSummary);
 
 /**
  * @desc    Update Room Details
  * @route   PUT /api/rooms/:roomId
  * @access  PRIVATE
  */
-router.put("/:roomId", protect, updateRoom);
+router.put("/:roomId", protect, djLimiter, updateRoom);
 
 /**
  * @desc    Delete a room
  * @route   DELETE /api/rooms/:roomId
  * @access  PRIVATE
  */
-router.delete("/:roomId", protect, deleteRoom);
+router.delete("/:roomId", protect, djLimiter, deleteRoom);
 
 /**
  * @desc    Fetch Room Details

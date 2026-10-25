@@ -3,17 +3,27 @@ import mongoose from "mongoose";
 import { MongoMemoryServer } from "mongodb-memory-server";
 
 // Mock rate limiters to prevent IP blocking/throttling during test execution
-vi.mock("../src/middlewares/rate-limiters/general.limiter.ts", () => ({
-    default: (req: any, res: any, next: any) => next(),
+const pass = vi.hoisted(() => (req: any, res: any, next: any) => next());
+
+vi.mock("../src/middlewares/rate-limiters/auth.limiter.ts", () => ({
+    CREDENTIAL_LIMIT: 10,
+    CREDENTIAL_IP_LIMIT: 50,
+    credentialLimiter: pass,
+    credentialIpLimiter: pass,
+}));
+
+vi.mock("../src/middlewares/rate-limiters/dj.limiter.ts", () => ({
+    DJ_LIMIT: 600,
+    djLimiter: pass,
 }));
 
 vi.mock("../src/middlewares/rate-limiters/vote.limiter.ts", () => ({
-    voteLimiter: (req: any, res: any, next: any) => next(),
+    voteLimiter: pass,
 }));
 
 vi.mock("../src/middlewares/rate-limiters/public-read.limiter.ts", () => ({
     PUBLIC_READ_LIMIT: 300,
-    publicReadLimiter: (req: any, res: any, next: any) => next(),
+    publicReadLimiter: pass,
 }));
 
 let mongod: MongoMemoryServer;
