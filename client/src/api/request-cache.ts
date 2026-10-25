@@ -45,6 +45,8 @@ export function optimisticallyUpdateRequest(queryClient: QueryClient, requestId:
   const rollbacks: (() => void)[] = []
   for (const [key, data] of queryClient.getQueriesData<RequestsResponse>({ queryKey: ["requests", "room"] })) {
     if (key.length !== 3 || !data?.requests.some((item) => item._id === requestId)) continue
+    // A replay creates or promotes a different row; keep history until the server responds.
+    if (action === "playing" && data.requests.find((item) => item._id === requestId)?.status === "played") continue
     const before = data.requests
     const next = before.flatMap((item): SongRequest[] => {
       if (item._id === requestId) {

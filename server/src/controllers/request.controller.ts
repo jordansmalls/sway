@@ -1,3 +1,4 @@
+import { ownedRequestFilter, transitionRequestStatus } from "../services/request-transitions.js";
 import Room from "../models/room.model.js";
 import Request from "../models/request.model.js";
 import { createSpotifyLink, createSpotifyUriLink } from "../utils/formatters/format.spotify.js";
@@ -229,192 +230,34 @@ export const upvoteRequest = async (req, res) => {
  * @route   PUT /api/requests/:requestId/mark-playing
  * @access  PRIVATE
  */
-export const markRequestPlaying = async (req, res) => {
-    const { requestId } = req.body;
-
+const markRequestStatus = (to: "playing" | "played") => async (req, res, next) => {
     try {
-        const request = await Request.findById(requestId);
-
-        if (!request) {
-            return res.status(404).json({
-                success: false,
-                error: "Resource not found",
-                message: "Request not found!",
-            });
-        }
-
-        // Check if user is room creator
-        const room = await Room.findById(request.roomId);
-        if (!room) {
-            return res.status(404).json({
-                success: false,
-                error: "Resource not found",
-                message: "Room not found!",
-            });
-        }
-
-        if (room.roomCreator.toString() !== req.user.id.toString()) {
-            return res.status(403).json({
-                success: false,
-                error: "Forbidden - Not authorized",
-                message: "You are not authorized to update this request.",
-            });
-        }
-
-        const changedAt = new Date();
-        const previouslyPlaying = await Request.find({
-            roomId: request.roomId,
-            status: "playing",
-            _id: { $ne: request._id },
-        });
-
-        if (previouslyPlaying.length > 0) {
-            await Request.updateMany(
-                {
-                    roomId: request.roomId,
-                    status: "playing",
-                    _id: { $ne: request._id },
-                },
-                {
-                    $set: {
-                        status: "played",
-                        completedAt: changedAt,
-                    },
-                },
-            );
-
-            previouslyPlaying.forEach((previousRequest) => {
-                previousRequest.status = "played";
-                previousRequest.completedAt = changedAt;
-                emitToRoom(previousRequest.roomId, "request:played", previousRequest);
-            });
-        }
-
-        request.status = "playing";
-        request.playedAt = changedAt;
-        request.completedAt = null;
-        await request.save();
-
-        // Emit socket event for status change
-        emitToRoom(request.roomId, "request:playing", request);
-
-        return res.status(200).json({
-            success: true,
-            message: "Request marked as playing.",
-            request,
-        });
+        const result = await transitionRequestStatus(req.params.requestId, req.user.id, to);
+        for (const previous of result.demoted) emitToRoom(previous.roomId, "request:played", previous);
+        if (result.changed) emitToRoom(result.request.roomId, `request:${to}`, result.request);
+        return res.status(200).json({ success: true, message: `Request marked as ${to}.`, request: result.request });
     } catch (err) {
-        console.error("There was an error attempting to mark a request as playing:", err);
-        return res.status(500).json({
-            success: false,
-            error: "Internal Server Error",
-            message: "We're having trouble, please try again.",
-        });
+        next(err);
     }
 };
 
-/**
- * @desc    Mark Song Request as Played
- * @route   PUT /api/requests/:requestId/mark-played
- * @access  PRIVATE
- */
-
-export const markRequestPlayed = async (req, res) => {
-    const { requestId } = req.body;
-
-    try {
-        const request = await Request.findById(requestId);
-
-        if (!request) {
-            return res.status(404).json({
-                success: false,
-                error: "Resource not found",
-                message: "Request not found.",
-            });
-        }
-
-        // Check if user is room creator
-        const room = await Room.findById(request.roomId);
-        if (!room) {
-            return res.status(404).json({
-                success: false,
-                error: "Resource not found",
-                message: "Room not found.",
-            });
-        }
-        if (room.roomCreator.toString() !== req.user.id.toString()) {
-            return res.status(403).json({
-                success: false,
-                error: "Forbidden - not authorized",
-                message: "Not authorized to update this request.",
-            });
-        }
-
-        request.status = "played";
-        request.completedAt = new Date();
-
-        await request.save();
-
-        // Emit socket event for status change
-        emitToRoom(request.roomId, "request:played", request);
-
-        return res.status(200).json({
-            success: true,
-            message: "Request marked as played.",
-            request,
-        });
-    } catch (err) {
-        console.error("There was an error attempting to mark a request as played:", err);
-        return res.status(500).json({
-            success: false,
-            error: "Internal Server Error",
-            message: "We're having trouble, please try again.",
-        });
-    }
-};
+export const markRequestPlaying = markRequestStatus("playing");
+export const markRequestPlayed = markRequestStatus("played");
 
 /**
  * @desc    Remove a Song Request
  * @route   DELETE /api/requests/:requestId/delete
  * @access  PRIVATE
  */
-export const deleteRequest = async (req, res) => {
-    const { requestId } = req.body;
+export const deleteRequest = async (req, res, next) => {
+    const { requestId } = req.params;
 
     try {
-        const request = await Request.findById(requestId);
-
-        if (!request) {
-            // res.status(404);
-            // throw new Error("Request not found.");
-
-            return res.status(404).json({
-                success: false,
-                error: "Resource not found",
-                message: "Request not found.",
-            });
-        }
-
-        // Check if user is room creator
-        const room = await Room.findById(request.roomId);
-        if (!room) {
-            return res.status(404).json({
-                success: false,
-                error: "Resource not found",
-                message: "Room not found.",
-            });
-        }
-        if (room.roomCreator.toString() !== req.user.id.toString()) {
-            return res.status(403).json({
-                success: false,
-                error: "Forbidden - not authorized",
-                message: "Not authorized to delete this request.",
-            });
-        }
+        const filter = await ownedRequestFilter(requestId, req.user.id);
+        const request = await Request.findOneAndDelete(filter);
+        if (!request) return res.status(404).json({ success: false, error: "Resource not found", message: "Request not found." });
 
         const roomId = request.roomId; // Store roomId before deletion
-
-        await Request.findByIdAndDelete(requestId);
 
         // Emit socket event for deletion
         emitToRoom(roomId, "request:deleted", { requestId });
@@ -424,12 +267,7 @@ export const deleteRequest = async (req, res) => {
             message: "Request has been removed.",
         });
     } catch (err) {
-        console.error("There was an error attempting to delete a request:", err);
-        return res.status(500).json({
-            success: false,
-            error: "Internal Server Error",
-            message: "We're having trouble, please try again.",
-        });
+        next(err);
     }
 };
 

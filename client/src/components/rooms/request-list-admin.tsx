@@ -135,7 +135,7 @@ const AdminRequestRow = ({
       </div>
 
       <div className="ml-auto flex shrink-0 items-center gap-1 sm:ml-0">
-      {request.status !== 'playing' && (
+      {['pending', 'played'].includes(request.status) && (
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
@@ -143,18 +143,18 @@ const AdminRequestRow = ({
               size="icon-sm"
               onClick={() => onMarkAsPlaying(request._id)}
               disabled={actionPending}
-              aria-label="Mark as Playing"
+              aria-label={request.status === 'played' ? 'Replay' : 'Mark as Playing'}
               className="rounded-lg text-green-600 hover:bg-green-50 hover:text-green-700"
             >
               <Play className="size-4" />
             </Button>
           </TooltipTrigger>
           <TooltipContent>
-            <p>Mark as Playing</p>
+            <p>{request.status === 'played' ? 'Replay' : 'Mark as Playing'}</p>
           </TooltipContent>
         </Tooltip>
       )}
-      {request.status !== 'played' && (
+      {request.status === 'playing' && (
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
