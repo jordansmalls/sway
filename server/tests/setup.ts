@@ -12,6 +12,11 @@ vi.mock("../src/middlewares/rate-limiters/vote.limiter.ts", () => ({
     guestIpLimiter: (req: any, res: any, next: any) => next(),
 }));
 
+vi.mock("../src/services/spotify-client.ts", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("../src/services/spotify-client")>();
+    return { ...actual, getSpotifyTrack: vi.fn().mockRejectedValue(new actual.SpotifyError(503, "Spotify is temporarily unavailable.")) };
+});
+
 let mongod: MongoMemoryServer;
 
 beforeAll(async () => {
