@@ -8,7 +8,7 @@ import {
     logoutUserAccount,
 } from "../controllers/auth.controller";
 import { protect } from "../middlewares/auth.middleware";
-import { credentialIpLimiter, credentialLimiter } from "../middlewares/rate-limiters/auth.limiter";
+import { credentialIpLimiter, loginLimiter, signupLimiter } from "../middlewares/rate-limiters/auth.limiter";
 import { djLimiter } from "../middlewares/rate-limiters/dj.limiter";
 import { publicReadLimiter } from "../middlewares/rate-limiters/public-read.limiter";
 
@@ -19,7 +19,7 @@ const router = express.Router();
  * @route   POST /api/auth
  * @access  PUBLIC
  */
-router.post("/", credentialIpLimiter, credentialLimiter, createUserAccount);
+router.post("/", credentialIpLimiter, signupLimiter, createUserAccount);
 
 /**
  * @desc    Create username
@@ -47,7 +47,7 @@ router.get("/email/:email", publicReadLimiter, checkEmailAvailability);
  * @route   POST /api/auth/login
  * @access  PUBLIC
  */
-router.post("/login", credentialIpLimiter, credentialLimiter, loginUserAccount);
+router.post("/login", credentialIpLimiter, loginLimiter, loginUserAccount);
 
 /**
  * @desc    Log out user

@@ -26,8 +26,9 @@ const start = async () => {
     const io = initSocket(server);
 
     const shutdown = createShutdown({ server, io });
+    // Stay subscribed: a repeated signal reuses the pending shutdown instead of killing the process.
     for (const signal of ["SIGTERM", "SIGINT"] as const) {
-        process.once(signal, () => {
+        process.on(signal, () => {
             shutdown(signal)
                 .then(() => process.exit(0))
                 .catch((err) => {

@@ -321,7 +321,7 @@ Limits are split by audience ([rate-limiters](src/middlewares/rate-limiters/)). 
 
 | Limiter | Routes | Key | Limit |
 | --- | --- | --- | --- |
-| Credentials | `POST /api/auth` (signup), `POST /api/auth/login` | IP plus the lowercased `email`/`identifier` | 10 per 15 minutes |
+| Credentials | `POST /api/auth` (signup), `POST /api/auth/login` | IP plus the lowercased account the route uses (`email` for signup, `identifier` for login), with a separate budget per route | 10 per 15 minutes |
 | Credential IP ceiling | The same two routes | IP | 50 per 15 minutes, so rotating emails can't get around the first limit |
 | DJ | Every authenticated route under `/api/auth`, `/api/users`, `/api/rooms`, `/api/exports`, and `/api/analytics/:userId/request-activity` | User ID (mounted after `protect`) | 600 per 15 minutes per DJ, so a long set with focus refetches never locks a DJ out, and DJs sharing a venue IP don't share a budget |
 | Public reads | Global analytics, public profile analytics, public user lookups, username/email availability | IP | 300 per 15 minutes, shared across those routes |
@@ -441,11 +441,13 @@ bun run scripts/repair-active-rooms.ts          # dry run: counts the rooms it w
 bun run scripts/repair-active-rooms.ts --apply  # ends all but each DJ's newest active room, then builds the index
 ```
 
+Stop the old server, for example by scaling the service to zero, before running `--apply`, and only resume traffic when the new server starts. While the old code is still serving, a create can add a duplicate after the repair reads its snapshot, and then the index build fails. If that happens, run `--apply` again. It is safe to repeat.
+
 ### Deploy checklist
 
 1. **Environment.** `NODE_ENV=production`, `MONGO_URI`, `JWT_SECRET` (keep the existing one so sessions stay valid), `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET`, and `FRONTEND_URL=https://app.sway.onl`. Optional: `COOKIE_DOMAIN` (defaults to `.sway.onl`) and `LOG_LEVEL` (defaults to `info`). The server refuses to start if a required variable is missing.
 2. **Railway settings.** Set the healthcheck path to `/health/ready`, run one replica, set the start command to `bun run start`, and set the root directory to `/server`.
-3. **Index repairs, before deploying code that adds the indexes.** Each script is a dry run by default and changes data only with `--apply`. Run the dry run, read the output, then apply. The server calls `Request.init()` and `Room.init()` at boot and won't start while duplicates block an index. Run them in this order:
+3. **Index repairs, before deploying code that adds the indexes.** Each script is a dry run by default and changes data only with `--apply`. Run the dry run, read the output, then stop the old server (scale the service to zero) and apply, so no write races the repair. The server calls `Request.init()` and `Room.init()` at boot and won't start while duplicates block an index. Run them in this order:
    1. `bun run scripts/repair-playing.ts` (from the Phase 1.1 work) demotes all but the newest `playing` request per room, for `one_playing_per_room`.
    2. `bun run scripts/repair-active-rooms.ts` ends all but each DJ's newest active room, for `one_active_room_per_creator`.
    3. `bun run scripts/recount-votes.ts` (from the Phase 1.3 work) recalculates `votes` from the `Vote` collection. Run it when a crash between a vote insert and its counter update could have left counts off by one. Read its header first for what it does to requests created before votes were tracked.

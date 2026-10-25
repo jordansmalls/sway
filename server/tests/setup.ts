@@ -8,7 +8,8 @@ const pass = vi.hoisted(() => (req: any, res: any, next: any) => next());
 vi.mock("../src/middlewares/rate-limiters/auth.limiter.ts", () => ({
     CREDENTIAL_LIMIT: 10,
     CREDENTIAL_IP_LIMIT: 50,
-    credentialLimiter: pass,
+    signupLimiter: pass,
+    loginLimiter: pass,
     credentialIpLimiter: pass,
 }));
 
