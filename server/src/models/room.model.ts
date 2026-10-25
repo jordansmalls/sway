@@ -47,6 +47,13 @@ const roomSchema = new mongoose.Schema(
     },
 );
 
+// At most one active room per DJ, enforced by Mongo.
+roomSchema.index({ roomCreator: 1, active: 1 }, {
+    name: "one_active_room_per_creator",
+    unique: true,
+    partialFilterExpression: { active: true },
+});
+
 roomSchema.statics.generateRoomQr = async function (roomId) {
     const room = await this.findById(roomId);
 

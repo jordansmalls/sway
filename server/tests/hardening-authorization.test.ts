@@ -169,8 +169,10 @@ describe("Room mutations are owner-only", () => {
         expectRejected(end, 403);
         expect(await snapshot()).toEqual(before);
         expect(await Room.findById(roomId).lean()).toMatchObject({ active: true });
-        expect(await User.findById(owner.id).lean()).toMatchObject({ hasActiveRoom: true });
-        expect(await User.findById(other.id).lean()).toMatchObject({ hasActiveRoom: true });
+        for (const dj of [owner, other]) {
+            const me = await request(app).get("/api/users/me").set("Cookie", dj.cookie).expect(200);
+            expect(me.body.user.hasActiveRoom).toBe(true);
+        }
         expect(emit).not.toHaveBeenCalled();
     });
 

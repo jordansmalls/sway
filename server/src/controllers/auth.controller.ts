@@ -1,6 +1,7 @@
 import User from "../models/user.model";
 import generateToken, { clearAuthToken } from "../utils/generate.jwt";
 import validator from "validator";
+import { userHasActiveRoom } from "../utils/user.has.active.room";
 
 /**
  * @desc    Create user account
@@ -71,7 +72,7 @@ export const createUserAccount = async (req, res) => {
             user: {
                 _id: user._id,
                 email: user.email,
-                hasActiveRoom: user.hasActiveRoom,
+                hasActiveRoom: await userHasActiveRoom(user._id),
                 hasUsername: user.hasUsername,
                 createdAt: user.createdAt,
                 updatedAt: user.updatedAt,
@@ -175,7 +176,7 @@ export const createUsername = async (req, res) => {
                 _id: user._id,
                 username: updatedUser.username,
                 email: updatedUser.email,
-                hasActiveRoom: updatedUser.hasActiveRoom,
+                hasActiveRoom: await userHasActiveRoom(updatedUser._id),
                 hasUsername: updatedUser.hasUsername,
                 createdAt: updatedUser.createdAt,
                 updatedAt: updatedUser.updatedAt,
@@ -314,7 +315,7 @@ export const loginUserAccount = async (req, res) => {
                     _id: user._id,
                     username: user.username,
                     email: user.email,
-                    hasActiveRoom: user.hasActiveRoom,
+                    hasActiveRoom: await userHasActiveRoom(user._id),
                     hasUsername: user.hasUsername,
                     createdAt: user.createdAt,
                     updatedAt: user.updatedAt,
