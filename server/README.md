@@ -106,7 +106,7 @@ Normal endpoints are prefixed with `/api`, health routes are outside that prefix
 
 “Private” below means the route uses the real account JWT middleware. Additional authorization depends on the controller, it does not imply every legacy route performs the same ownership checks. Demo tokens cannot authorize normal routes: [app.ts](src/app.ts) rejects `X-Demo-Token` on non-demo `/api` requests.
 
-Most JSON responses include `success` plus the result key listed below. Common errors use `{ success: false, message }`, sometimes with an additional `error` field. File exports return downloads, and the general rate limiter returns a plain-text error, so clients should not assume every response is JSON.
+Most JSON responses include `success` plus the result key listed below. Common errors use `{ success: false, message }`, sometimes with an additional `error` field. File exports return downloads, and the vote limiter returns a plain-text error, so clients should not assume every response is JSON. The other limiters return the JSON error shape with status `429`.
 
 ### Authentication
 
@@ -247,9 +247,12 @@ Guests receive 401 and other DJs receive 403. CSV exports quote every field and 
 | Method | Path | Access | Result |
 | --- | --- | --- | --- |
 | GET | `/` | Public | Service metadata; not a complete database readiness check |
+| GET | `/health/ready` | Public | `200` when MongoDB is connected (`readyState === 1`), `503` otherwise or once shutdown has started |
 | GET | `/server/health/admin` | Private, admin | Runtime health statistics |
 
 Unknown routes return 404.
+
+On `SIGTERM` (Railway sends one on every deploy) or `SIGINT`, the server shuts down gracefully ([shutdown.ts](src/shutdown.ts)). Readiness switches to `503` first. Then the server stops accepting connections and closes Socket.IO connections; clients reconnect and refetch. In-flight requests get up to 10 seconds to finish, and any still open after that are closed. Finally the server disconnects from MongoDB and exits.
 
 ## Public demo API
 
@@ -310,9 +313,17 @@ Cross-origin deployments must allow `X-Demo-Token`. Do not cache personalized de
 
 ## Normal API rate limits
 
-The shared general limiter allows 100 requests per two hours per IP. It is mounted on authentication, users, global analytics, exports, and room creation, not every API route. Normal votes have a separate limit of five per 30 seconds per IP.
+Limits are split by audience ([rate-limiters](src/middlewares/rate-limiters/)). All of them use process-local memory, which resets on deploy. That is fine for a single instance.
 
-The public user analytics routes (everything under `/api/analytics/:userId` except the private `request-activity`) use a generous public-read limiter of 300 requests per 15 minutes per IP, which returns a JSON `429`. The public profile page reads them, so they stay public on purpose. The normal Spotify router has no dedicated limiter mounted. Demo limits are separate and do not harden those normal routes. Review normal endpoint exposure before a public rollout.
+| Limiter | Routes | Key | Limit |
+| --- | --- | --- | --- |
+| Credentials | `POST /api/auth` (signup), `POST /api/auth/login` | IP plus the lowercased account the route uses (`email` for signup, `identifier` for login), with a separate budget per route | 10 per 15 minutes |
+| Credential IP ceiling | The same two routes | IP | 50 per 15 minutes, so rotating emails can't get around the first limit |
+| DJ | Every authenticated route under `/api/auth`, `/api/users`, `/api/rooms`, `/api/exports`, and `/api/analytics/:userId/request-activity` | User ID (mounted after `protect`) | 600 per 15 minutes per DJ, so a long set with focus refetches never locks a DJ out, and DJs sharing a venue IP don't share a budget |
+| Public reads | Global analytics, public profile analytics, public user lookups, username/email availability | IP | 300 per 15 minutes, shared across those routes |
+| Votes | `PUT /api/requests/vote` | IP | 5 per 30 seconds |
+
+Guest room reads (`/api/rooms/join`, `/api/rooms/:roomCode/...`, request lists) have no limiter: a venue's Wi-Fi can put every guest behind one IP. The normal Spotify router has no dedicated limiter mounted yet. Demo limits are separate and do not cover these normal routes.
 
 ## Socket.IO
 
@@ -345,7 +356,7 @@ bun run test:run
 
 [vitest.config.ts](vitest.config.ts) runs [tests](tests/) with Supertest and temporary MongoDB instances. Tests cover auth and health behavior, plus demo isolation, role permissions, fixed expiry, cleanup, reset, real-login preservation, voting, playback, room editing/ending, display behavior, Spotify metadata, caching, endpoint/upstream quotas, and provider errors.
 
-Spotify responses are mocked in the demo tests. The normal general/vote limiters are mocked in shared test setup, while [guest-write-limits.test.ts](tests/guest-write-limits.test.ts) enables the real production vote limiter on the real app. It checks sequential and concurrent limits, database effects, and broadcasts. This covers the current IP limit; guest IDs, vote deduplication, and a limiter on submissions still need Phase 1.3. Demo limits have separate coverage. A first run may require network access to download a MongoDB binary. Live catalog verification requires working app credentials and is separate from this suite.
+Spotify responses are mocked in the demo tests. The normal limiters are mocked in shared test setup. [rate-limits.test.ts](tests/rate-limits.test.ts) and [authz-sweep.test.ts](tests/authz-sweep.test.ts) run the real credential, DJ, and public-read limiters, and [guest-write-limits.test.ts](tests/guest-write-limits.test.ts) enables the real production vote limiter on the real app. It checks sequential and concurrent limits, database effects, and broadcasts. This covers the current IP limit; guest IDs, vote deduplication, and a limiter on submissions still need Phase 1.3. Demo limits have separate coverage. A first run may require network access to download a MongoDB binary. Live catalog verification requires working app credentials and is separate from this suite.
 
 For UI verification, run `pnpm build` from `client/` and follow its [build and deployment guidance](../client/README.md#build-and-deployment).
 
@@ -359,7 +370,7 @@ The server's full typecheck still fails on 217 existing semantic errors. The gua
 
 The production client is served from `https://app.sway.onl`, and the Railway API and Socket.IO server use `https://api.sway.onl`. They are separate origins, so the client sends credentials and the server allows the exact frontend origin through both CORS configurations.
 
-Connect Railway to the monorepo with `/server` as the root directory, `/server/**` as its watch path, and `bun run start` as its start command. Railway supplies `PORT`; configure `/` as the initial health-check path. The server validates its required variables before connecting to MongoDB.
+Connect Railway to the monorepo with `/server` as the root directory, `/server/**` as its watch path, and `bun run start` as its start command. Railway supplies `PORT`. Set the service's healthcheck path to `/health/ready` (Settings → Deploy → Healthcheck Path), so a new deployment only receives traffic once MongoDB is connected. The server validates its required variables before connecting to MongoDB.
 
 Configure these production variables in Railway rather than committing an environment file:
 

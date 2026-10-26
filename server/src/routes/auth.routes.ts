@@ -8,45 +8,46 @@ import {
     logoutUserAccount,
 } from "../controllers/auth.controller";
 import { protect } from "../middlewares/auth.middleware";
-import generalLimiter from "../middlewares/rate-limiters/general.limiter";
+import { credentialIpLimiter, loginLimiter, signupLimiter } from "../middlewares/rate-limiters/auth.limiter";
+import { djLimiter } from "../middlewares/rate-limiters/dj.limiter";
+import { publicReadLimiter } from "../middlewares/rate-limiters/public-read.limiter";
 
 const router = express.Router();
-router.use(generalLimiter);
 
 /**
  * @desc    Create user account
  * @route   POST /api/auth
  * @access  PUBLIC
  */
-router.post("/", createUserAccount);
+router.post("/", credentialIpLimiter, signupLimiter, createUserAccount);
 
 /**
  * @desc    Create username
  * @route   POST /api/auth/username
  * @access  PRIVATE
  */
-router.post("/username", protect, createUsername);
+router.post("/username", protect, djLimiter, createUsername);
 
 /**
  * @desc    Check username availability
  * @route   GET /api/auth/username/:username
  * @access  PUBLIC
  */
-router.get("/username/:username", checkUsernameAvailability);
+router.get("/username/:username", publicReadLimiter, checkUsernameAvailability);
 
 /**
  * @desc    Check email availability
  * @route   GET /api/auth/email/:email
  * @access  PUBLIC
  */
-router.get("/email/:email", checkEmailAvailability);
+router.get("/email/:email", publicReadLimiter, checkEmailAvailability);
 
 /**
  * @desc    Log in user
  * @route   POST /api/auth/login
  * @access  PUBLIC
  */
-router.post("/login", loginUserAccount);
+router.post("/login", credentialIpLimiter, loginLimiter, loginUserAccount);
 
 /**
  * @desc    Log out user

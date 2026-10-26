@@ -3,6 +3,7 @@ import { app } from "./app";
 import config, { validateRuntimeConfig } from "./config/config";
 import connectDB from "./config/db";
 import { initSocket } from "./socket";
+import { createShutdown } from "./shutdown";
 import { startDemoCleanup } from "./demo/demo.model";
 import Vote from "./models/vote.model";
 import Request from "./models/request.model";
@@ -24,7 +25,20 @@ const start = async () => {
     });
 
     // Wrap the running server instance with Socket.io
-    initSocket(server);
+    const io = initSocket(server);
+
+    const shutdown = createShutdown({ server, io });
+    // Stay subscribed: a repeated signal reuses the pending shutdown instead of killing the process.
+    for (const signal of ["SIGTERM", "SIGINT"] as const) {
+        process.on(signal, () => {
+            shutdown(signal)
+                .then(() => process.exit(0))
+                .catch((err) => {
+                    console.error("Shutdown failed:", err);
+                    process.exit(1);
+                });
+        });
+    }
 };
 
 start();

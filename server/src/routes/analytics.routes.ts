@@ -1,6 +1,7 @@
 import express from "express";
 import { publicReadLimiter } from "../middlewares/rate-limiters/public-read.limiter";
 import { protect } from "../middlewares/auth.middleware";
+import { djLimiter } from "../middlewares/rate-limiters/dj.limiter";
 import {
     mostPlayedArtists,
     totalRequestsPlayed,
@@ -17,7 +18,7 @@ import {
 
 const router = express.Router();
 
-router.get("/:userId/request-activity", protect, requestActivity);
+router.get("/:userId/request-activity", protect, djLimiter, requestActivity);
 
 // The public profile page reads these, so they stay public but rate limited per IP.
 router.use(publicReadLimiter);

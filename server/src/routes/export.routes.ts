@@ -1,6 +1,6 @@
 import express from "express";
 import { protect } from "../middlewares/auth.middleware";
-import generalLimiter from "../middlewares/rate-limiters/general.limiter";
+import { djLimiter } from "../middlewares/rate-limiters/dj.limiter";
 import {
     exportTracklistJson,
     exportTracklistCsv,
@@ -12,14 +12,13 @@ import {
 
 const router = express.Router();
 
-router.use(generalLimiter);
 
 /**
  * @desc    Export Room Tracklist JSON (Played songs only)
  * @route   GET /api/exports/:roomId/tracklist/json
  * @access  PRIVATE
  */
-router.get("/:roomId/tracklist/json", protect, exportTracklistJson);
+router.get("/:roomId/tracklist/json", protect, djLimiter, exportTracklistJson);
 
 /**
  * @desc    Export Room Tracklist CSV (Played songs only)
@@ -27,7 +26,7 @@ router.get("/:roomId/tracklist/json", protect, exportTracklistJson);
  * @access  PRIVATE
  */
 
-router.get("/:roomId/tracklist/csv", protect, exportTracklistCsv);
+router.get("/:roomId/tracklist/csv", protect, djLimiter, exportTracklistCsv);
 
 /**
  * @desc    Export Room Tracklist Plain text (Played songs only)
@@ -35,27 +34,27 @@ router.get("/:roomId/tracklist/csv", protect, exportTracklistCsv);
  * @access  PRIVATE
  */
 
-router.get("/:roomId/tracklist/txt", protect, exportTracklistTxt);
+router.get("/:roomId/tracklist/txt", protect, djLimiter, exportTracklistTxt);
 
 /**
  * @desc    Exporting a Room's Requests as JSON
  * @route   GET /api/exports/:roomCode/export/json
  * @access  PRIVATE
  */
-router.get("/:roomCode/export/json", protect, exportRoomRequestsJson);
+router.get("/:roomCode/export/json", protect, djLimiter, exportRoomRequestsJson);
 
 /**
  * @desc    Exporting a Room's Requests as CSV
  * @route   GET /api/exports/:roomCode/export/csv
  * @access  PRIVATE
  */
-router.get("/:roomCode/export/csv", protect, exportRoomRequestsCsv);
+router.get("/:roomCode/export/csv", protect, djLimiter, exportRoomRequestsCsv);
 
 /**
  * @desc    Exporting a Room's Requests as Plain text
  * @route   GET /api/exports/:roomCode/export/txt
  * @access  PRIVATE
  */
-router.get("/:roomCode/export/txt", protect, exportRoomRequestsTxt);
+router.get("/:roomCode/export/txt", protect, djLimiter, exportRoomRequestsTxt);
 
 export default router;

@@ -10,10 +10,10 @@ import {
     fetchUserInactiveRooms,
     fetchUserId,
 } from "../controllers/user.controller";
-import generalLimiter from "../middlewares/rate-limiters/general.limiter";
+import { djLimiter } from "../middlewares/rate-limiters/dj.limiter";
+import { publicReadLimiter } from "../middlewares/rate-limiters/public-read.limiter";
 
 const router = express.Router();
-router.use(generalLimiter);
 
 /**
  * @desc    Update user profile
@@ -21,49 +21,49 @@ router.use(generalLimiter);
  * @access  PRIVATE
  */
 
-router.put("/profile", protect, updateProfile);
+router.put("/profile", protect, djLimiter, updateProfile);
 
 /**
  * @desc    Update user password
  * @route   POST /api/users/password
  * @access  PRIVATE
  */
-router.post("/password", protect, updatePassword);
+router.post("/password", protect, djLimiter, updatePassword);
 
 /**
  * @desc    Get current user profile
  * @route   GET /api/users/me
  * @access  PRIVATE
  */
-router.get("/me", protect, getUserProfile);
+router.get("/me", protect, djLimiter, getUserProfile);
 
 /**
  * @desc    Delete user account (toggle active prop)
  * @route   DELETE /api/users/profile
  * @access  PRIVATE
  */
-router.delete("/profile", protect, deleteAccount);
+router.delete("/profile", protect, djLimiter, deleteAccount);
 
 /**
  * @desc    Fetch User's active room
  * @route   GET /api/users/:userId/rooms/active
  * @access  PUBLIC
  */
-router.get("/:userId/rooms/active", fetchUserActiveRoom);
+router.get("/:userId/rooms/active", publicReadLimiter, fetchUserActiveRoom);
 
 /**
  * @desc    Fetch a User's hasActiveRoom value
  * @route   GET /api/users/:userId/has-active-room
  * @access  PRIVATE
  */
-router.get("/:userId/has-active-room", protect, fetchUserHasActiveRoom);
+router.get("/:userId/has-active-room", protect, djLimiter, fetchUserHasActiveRoom);
 
 /**
  * @desc    Fetch User Inactive Rooms
  * @route   GET /api/users/:userId/inactive
  * @access  PRIVATE
  */
-router.get("/:userId/inactive", protect, fetchUserInactiveRooms);
+router.get("/:userId/inactive", protect, djLimiter, fetchUserInactiveRooms);
 
 
 /**
@@ -71,6 +71,6 @@ router.get("/:userId/inactive", protect, fetchUserInactiveRooms);
  * @route   GET /api/users/:username/id
  * @access  PUBLIC
  */
-router.get("/:username/id", fetchUserId);
+router.get("/:username/id", publicReadLimiter, fetchUserId);
 
 export default router;
