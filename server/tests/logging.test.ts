@@ -70,6 +70,37 @@ describe("Request logging", () => {
         expect(output).not.toContain("password123");
     });
 
+    it("logs malformed and oversized JSON bodies with a request ID", async () => {
+        const malformed = await request(app).post("/api/auth/login")
+            .set("Content-Type", "application/json").send('{"identifier": "dj@example.com",').expect(400);
+        const oversized = await request(app).post("/api/auth/login")
+            .set("Content-Type", "application/json").send(JSON.stringify({ identifier: "x".repeat(200_000) })).expect(413);
+
+        for (const response of [malformed, oversized]) {
+            const id = response.headers["x-request-id"];
+            expect(id).toMatch(/^[0-9a-f-]{36}$/);
+            const found = lines.filter((line) => line.req?.id === id && line.res);
+            expect(found).toHaveLength(1);
+            expect(found[0]).toMatchObject({ level: 40, res: { statusCode: response.status } });
+        }
+    });
+
+    it("redacts demo session tokens", async () => {
+        const token = "demo-session-token-should-not-be-logged";
+        await request(app).get("/api/users/me").set("X-Demo-Token", token).expect(403);
+
+        expect(completed("GET", "/api/users/me").req.headers["x-demo-token"]).toBe("[Redacted]");
+        expect(JSON.stringify(lines)).not.toContain(token);
+    });
+
+    it("redacts demo tokens in logged header objects", () => {
+        const token = "demo-header-token-should-not-be-logged";
+        logger.info({ headers: { "x-demo-token": token } }, "headers");
+
+        expect(lines.at(-1)!.headers["x-demo-token"]).toBe("[Redacted]");
+        expect(JSON.stringify(lines)).not.toContain(token);
+    });
+
     it("adds userId and roomId on mutation paths only", async () => {
         const dj = await register();
         const created = await request(app).post("/api/rooms").set("Cookie", dj.cookie)

@@ -5,6 +5,7 @@
 #     npx artillery@latest run load/guests.yml --output load/report.json
 config:
   target: "{{ $env.TARGET }}"
+  processor: processor.cjs
   http:
     timeout: 15
   socketio:
@@ -79,15 +80,16 @@ scenarios:
                 roomId: "{{ roomId }}"
                 requestedBy: "Load guest"
                 track: { id: "{{ trackId }}", name: "{{ trackName }}", artist: "{{ trackArtist }}", albumImage: "{{ trackImage }}" }
-              capture:
-                - { json: "$.request._id", as: requestId }
-              # 201 new, 200 duplicate/upvote; 409/429 are policy rejections (queue caps, limits), not failures.
+              # Sets requestId and submitted only on 200/201, so the vote below is skipped after a rejection.
+              afterResponse: rememberSubmittedRequest
+              # 201 new, 200 duplicate/upvote; 409/429 are policy rejections (queue caps, ended room, limits), not failures.
               expect: [{ statusCode: [200, 201, 409, 429] }]
           - get:
               name: room queue
               url: "/api/requests/{{ roomId }}/requests"
           - put:
               name: vote
+              ifTrue: "submitted"
               url: /api/requests/vote
               json: { requestId: "{{ requestId }}" }
               expect: [{ statusCode: [200, 409, 429] }]

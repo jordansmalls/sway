@@ -12,14 +12,16 @@ export const logger = pino(
     {
         level: process.env.LOG_LEVEL ?? (config.node_env === "test" ? "silent" : "info"),
         base: { service: "sway-api" },
-        // Session cookies and tokens must never reach the logs.
+        // Session cookies and tokens (including demo session tokens) must never reach the logs.
         redact: {
             paths: [
                 "req.headers.cookie",
                 "req.headers.authorization",
+                'req.headers["x-demo-token"]',
                 'res.headers["set-cookie"]',
                 "headers.cookie",
                 "headers.authorization",
+                'headers["x-demo-token"]',
             ],
             censor: "[Redacted]",
         },

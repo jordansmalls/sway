@@ -366,7 +366,7 @@ Revisit this before adding a DJ-only realtime event. That event needs socket aut
 
 ## Load testing
 
-[load/guests.yml](load/guests.yml) is an [Artillery](https://www.artillery.io/) scenario for one live room. Each virtual user is a guest's phone: it holds a Socket.IO subscription to the room, joins over HTTP, and loads the queue. It then searches, submits and votes five times, about 8 seconds apart. The run has three phases:
+[load/guests.yml](load/guests.yml) is an [Artillery](https://www.artillery.io/) scenario for one live room. Each virtual user is a guest's phone: it holds a Socket.IO subscription to the room, joins over HTTP, and loads the queue. It then searches, submits and votes five times, about 8 seconds apart. It only votes after a successful submission (`200` or `201`). A `409` or `429` rejection skips that round's vote ([load/processor.cjs](load/processor.cjs)). The run has three phases:
 
 1. 150 guests arrive over two minutes.
 2. A 10 second burst adds 150 more, like a room reacting to a drop.
@@ -388,7 +388,7 @@ Run it against **staging only, never production**. It creates real requests and 
    ```bash
    MONGO_URI=<staging uri> bun run load/check-consistency.ts <roomId>
    ```
-   It fails if more than one request is playing, a track is queued twice, any vote count is negative, any DJ has two active rooms, or (once the `votes` collection exists) vote counts differ from their `Vote` documents.
+   It fails if the room doesn't exist in that database, more than one request is playing, a track is queued twice, any vote count is negative, any DJ has two active rooms, or (once the `votes` collection exists) vote counts differ from their `Vote` documents.
 
 Check these in the Artillery summary:
 - `http.response_time` p95 and p99 per endpoint (`metrics-by-endpoint`).

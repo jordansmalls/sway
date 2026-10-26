@@ -8,6 +8,12 @@ if (!roomId || !mongoose.isObjectIdOrHexString(roomId)) throw new Error("Pass th
 if (!config.mongo_uri) throw new Error("MONGO_URI is required.");
 
 await mongoose.connect(config.mongo_uri, { autoIndex: false });
+// A valid ID from another database, or a deleted room, would otherwise pass with no requests.
+if (!(await mongoose.connection.db!.collection("rooms").findOne({ _id: new mongoose.Types.ObjectId(roomId) }, { projection: { _id: 1 } }))) {
+    console.error(`✗ Room ${roomId} does not exist in this database.`);
+    await mongoose.disconnect();
+    process.exit(1);
+}
 try {
     const db = mongoose.connection.db!;
     const room = new mongoose.Types.ObjectId(roomId);
