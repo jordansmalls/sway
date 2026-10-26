@@ -15,7 +15,7 @@ const requestSchema = new Schema(
         votes: {
             type: Number,
             default: 1,
-            min: 1,
+            min: 0,
         },
         playedAt: {
             type: Date,
@@ -24,6 +24,11 @@ const requestSchema = new Schema(
         requestedBy: {
             type: String,
             required: false,
+        },
+        guestId: { type: String, select: false },
+        replayOf: {
+            type: Schema.Types.ObjectId,
+            ref: "Request",
         },
         completedAt: {
             type: Date,
@@ -64,7 +69,11 @@ const requestSchema = new Schema(
 );
 
 requestSchema.index({ "track.spotifyTrackId": 1 });
-requestSchema.index({ roomId: 1 });
+requestSchema.index({ roomId: 1 }, {
+    name: "one_playing_per_room",
+    unique: true,
+    partialFilterExpression: { status: "playing" },
+});
 requestSchema.index({ status: 1 });
 requestSchema.index({ roomId: 1, status: 1 });
 requestSchema.index({ roomId: 1, "track.spotifyTrackId": 1 }, {

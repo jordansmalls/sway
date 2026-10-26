@@ -1,13 +1,19 @@
 import rateLimit from "express-rate-limit";
 
-/**
- * Implements rate limiting for upvoting songs
- * 5 upvotes per 30s
- */
+// Both guest writes share these stores. The IP ceiling accommodates venue Wi-Fi.
 export const voteLimiter = rateLimit({
-    windowMs: 30 * 1000,
-    max: 5,
-    message: "Too many votes from this user, please try again soon.",
+    windowMs: 60 * 1000,
+    limit: 30,
+    keyGenerator: (req) => req.cookies.sway_guest,
+    message: "Too many requests from this guest, please try again soon.",
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+export const guestIpLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    limit: 300,
+    message: "Too many requests from this network, please try again soon.",
     standardHeaders: true,
     legacyHeaders: false,
 });

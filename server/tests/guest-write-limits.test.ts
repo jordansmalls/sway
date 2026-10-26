@@ -1,137 +1,92 @@
+import { randomUUID } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import mongoose from "mongoose";
 import request from "supertest";
 import { ipKeyGenerator } from "express-rate-limit";
 import { app } from "../src/app";
 import { initSocketIO } from "../src/controllers/request.controller";
-import { voteLimiter } from "../src/middlewares/rate-limiters/vote.limiter";
+import { guestIpLimiter, voteLimiter } from "../src/middlewares/rate-limiters/vote.limiter";
 import Room from "../src/models/room.model";
 import SongRequest from "../src/models/request.model";
+import Vote from "../src/models/vote.model";
 
-// Hoisted before app/router imports. Vitest's file isolation keeps setup.ts's
-// bypass in other suites, while this suite uses the production limiter/store.
 vi.unmock("../src/middlewares/rate-limiters/vote.limiter.ts");
-
-// Supertest connects over IPv4 loopback, including when Node reports a mapped
-// IPv6 address. Use the limiter's public store API to isolate each test.
 const loopbackKey = ipKeyGenerator("127.0.0.1");
-const currentIpLimit = 5;
-const initialVotes = 1;
-const emit = vi.fn<(event: string, payload: unknown) => void>();
-const to = vi.fn<(room: string) => { emit: typeof emit }>(() => ({ emit }));
+const guests = new Set<string>();
+const guest = () => { const id = randomUUID(); guests.add(id); return id; };
+const emit = vi.fn();
 let roomId: string;
 let requestId: string;
-
-const vote = () => request(app).put("/api/requests/vote").send({ requestId });
-const snapshot = async () => {
-    const [rooms, requests] = await Promise.all([
-        Room.find().sort({ _id: 1 }).lean(),
-        SongRequest.find().sort({ _id: 1 }).lean(),
-    ]);
-    return { rooms, requests };
-};
+const vote = (id: string) => request(app).put("/api/requests/vote").set("Cookie", `sway_guest=${id}`).send({ requestId });
+const submit = (id: string) => request(app).post("/api/requests").set("Cookie", `sway_guest=${id}`).send({ roomId, track: { id: "limited-track", name: "Limited track", artist: "Artist" } });
 
 beforeEach(async () => {
-    await voteLimiter.resetKey(loopbackKey);
+    await guestIpLimiter.resetKey(loopbackKey);
     await SongRequest.init();
     emit.mockClear();
-    to.mockClear();
-    initSocketIO({ to });
-
-    const room = await Room.create({
-        roomName: "Guest vote limits",
-        roomDescription: "Real production limiter tests",
-        roomCode: "LIMIT",
-        roomCreator: new mongoose.Types.ObjectId(),
-        active: true,
-    });
-    const song = await SongRequest.create({
-        roomId: room._id,
-        status: "pending",
-        votes: initialVotes,
-        requestedBy: "Guest",
-        track: {
-            spotifyTrackId: "limited-track",
-            title: "Limited track",
-            artist: "Artist",
-            spotifyLink: "https://open.spotify.com/track/limited-track",
-            spotifyURI: "spotify:track:limited-track",
-        },
-    });
-    roomId = room._id.toString();
-    requestId = song._id.toString();
+    initSocketIO({ to: () => ({ emit }) });
+    const room = await Room.create({ roomName: "Limits", roomDescription: "Limits tests", roomCode: "LIMIT", roomCreator: new mongoose.Types.ObjectId() });
+    roomId = String(room._id);
+    const song = await SongRequest.create({ roomId, votes: 0, track: { spotifyTrackId: "limited-track", title: "Limited track", artist: "Artist", spotifyLink: "link", spotifyURI: "uri" } });
+    requestId = String(song._id);
 });
 
 afterEach(async () => {
     vi.restoreAllMocks();
-    await voteLimiter.resetKey(loopbackKey);
+    await guestIpLimiter.resetKey(loopbackKey);
+    for (const id of guests) await voteLimiter.resetKey(id);
+    guests.clear();
     initSocketIO(undefined);
 });
 
-// Phase 1.3's guest IDs, per-track vote deduplication, guest/IP write quotas and
-// POST limiter are not implemented. These tests cover only today's PUT policy.
-describe("Guest votes with the current production IP limiter", () => {
-    it("persists five accepted votes, then returns 429 before database access or socket events", async () => {
-        for (let accepted = 1; accepted <= currentIpLimit; accepted++) {
-            const response = await vote().expect(200);
-            expect(response.body).toMatchObject({
-                success: true,
-                request: { _id: requestId, votes: initialVotes + accepted },
-            });
-            expect(response.headers["ratelimit-limit"]).toBe(String(currentIpLimit));
-            expect(response.headers["ratelimit-remaining"]).toBe(String(currentIpLimit - accepted));
-            expect((await SongRequest.findById(requestId).lean())?.votes).toBe(initialVotes + accepted);
-            expect(emit).toHaveBeenNthCalledWith(accepted, "request:updated", expect.objectContaining({
-                votes: initialVotes + accepted,
-            }));
-        }
-        expect(emit).toHaveBeenCalledTimes(currentIpLimit);
-        expect(to).toHaveBeenCalledTimes(currentIpLimit);
-        expect(to).toHaveBeenCalledWith(`room-${roomId}`);
-        expect(await voteLimiter.getKey(loopbackKey)).toMatchObject({ totalHits: currentIpLimit });
-
-        const before = await snapshot();
-        const requestRead = vi.spyOn(SongRequest, "findById");
+describe("Guest write backstops", () => {
+    it("shares 30 writes per minute across votes and submissions, and blocks before database access", async () => {
+        const id = guest();
+        const responses = await Promise.all(Array.from({ length: 30 }, (_, index) => index % 2 ? vote(id) : submit(id)));
+        expect(responses.every(({ status }) => status === 200)).toBe(true);
+        expect((await SongRequest.findById(requestId))?.votes).toBe(1);
+        expect(await Vote.countDocuments()).toBe(1);
+        expect(emit).toHaveBeenCalledTimes(1);
+        const read = vi.spyOn(SongRequest, "findById");
+        const queued = vi.spyOn(SongRequest, "findOne");
         const roomRead = vi.spyOn(Room, "findById");
-        const write = vi.spyOn(SongRequest, "findByIdAndUpdate");
+        const insert = vi.spyOn(Vote, "create");
         emit.mockClear();
-        to.mockClear();
-
-        for (let blocked = 0; blocked < 3; blocked++) {
-            const response = await vote().expect(429);
-            expect(response.text).toBe("Too many votes from this user, please try again soon.");
-            expect(response.headers["ratelimit-limit"]).toBe(String(currentIpLimit));
-            expect(response.headers["ratelimit-remaining"]).toBe("0");
-            expect(Number(response.headers["retry-after"])).toBeGreaterThan(0);
-            expect(Number(response.headers["retry-after"])).toBeLessThanOrEqual(30);
+        for (const call of [vote, submit]) {
+            const blocked = await call(id).expect(429);
+            expect(blocked.headers["ratelimit-limit"]).toBe("30");
+            expect(Number(blocked.headers["retry-after"])).toBeGreaterThan(0);
         }
-
-        expect(requestRead).not.toHaveBeenCalled();
+        expect(read).not.toHaveBeenCalled();
+        expect(queued).not.toHaveBeenCalled();
         expect(roomRead).not.toHaveBeenCalled();
-        expect(write).not.toHaveBeenCalled();
-        expect(await snapshot()).toEqual(before);
-        expect(to).not.toHaveBeenCalled();
+        expect(insert).not.toHaveBeenCalled();
         expect(emit).not.toHaveBeenCalled();
     });
 
-    it("accepts exactly five of ten overlapping votes without extra increments or events", async () => {
-        const responses = await Promise.all(Array.from({ length: 10 }, () => vote()));
-        expect(responses.map(({ status }) => status).sort()).toEqual([
-            ...Array<number>(currentIpLimit).fill(200),
-            ...Array<number>(10 - currentIpLimit).fill(429),
-        ]);
-        const accepted = responses.filter(({ status }) => status === 200);
-        expect(accepted.map(({ body }) => body.request.votes).sort()).toEqual([2, 3, 4, 5, 6]);
-        for (const response of responses.filter(({ status }) => status === 429)) {
-            expect(response.text).toBe("Too many votes from this user, please try again soon.");
-            expect(response.headers["ratelimit-remaining"]).toBe("0");
+    it("accepts ten guests on one IP while counting each guest only once", async () => {
+        const responses = await Promise.all(Array.from({ length: 10 }, () => vote(guest())));
+        expect(responses.every(({ status }) => status === 200)).toBe(true);
+        expect((await SongRequest.findById(requestId))?.votes).toBe(10);
+        expect(emit).toHaveBeenCalledTimes(10);
+    });
+
+    it("keeps a 300-write network ceiling across both routes even as cookies change", async () => {
+        // Ten guests may each make thirty writes on venue Wi-Fi.
+        for (let i = 0; i < 10; i++) {
+            const id = guest();
+            const responses = await Promise.all(Array.from({ length: 30 }, (_, j) => j % 2 ? vote(id) : submit(id)));
+            expect(responses.every(({ status }) => status === 200)).toBe(true);
         }
-        expect((await SongRequest.findById(requestId).lean())?.votes).toBe(initialVotes + currentIpLimit);
-        expect(await SongRequest.countDocuments()).toBe(1);
-        expect(emit).toHaveBeenCalledTimes(currentIpLimit);
-        expect(emit.mock.calls.map(([event]) => event)).toEqual(Array<string>(currentIpLimit).fill("request:updated"));
-        expect(to).toHaveBeenCalledTimes(currentIpLimit);
-        expect(to).toHaveBeenCalledWith(`room-${roomId}`);
-        expect(await voteLimiter.getKey(loopbackKey)).toMatchObject({ totalHits: 10 });
+        const read = vi.spyOn(SongRequest, "findById");
+        const queued = vi.spyOn(SongRequest, "findOne");
+        emit.mockClear();
+        for (const call of [vote, submit]) {
+            const blocked = await call(guest()).expect(429);
+            expect(blocked.headers["ratelimit-limit"]).toBe("300");
+        }
+        expect(read).not.toHaveBeenCalled();
+        expect(queued).not.toHaveBeenCalled();
+        expect(emit).not.toHaveBeenCalled();
     });
 });
