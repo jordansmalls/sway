@@ -136,7 +136,13 @@ const RoomAdmin = () => {
               requestedBy={user.username || 'DJ'}
             />
           </div>
-          <RecommendedTracks userId={user._id} />
+          <RecommendedTracks
+            key={room._id}
+            userId={user._id}
+            roomId={room._id}
+            requestedBy={user.username || 'DJ'}
+            active={room.active}
+          />
           <RequestListAdmin />
         </section>
     </>
