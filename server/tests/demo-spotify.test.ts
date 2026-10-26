@@ -1,13 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import axios from "axios";
-import { getAccessToken } from "../src/controllers/spotify.controller";
+import { getAccessToken } from "../src/services/spotify-token";
 import { demoSeedTracks } from "../src/demo/demo.tracks";
 
 vi.mock("axios", async (importOriginal) => {
     const original = await importOriginal<typeof import("axios")>();
     return { ...original, default: { ...original.default, get: vi.fn() } };
 });
-vi.mock("../src/controllers/spotify.controller", () => ({ getAccessToken: vi.fn().mockResolvedValue("test-token") }));
+vi.mock("../src/services/spotify-token", () => ({ getAccessToken: vi.fn().mockResolvedValue("test-token") }));
+
+vi.unmock("../src/services/spotify-client.ts");
 
 const track = demoSeedTracks[0]!;
 const raw = { id: track.id, name: track.name, artists: [{ name: track.artist }], duration_ms: track.duration_ms,

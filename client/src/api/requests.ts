@@ -28,6 +28,7 @@ export { requestKeys, getSongRequestRoomId, sortRequestsForQueue, upsertRequestI
 type RequestResponse = {
   success: true
   message?: string
+  alreadyVoted?: boolean
   alreadyQueued?: boolean
   request: SongRequest
 }
