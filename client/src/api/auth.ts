@@ -28,6 +28,11 @@ export type LoginInput = {
   password: string
 }
 
+export type ResetPasswordInput = {
+  token: string
+  newPassword: string
+}
+
 export type CreateUsernameInput = {
   username: string
 }
@@ -47,6 +52,16 @@ export async function signup(input: SignupInput) {
 
 export async function login(input: LoginInput) {
   const { data } = await apiClient.post<AuthResponse>("/api/auth/login", input)
+  return data
+}
+
+export async function forgotPassword(input: { email: string }) {
+  const { data } = await apiClient.post<ApiMessageResponse>("/api/auth/forgot-password", input)
+  return data
+}
+
+export async function resetPassword(input: ResetPasswordInput) {
+  const { data } = await apiClient.post<ApiMessageResponse>("/api/auth/reset-password", input)
   return data
 }
 
@@ -96,6 +111,18 @@ export function useLoginMutation() {
     onSuccess: ({ user }) => {
       queryClient.setQueryData(userKeys.me(), { success: true, user })
     },
+  })
+}
+
+export function useForgotPasswordMutation() {
+  return useMutation({ mutationFn: forgotPassword })
+}
+
+export function useResetPasswordMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: resetPassword,
+    onSuccess: () => clearSession(queryClient),
   })
 }
 

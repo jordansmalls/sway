@@ -1,5 +1,6 @@
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import type { Request } from "express";
+import { createHash } from "node:crypto";
 
 const tooMany = (message: string) => ({ success: false, error: "Too Many Requests", message });
 
@@ -40,3 +41,31 @@ export const credentialIpLimiter = rateLimit({
     standardHeaders: true,
     legacyHeaders: false,
 });
+
+export const PASSWORD_RESET_REQUEST_LIMIT = 3;
+export const PASSWORD_RESET_IP_LIMIT = 20;
+
+export const passwordResetRequestLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: PASSWORD_RESET_REQUEST_LIMIT,
+    keyGenerator: (req: Request) => {
+        const email = req.body?.email;
+        const normalized = typeof email === "string" ? email.trim().toLowerCase() : "";
+        return createHash("sha256").update(normalized).digest("hex");
+    },
+    message: tooMany("Too many reset requests for this email. Please try again in 15 minutes."),
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+const resetIpLimiter = () => rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: PASSWORD_RESET_IP_LIMIT,
+    message: tooMany("Too many password reset attempts from this network. Please try again in 15 minutes."),
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+// Separate budgets so requesting links cannot exhaust the budget for using a delivered link.
+export const passwordResetIpLimiter = resetIpLimiter();
+export const passwordResetAttemptLimiter = resetIpLimiter();

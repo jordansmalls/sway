@@ -315,6 +315,38 @@ Expired documents are removed on server startup and every minute. A MongoDB TTL 
 
 Cross-origin deployments must allow `X-Demo-Token`. Do not cache personalized demo responses or log demo-token headers. The rate-limit memory stores, upstream quota guard, and Spotify caches are process-local; multi-replica deployments need shared limits and correctly configured trusted proxy addresses. Do not blindly enable `trust proxy` for arbitrary forwarded addresses.
 
+## Password reset
+
+The login page links to `/forgot-password`. A DJ enters their account email, opens the emailed `/reset-password#token=...` link, chooses and confirms a new password, then logs in normally. Reset pages remain accessible when a browser already has a session.
+
+`POST /api/auth/forgot-password` accepts `{ "email": "dj@example.com" }`. For any valid email address it immediately returns the same `200` response before account lookup or email delivery. Unknown and disabled accounts receive no email. Delivery failures are logged with a request ID and a safe error code, without provider payloads, email addresses, or tokens.
+
+`POST /api/auth/reset-password` accepts `{ "token": "<emailed token>", "newPassword": "<at least 8 characters>" }`. A successful reset hashes the password, consumes all outstanding email tokens, increments the account's session version, and clears the browser's auth cookie. Existing login cookies stop working. It sends a separate password-change notification and does not log the DJ in automatically. A notification failure does not undo the reset.
+
+Reset tokens contain 32 random bytes. Only a SHA-256 digest is stored, bound to the action, account email, and session version. Links expire after 30 minutes, with expiry checked on use. Tokens are embedded in the user document so password replacement, token consumption, and session revocation share one atomic write, including under concurrent reset requests. Password, email, and account-state changes also clear pending tokens. The token field is excluded from normal user queries.
+
+The shared [token helpers](src/services/email-token.ts), [token schema](src/models/email-token.schema.ts), and [email transport](src/services/email.ts) can support signup and email-change verification later. Only password reset is implemented here.
+
+Links use the configured `FRONTEND_URL`, never a request's Host or Origin header. The token is in the URL fragment, so it does not reach the client host or appear in HTTP referrers. The client submits it in a JSON request body to the API. Request bodies and provider responses must stay out of logs.
+
+A database-backed one-minute send cooldown prevents overlapping requests from flooding one inbox. A replacement link retires older links only after Resend accepts the email. If sending fails, its token is removed and any previously delivered link remains usable. Limiters also allow three requests per normalized email per 15 minutes across IPs, and 20 requests per network per 15 minutes across accounts. Reset completion has its own 20-attempt network budget, separate from link requests and normal login.
+
+### Resend configuration
+
+The code and tests work without a Resend account. To enable actual delivery later, verify `sway.onl` or a sending subdomain in Resend and configure these Railway variables:
+
+```dotenv
+RESEND_API_KEY=your-resend-api-key
+RESEND_FROM_EMAIL="Sway <no-reply@sway.onl>"
+FRONTEND_URL=https://app.sway.onl
+```
+
+The sender defaults to `Sway <no-reply@sway.onl>`. Override it if you verify a subdomain instead. `FRONTEND_URL` must be an HTTP(S) origin without a path or query, with HTTPS required for production email links. Sending uses the [Resend Email API](https://resend.com/docs/api-reference/emails/send-email) with a ten-second timeout.
+
+Resend settings are optional at server startup so account and domain setup can follow the implementation. Without an API key, ordinary login still works; reset requests keep the generic response and log `not-configured`. Request acknowledgement does not guarantee inbox delivery. Email work runs in the API process after the response; a process shutdown can interrupt it, and the DJ can request a new link.
+
+[password-reset.test.ts](tests/password-reset.test.ts) mocks Resend's HTTP boundary and covers delivery, validation, expiry, single use, simultaneous consumption, resend failures, legacy accounts, session revocation, and safe error handling. The real reset rate limiters are covered in [rate-limits.test.ts](tests/rate-limits.test.ts).
+
 ## Normal API rate limits
 
 Limits are split by audience ([rate-limiters](src/middlewares/rate-limiters/)). All of them use process-local memory, which resets on deploy. That is fine for a single instance.
@@ -323,6 +355,8 @@ Limits are split by audience ([rate-limiters](src/middlewares/rate-limiters/)). 
 | --- | --- | --- | --- |
 | Credentials | `POST /api/auth` (signup), `POST /api/auth/login` | IP plus the lowercased account the route uses (`email` for signup, `identifier` for login), with a separate budget per route | 10 per 15 minutes |
 | Credential IP ceiling | The same two routes | IP | 50 per 15 minutes, so rotating emails can't get around the first limit |
+| Reset email requests | `POST /api/auth/forgot-password` | Normalized email across IPs, plus IP across accounts | 3 per email and 20 per IP per 15 minutes, plus a database-backed one-minute send cooldown |
+| Reset completion | `POST /api/auth/reset-password` | IP | 20 per 15 minutes, with a separate budget from email requests and login |
 | DJ | Every authenticated route under `/api/auth`, `/api/users`, `/api/rooms`, `/api/exports`, and `/api/analytics/:userId/request-activity`, plus `POST /api/requests` when the signed-in DJ adds to their own room | User ID (mounted after `protect`) | 600 per 15 minutes per DJ, so a long set with focus refetches never locks a DJ out, and DJs sharing a venue IP don't share a budget |
 | Public reads | Global analytics, public profile analytics, public user lookups, username/email availability | IP | 300 per 15 minutes, shared across those routes |
 | Guest writes | `POST /api/requests` and `PUT /api/requests/vote`, one shared budget | `sway_guest` cookie | 30 per minute per guest. Skipped for the room's own DJ, who gets the DJ budget instead |
@@ -414,7 +448,7 @@ For UI verification, run `pnpm build` from `client/` and follow its [build and d
 
 [CI](../.github/workflows/ci.yml) installs frozen lockfiles and runs the server tests and `bun run typecheck:check`, plus client lint, build, and unit tests. Dependency audits report findings without blocking these checks.
 
-The server's full typecheck still fails on 215 existing semantic errors. The guard in [scripts/check-typecheck.ts](scripts/check-typecheck.ts) counts TypeScript diagnostic objects and compares the count with [typecheck-baseline.json](typecheck-baseline.json). Compiler, configuration, syntax, and global failures always fail the guard. It forces semantic checking even if `noCheck` is enabled. Twelve CLI integration tests verify the guard against isolated project fixtures. Fix new diagnostics instead of increasing `maxErrors`. When a change reduces the count, lower the baseline to preserve that improvement. At zero, any TypeScript error fails CI.
+The server's full typecheck still reports existing semantic errors. The guard in [scripts/check-typecheck.ts](scripts/check-typecheck.ts) counts TypeScript diagnostic objects and compares the count with [typecheck-baseline.json](typecheck-baseline.json). Compiler, configuration, syntax, and global failures always fail the guard. It forces semantic checking even if `noCheck` is enabled. Twelve CLI integration tests verify the guard against isolated project fixtures. Fix new diagnostics instead of increasing `maxErrors`. When a change reduces the count, lower the baseline to preserve that improvement. At zero, any TypeScript error fails CI.
 
 ## Deployment notes
 

@@ -23,6 +23,8 @@ interface AppConfig {
     spotify_client_secret: string | undefined;
     frontend_url: string;
     cookie_domain: string | undefined;
+    resend_api_key: string | undefined;
+    email_from: string;
 }
 
 const config: AppConfig = {
@@ -35,6 +37,8 @@ const config: AppConfig = {
     spotify_client_secret: process.env.SPOTIFY_CLIENT_SECRET,
     frontend_url: frontendUrl,
     cookie_domain: process.env.COOKIE_DOMAIN || (isProduction ? ".sway.onl" : undefined),
+    resend_api_key: process.env.RESEND_API_KEY,
+    email_from: process.env.RESEND_FROM_EMAIL || "Sway <no-reply@sway.onl>",
 };
 
 export function validateRuntimeConfig() {

@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
+import { emailTokenSchema } from "./email-token.schema";
 
 const userSchema = new mongoose.Schema(
     {
@@ -47,6 +48,11 @@ const userSchema = new mongoose.Schema(
             type: Number,
             default: 0,
         },
+        emailTokens: {
+            type: [emailTokenSchema],
+            default: [],
+            select: false,
+        },
         hasActiveRoom: {
             type: Boolean,
             default: false,
@@ -71,10 +77,16 @@ const userSchema = new mongoose.Schema(
     },
 );
 
+userSchema.index({ "emailTokens.digest": 1 }, { sparse: true });
+
 // Revoke existing sessions in the same write as password or account-state changes.
 userSchema.pre("save", function () {
     if (!this.isNew && (this.isModified("password") || this.isModified("active"))) {
         this.$inc("sessionVersion", 1);
+    }
+    if (!this.isNew && (this.isModified("password") || this.isModified("email") || this.isModified("active"))) {
+        this.set("emailTokens", []);
+        this.markModified("emailTokens");
     }
 });
 

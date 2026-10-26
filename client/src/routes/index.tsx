@@ -22,6 +22,8 @@ import Profile from "../pages/Profile"
 // auth
 import Login from "../pages/auth/Login"
 import Signup from "../pages/auth/Signup"
+import ForgotPassword from "../pages/auth/ForgotPassword"
+import ResetPassword from "../pages/auth/ResetPassword"
 
 
 
@@ -49,6 +51,8 @@ export const router = createBrowserRouter(
       <Route path="*" element={<NotFound />} />
       <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
       <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/demo" element={<Demo />} />
       <Route element={<DemoExperience />}>
         <Route path="/demo/dj" element={null} />
