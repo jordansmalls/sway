@@ -43,7 +43,8 @@ export async function withQueueAdmission<T>(roomId: string, write: () => Promise
     }
 }
 
-export async function checkQueueCapacity(roomId: string, guestId: string) {
+// The room cap applies to everyone; the per-guest cap does not apply to the room's DJ.
+export async function checkQueueCapacity(roomId: string, guestId: string, { roomOwner = false } = {}) {
     if (await Request.countDocuments({ roomId, status: "pending" }) >= 200) failure(409, "This room's queue is full. Please try again after a track is played.");
-    if (await Request.countDocuments({ roomId, guestId, status: "pending" }) >= 5) failure(409, "You already have five pending requests in this room.");
+    if (!roomOwner && await Request.countDocuments({ roomId, guestId, status: "pending" }) >= 5) failure(409, "You already have five pending requests in this room.");
 }

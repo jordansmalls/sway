@@ -176,7 +176,7 @@ Prefix: `/api/requests`.
 | GET | `/:requestId` | Public | One `request` |
 | GET | `/:roomId/filter?status=pending` | Public | `requests` matching the status |
 
-The normal create handler accepts Spotify search fields `track.id`, `track.name`, `track.artist`, and optional `track.albumImage`. It stores normalized track fields and derived Spotify links. Use the shared client track mapper rather than assuming search and stored track shapes are identical. New requests, duplicate submissions, and votes return 409 after the room has ended.
+The normal create handler accepts Spotify search fields `track.id`, `track.name`, `track.artist`, and optional `track.albumImage`. It stores normalized track fields and derived Spotify links. Use the shared client track mapper rather than assuming search and stored track shapes are identical. New requests, duplicate submissions, and votes return 409 after the room has ended. A room holds at most 200 pending requests, and each guest at most 5. The 5-request cap and the guest rate limits don't apply when the signed-in DJ adds to their own room, for example from the recommendations panel.
 
 Demo submissions instead require `track.spotifyTrackId` and resolve canonical metadata server side. The client mapper supplies the aliases needed by both contracts. This server verification is specific to the demo path, not a guarantee of the legacy normal request handler.
 
@@ -323,11 +323,14 @@ Limits are split by audience ([rate-limiters](src/middlewares/rate-limiters/)). 
 | --- | --- | --- | --- |
 | Credentials | `POST /api/auth` (signup), `POST /api/auth/login` | IP plus the lowercased account the route uses (`email` for signup, `identifier` for login), with a separate budget per route | 10 per 15 minutes |
 | Credential IP ceiling | The same two routes | IP | 50 per 15 minutes, so rotating emails can't get around the first limit |
-| DJ | Every authenticated route under `/api/auth`, `/api/users`, `/api/rooms`, `/api/exports`, and `/api/analytics/:userId/request-activity` | User ID (mounted after `protect`) | 600 per 15 minutes per DJ, so a long set with focus refetches never locks a DJ out, and DJs sharing a venue IP don't share a budget |
+| DJ | Every authenticated route under `/api/auth`, `/api/users`, `/api/rooms`, `/api/exports`, and `/api/analytics/:userId/request-activity`, plus `POST /api/requests` when the signed-in DJ adds to their own room | User ID (mounted after `protect`) | 600 per 15 minutes per DJ, so a long set with focus refetches never locks a DJ out, and DJs sharing a venue IP don't share a budget |
 | Public reads | Global analytics, public profile analytics, public user lookups, username/email availability | IP | 300 per 15 minutes, shared across those routes |
-| Votes | `PUT /api/requests/vote` | IP | 5 per 30 seconds |
+| Guest writes | `POST /api/requests` and `PUT /api/requests/vote`, one shared budget | `sway_guest` cookie | 30 per minute per guest. Skipped for the room's own DJ, who gets the DJ budget instead |
+| Guest write IP ceiling | The same two routes | IP | 300 per minute, high enough for venue Wi-Fi, so clearing cookies can't get around the first limit |
+| Spotify catalog | Every route under `/api/spotify` (search, track, artist top tracks), one shared budget | `sway_guest` cookie | 60 per minute per guest. Search is also debounced on the client and cached on the server for five minutes |
+| Spotify IP ceiling | The same routes | IP | 1,200 per minute |
 
-Guest room reads (`/api/rooms/join`, `/api/rooms/:roomCode/...`, request lists) have no limiter: a venue's Wi-Fi can put every guest behind one IP. The normal Spotify router has no dedicated limiter mounted yet. Demo limits are separate and do not cover these normal routes.
+Guest room reads (`/api/rooms/join`, `/api/rooms/:roomCode/...`, request lists) have no limiter: a venue's Wi-Fi can put every guest behind one IP. Demo limits are separate and do not cover these normal routes.
 
 ## Logging
 
@@ -335,11 +338,9 @@ Guest room reads (`/api/rooms/join`, `/api/rooms/:roomCode/...`, request lists) 
 
 - **Requests:** [pino-http](https://github.com/pinojs/pino-http) logs one line per response, with method, URL, status, and `responseTime`. 5xx responses log at `error`, 4xx at `warn`, and everything else at `info`.
 - **Request IDs:** every response carries `X-Request-Id`. A well-formed incoming `X-Request-Id` is reused; otherwise the server generates a UUID. The ID appears as `req.id`, and controller logs written with `req.log` carry it too.
-- **Room and user context:** mutation requests (`POST`, `PUT`, `PATCH`, `DELETE`) add `userId` for authenticated DJs and `roomId` from the route, the body, or a newly created room. To answer "what happened in room X at 22:14?", filter on `roomId` and the time.
+- **Room and user context:** mutation requests (`POST`, `PUT`, `PATCH`, `DELETE`) add `userId` for authenticated DJs and `roomId` from the route, the body, or the room the controller resolved (new rooms, and votes and DJ request actions whose URL only carries a request ID). To answer "what happened in room X at 22:14?", filter on `roomId` and the time.
 - **Redaction:** `cookie`, `authorization`, and `Set-Cookie` headers are replaced with `[Redacted]`.
-- **Errors:** controllers log caught errors with `req.log.error({ err }, ...)`. Unhandled errors reach the error middleware, which attaches them to the request's completion line, so each one is logged once with its stack.
-
-`request.controller.ts`, `spotify.controller.ts` and `src/demo/*` still use `console.*`. They will be converted once the Phase 1.1/1.3/1.4 rewrites of those files land.
+- **Errors:** controllers log caught errors with `req.log.error({ err }, ...)`. Unhandled errors reach the error middleware, which attaches them to the request's completion line, so each one is logged once with its stack. Spotify failures log only the endpoint, upstream status and error code, never Axios request headers. Code outside a request, such as the Spotify token fetch and demo cleanup, uses the shared `logger`. Nothing in `src/` uses `console.*`.
 
 ## Socket.IO
 
@@ -395,7 +396,7 @@ Check these in the Artillery summary:
 - `vusers.failed` and `errors.*`.
 - `socketio.emit` and `engine.socketio` counters, to confirm every virtual user kept its socket.
 
-Requests from a single load generator share one IP, so the per-IP vote limit (5 per 30 seconds) throttles votes in this run. A venue on shared Wi-Fi behaves the same way until Phase 1.3 keys limits on a guest ID. The `429`s are expected; their volume shows how much the current policy would throttle a real venue.
+Each virtual user keeps its own `sway_guest` cookie, so the per-guest limits behave as they would at a venue. All virtual users share the load generator's IP, though, so the per-IP ceilings (300 guest writes and 1,200 Spotify calls per minute) apply to the whole run. The resulting `429`s are expected, and their volume shows how close a busy venue on one Wi-Fi network would come to those ceilings.
 
 ## Tests
 
@@ -405,7 +406,7 @@ bun run test:run
 
 [vitest.config.ts](vitest.config.ts) runs [tests](tests/) with Supertest and temporary MongoDB instances. Tests cover auth and health behavior, plus demo isolation, role permissions, fixed expiry, cleanup, reset, real-login preservation, voting, playback, room editing/ending, display behavior, Spotify metadata, caching, endpoint/upstream quotas, and provider errors.
 
-Spotify responses are mocked in the demo tests. The normal limiters are mocked in shared test setup. [rate-limits.test.ts](tests/rate-limits.test.ts) and [authz-sweep.test.ts](tests/authz-sweep.test.ts) run the real credential, DJ, and public-read limiters, and [guest-write-limits.test.ts](tests/guest-write-limits.test.ts) enables the real production vote limiter on the real app. It checks sequential and concurrent limits, database effects, and broadcasts. This covers the current IP limit; guest IDs, vote deduplication, and a limiter on submissions still need Phase 1.3. Demo limits have separate coverage. A first run may require network access to download a MongoDB binary. Live catalog verification requires working app credentials and is separate from this suite.
+Spotify responses are mocked in the demo tests. The normal limiters are mocked in shared test setup. [rate-limits.test.ts](tests/rate-limits.test.ts) and [authz-sweep.test.ts](tests/authz-sweep.test.ts) run the real credential, DJ, and public-read limiters, and [guest-write-limits.test.ts](tests/guest-write-limits.test.ts) enables the real guest-write limiters on the real app. It checks the shared per-guest budget across votes and submissions, the network ceiling, database effects, and broadcasts. [spotify-limits.test.ts](tests/spotify-limits.test.ts) does the same for the Spotify catalog limiters. [guest-votes.test.ts](tests/guest-votes.test.ts) covers one vote per guest per request under concurrent calls. Demo limits have separate coverage. A first run may require network access to download a MongoDB binary. Live catalog verification requires working app credentials and is separate from this suite.
 
 For UI verification, run `pnpm build` from `client/` and follow its [build and deployment guidance](../client/README.md#build-and-deployment).
 

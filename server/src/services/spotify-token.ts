@@ -1,5 +1,6 @@
 import axios from "axios";
 import config from "../config/config";
+import { logger } from "../config/logger";
 
 const CLIENT_ID = config.spotify_client_id;
 const CLIENT_SECRET = config.spotify_client_secret;
@@ -37,11 +38,11 @@ export const getAccessToken = async () => {
 
         return cachedToken;
     } catch (err) {
-        console.error("Spotify request failed:", {
+        logger.error({
             endpoint: "/api/token",
             status: axios.isAxiosError(err) ? err.response?.status : undefined,
             code: axios.isAxiosError(err) ? err.code : undefined,
-        });
+        }, "Spotify request failed");
         throw err;
     }
 };

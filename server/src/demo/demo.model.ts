@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import type { HydratedDocument } from "mongoose";
 import type { seedDemo } from "./demo.seed";
+import { logger } from "../config/logger";
 
 type DemoState = ReturnType<typeof seedDemo> & {
     djTokenHash: string;
@@ -29,7 +30,7 @@ export async function cleanupExpiredDemos() {
 }
 
 export function startDemoCleanup() {
-    const clean = () => cleanupExpiredDemos().catch((error) => console.error("Demo cleanup failed", error));
+    const clean = () => cleanupExpiredDemos().catch((error) => logger.error({ err: error }, "Demo cleanup failed"));
     void clean();
     const timer = setInterval(clean, 60_000);
     timer.unref();

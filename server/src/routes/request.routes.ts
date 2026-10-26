@@ -8,11 +8,15 @@ import {
     fetchRoomRequests,
     filterRequests,
 } from "../controllers/request.controller.js";
-import express from "express";
-import { protect } from "../middlewares/auth.middleware.js";
+import express, { type RequestHandler } from "express";
+import { identifyRoomOwner, protect } from "../middlewares/auth.middleware.js";
 import { ensureGuestId } from "../middlewares/guest.middleware.js";
 import { guestIpLimiter, voteLimiter } from "../middlewares/rate-limiters/vote.limiter.js";
+import { djLimiter } from "../middlewares/rate-limiters/dj.limiter.js";
 const router = express.Router();
+
+// The room's DJ gets the DJ budget instead of the guest limits, which skip them.
+const roomOwnerLimiter: RequestHandler = (req, res, next) => (res.locals.roomOwner ? djLimiter(req, res, next) : next());
 
 // === Private Routes === //
 
@@ -42,9 +46,9 @@ router.delete("/:requestId/delete", protect, deleteRequest);
 /**
  * @desc    Create a Song Request
  * @route   POST /api/requests
- * @access  PUBLIC
+ * @access  PUBLIC (the room's DJ skips guest limits and the per-guest pending cap)
  */
-router.post("/", ensureGuestId, guestIpLimiter, voteLimiter, createRequest);
+router.post("/", ensureGuestId, identifyRoomOwner, guestIpLimiter, voteLimiter, roomOwnerLimiter, createRequest);
 
 /**
  * @desc    Upvote a song

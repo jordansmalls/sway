@@ -6,21 +6,28 @@ Built from two senior-engineer reviews (called **R1** and **R2** below) plus the
 
 ## Implementation progress
 
-2026-10-25: the first batch is implemented locally. All Phase 0 items, 0.1 through 0.9, have landed in the working tree with regression tests. The Phase 2 CI workflow covers frozen installs, server tests, the TypeScript error guard, and client lint, build, and unit tests. The mobile-hook lint error is fixed. The first hosted CI run is pending a push or pull request.
+Updated 2026-10-26. Phases 0 through 3 are implemented and merged to `main`:
 
-First-batch validation passed: 139 server tests, 11 client tests, client lint and build, frozen installs, workflow validation with actionlint, and the server TypeScript error guard. Client lint still reports four existing Fast Refresh warnings.
+| PR | Plan items |
+|---|---|
+| #13 | Phase 0 (0.1–0.9) and the Phase 2 CI workflow |
+| #14 | 1.1 playback transitions, replay rows, `repair-playing.ts` |
+| #15 | 1.2 one active room per DJ, `repair-active-rooms.ts` |
+| #16 | 1.3 guest IDs, the `Vote` model, `castVote`, `hasVoted`, queue caps, `recount-votes.ts` |
+| #18 | 1.4 shared Spotify client and server-side metadata lookup, plus 3.4 catalog timeouts, `Retry-After` and caching |
+| #17 | 1.5 password required for email changes, public analytics limiter |
+| #19 | 3.1 graceful shutdown, 3.2 readiness, 3.3 audience rate limits |
+| #20 | 3.5 structured logging, 3.6 load-test tooling, 3.7 deploy checklist |
+| #21 | Room request list in one database round trip (follow-up) |
+| this branch | The parts of 3.3 and 3.5 deferred from #19 and #20: a per-guest/IP limiter on the Spotify catalog routes, and the remaining `console.*` calls in the request and Spotify controllers, the Spotify token fetch and demo cleanup moved to pino. Votes, DJ request actions and deletes now log `roomId`. |
 
-The server TypeScript baseline dropped from 232 diagnostics at `2be06f2` to 225 in the first batch, then to 223 after the room-ending fix. New tests add no diagnostics. Lower `server/typecheck-baseline.json` as errors are fixed; do not increase it to accept new errors.
+Hosted CI passes on `main`. The server has 250 tests across 27 files. The TypeScript baseline is down from 232 at `2be06f2` to 189. Lower `server/typecheck-baseline.json` as errors are fixed; do not increase it to accept new errors.
 
-Dependency audits remain non-blocking as planned. The initial reports found 52 server advisories, including one critical, and two high client production advisories. Review and update the affected dependencies in a separate batch. No dependencies or lockfiles changed in this batch.
-
-This Phase 2 batch is complete. Cross-account mutation regressions and the full end-room lifecycle test now pass. The lifecycle test ends a room through its authenticated API, then sends 18 overlapping requests and votes and verifies unchanged exports and no broadcasts. The tests exposed incorrect 500 responses from room ending. Those now use the shared error handler: malformed IDs return 400, non-owners 403, missing rooms 404, and already-ended rooms 409, without side effects.
-
-The real production vote-limiter tests verify that five of ten overlapping votes succeed under the current IP policy, and that blocked votes do not access the controller's database methods or broadcast events. Other test files retain their mocked limiters. This does not implement Phase 1.3's guest-based policy or submission limiter.
-
-Final validation passes all 164 server tests across 18 files, including 12 isolated CLI integration tests for the TypeScript guard. The guard counts diagnostic objects, forces semantic checking even if `noCheck` is enabled, and rejects configuration, syntax, global, and compiler failures regardless of the allowed semantic error count. Its current count matches raw `tsc` at 223, and actionlint passes. No skipped or expected-failure tests stand in for missing Phase 1 behavior. The first hosted CI run remains pending.
-
-Phase 1 implementation remains open, starting with 1.1 playback transitions, replay history, the repair script, and concurrency tests. The Phase 0 ended-room checks reject writes after an event ends but do not make concurrent room-ending and guest writes atomic.
+**Still open:**
+- **3.6: run the load test.** The Artillery scenario and consistency check are in `server/load/`, but nobody has run them against staging yet. This is the last unchecked item in the release gate.
+- **Railway settings.** The healthcheck path (`/health/ready`) and the single-replica rule are dashboard settings. Confirm them against the deploy checklist in `server/README.md`.
+- **Dependency audits** are reported in CI but not acted on. The initial reports found 52 server advisories, including one critical, and two high client production advisories. Review them in a separate batch.
+- **Phase 4** is ongoing by design.
 
 ---
 
@@ -172,7 +179,7 @@ Both reviews ask for "check ownership on every mutation". Here is the current st
 
 ## Phase 2: tests and a CI gate (about 2 days, overlapping Phase 1)
 
-The CI workflow, authorization/lifecycle regressions, export regressions, and tests using the real current vote limiter are implemented. The remaining acceptance tests depend on unimplemented Phase 1 features. Write those tests alongside the corresponding changes, not afterwards.
+Implemented. Every acceptance test below runs against the real app, and CI runs on every PR and on pushes to `main`.
 
 **CI (GitHub Actions, on every PR):**
 - Server: `bun install --frozen-lockfile` and `vitest run`.
@@ -184,18 +191,18 @@ The CI workflow, authorization/lifecycle regressions, export regressions, and te
 
 | Test | Acceptance criterion | Status |
 |---|---|---|
-| Concurrent mark-playing | 20 overlapping calls on different tracks leave exactly 1 `playing` | Pending 1.1 |
-| Replay | Replaying a played track creates a new `playing` row with `replayOf` set and leaves the original's `playedAt` alone. If a guest has re-requested the track, that pending row is promoted instead. | Pending 1.1 |
-| Concurrent room create | 5 parallel creates give 1 success and 4 × 409 | Pending 1.2 |
-| Delete an old room while one is live | Can't create a second active room | Pending 1.2 |
+| Concurrent mark-playing | 20 overlapping calls on different tracks leave exactly 1 `playing` | Covered in `playback-transitions.test.ts` |
+| Replay | Replaying a played track creates a new `playing` row with `replayOf` set and leaves the original's `playedAt` alone. If a guest has re-requested the track, that pending row is promoted instead. | Covered in `playback-transitions.test.ts` |
+| Concurrent room create | 5 parallel creates give 1 success and 4 × 409 | Covered in `one-active-room.test.ts` |
+| Delete an old room while one is live | Can't create a second active room | Covered in `one-active-room.test.ts` |
 | Lifecycle | Requests and votes after `endRoom` get 409. Exported history is unchanged. | Covered in `hardening-lifecycle.test.ts`, after the end call completes |
-| One vote per guest | One guest sending 10 overlapping votes and resubmits adds exactly 1 vote. 10 guests add 10. A replayed or re-requested track accepts votes again. | Pending 1.3 |
+| One vote per guest | One guest sending 10 overlapping votes and resubmits adds exactly 1 vote. 10 guests add 10. A replayed or re-requested track accepts votes again. | Covered in `guest-votes.test.ts` |
 | Cross-account | DJ B can't mark, delete or end DJ A's requests and rooms, or read A's inactive rooms | Covered in `hardening-authorization.test.ts` and `hardening-lifecycle.test.ts` |
 | Exports | Every advertised format returns 200 with the right content type for the room's DJ. Another DJ gets 403 and a guest gets 401. Formula cells are neutralized. | Covered in `exports.test.ts` |
-| Spotify failure | Timeouts and 429s from upstream return a clean error, and metadata falls back as in 1.4 | Production resilience/fallback pending 1.4 and 3.4; logging and demo behavior have separate coverage |
-| Index migration | A seeded duplicate-`playing` database is repaired by the script, and then the index builds | Pending the 1.1 repair script |
+| Spotify failure | Timeouts and 429s from upstream return a clean error, and metadata falls back as in 1.4 | Covered in `spotify-resilience.test.ts` and `spotify-logging.test.ts`; catalog limits in `spotify-limits.test.ts` |
+| Index migration | A seeded duplicate-`playing` database is repaired by the script, and then the index builds | Covered in `playback-transitions.test.ts` and `one-active-room.test.ts` |
 
-`guest-write-limits.test.ts` enables the real production vote limiter against the app. Other files retain the general/vote limiter mocks from `tests/setup.ts`. Its current IP-policy coverage will need updating when 1.3 adds guest IDs and submission limits.
+`guest-write-limits.test.ts`, `spotify-limits.test.ts`, `rate-limits.test.ts` and `authz-sweep.test.ts` run the real production limiters against the app. Other files keep the limiter mocks from `tests/setup.ts`.
 
 ---
 
@@ -250,15 +257,15 @@ None of this blocks a release. Do each item when you're already working in that 
 
 ## Release gate before a wider pilot
 
-- [ ] No unauthorized room or request changes (1.5, with Phase 2 cross-account tests)
-- [ ] At most one `playing` track and one active room, enforced by an index (1.1, 1.2)
-- [ ] Ended rooms can't be changed (0.2)
-- [ ] One vote per guest per track, tested under concurrent requests (1.3)
-- [ ] Replays keep the play history correct (1.1)
+- [x] No unauthorized room or request changes (1.5, with Phase 2 cross-account tests)
+- [x] At most one `playing` track and one active room, enforced by an index (1.1, 1.2)
+- [x] Ended rooms can't be changed (0.2)
+- [x] One vote per guest per track, tested under concurrent requests (1.3)
+- [x] Replays keep the play history correct (1.1)
 - [x] Every advertised export works and only the room's DJ can read it (0.1)
-- [ ] CI runs server tests and client lint/build on every PR (Phase 2)
-- [ ] Deploys don't drop in-flight requests, and the readiness check gates traffic (3.1, 3.2)
-- [ ] A 150-guest load test passes with acceptable p95 latency and no inconsistent state (3.6)
+- [x] CI runs server tests and client lint/build on every PR (Phase 2)
+- [x] Deploys don't drop in-flight requests, and the readiness check gates traffic (3.1, 3.2). Railway's healthcheck path must be set to `/health/ready`.
+- [ ] A 150-guest load test passes with acceptable p95 latency and no inconsistent state (3.6). The tooling is ready; it needs a staging run.
 
 ---
 
