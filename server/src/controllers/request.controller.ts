@@ -93,15 +93,16 @@ export const createRequest = async (req: any, res: Response, next: NextFunction)
 
     try {
         const guestId = req.cookies.sway_guest;
+        const capacity = { roomOwner: Boolean(res.locals.roomOwner) };
         const filter = { roomId, "track.spotifyTrackId": spotifyTrackId, status: { $in: ["pending", "playing"] as const } };
         let metadata: Awaited<ReturnType<typeof resolveRequestTrack>> | undefined;
         if (!await Request.exists(filter)) {
-            await checkQueueCapacity(roomId, guestId);
+            await checkQueueCapacity(roomId, guestId, capacity);
             metadata = await resolveRequestTrack(track);
         }
         return await withQueueAdmission(String(roomId), async () => {
             const queued = await Request.findOne(filter);
-            if (!queued) await checkQueueCapacity(roomId, guestId);
+            if (!queued) await checkQueueCapacity(roomId, guestId, capacity);
             let request = queued;
             let alreadyQueued = Boolean(queued);
             if (!request) {

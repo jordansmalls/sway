@@ -124,6 +124,26 @@ describe("Guest vote semantics", () => {
         await submit(cookie, "existing-0").expect(200);
     });
 
+    it("lets the room's DJ queue past the per-guest cap, but not the room cap or into another DJ's room", async () => {
+        const cookie = guestCookie();
+        const guestId = cookie.split("=")[1]!;
+        await SongRequest.insertMany(Array.from({ length: 5 }, (_, i) => seed(`existing-${i}`, guestId)));
+        const asDj = (cookies: string, id: string) => request(app).post("/api/requests").set("Cookie", `${cookies}; ${cookie}`).send({ roomId, track: { ...track, id } });
+
+        await asDj(ownerCookie, "dj-pick").expect(201);
+        expect(await SongRequest.countDocuments({ roomId, guestId, status: "pending" })).toBe(6);
+
+        // A signed-in DJ who doesn't own this room is a guest here.
+        const other = await request(app).post("/api/auth").send({ email: "other-dj@example.com", password: "password123" });
+        const otherCookie = String(other.headers["set-cookie"]![0]).split(";")[0]!;
+        await asDj(otherCookie, "other-pick").expect(409);
+
+        await SongRequest.insertMany(Array.from({ length: 194 }, (_, i) => seed(`filler-${i}`)));
+        expect(await SongRequest.countDocuments({ roomId, status: "pending" })).toBe(200);
+        const full = await asDj(ownerCookie, "over-cap").expect(409);
+        expect(full.body.message).toContain("queue is full");
+    });
+
     it("caps a room at 200 pending rows while permitting votes on existing tracks", async () => {
         await SongRequest.insertMany(Array.from({ length: 199 }, (_, i) => seed(`existing-${i}`)));
         const responses = await Promise.all(Array.from({ length: 10 }, (_, i) => submit(guestCookie(), `contested-${i}`)));

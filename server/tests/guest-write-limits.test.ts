@@ -64,6 +64,26 @@ describe("Guest write backstops", () => {
         expect(emit).not.toHaveBeenCalled();
     });
 
+    it("gives the room's DJ the DJ budget instead of the guest limits", async () => {
+        const signup = async (email: string) => {
+            const response = await request(app).post("/api/auth").send({ email, password: "password123" }).expect(201);
+            return { id: String(response.body.user._id), cookie: String(response.headers["set-cookie"]![0]).split(";")[0]! };
+        };
+        const dj = await signup("limits-dj@example.com");
+        const other = await signup("limits-other@example.com");
+        const djRoom = await Room.create({ roomName: "DJ", roomDescription: "Owner limits", roomCode: "DJLIM", roomCreator: dj.id });
+        const id = guest();
+        await Promise.all(Array.from({ length: 30 }, () => vote(id)));
+        const add = (cookie: string, trackId: string) => request(app).post("/api/requests")
+            .set("Cookie", `${cookie}; sway_guest=${id}`).send({ roomId: String(djRoom._id), track: { id: trackId, name: "Pick", artist: "Artist" } });
+
+        // The guest cookie is spent, but the DJ is adding to their own room.
+        const added = await add(dj.cookie, "dj-pick").expect(201);
+        expect(added.headers["ratelimit-limit"]).toBeUndefined();
+        await add(other.cookie, "other-pick").expect(429);
+        await vote(id).expect(429);
+    });
+
     it("accepts ten guests on one IP while counting each guest only once", async () => {
         const responses = await Promise.all(Array.from({ length: 10 }, () => vote(guest())));
         expect(responses.every(({ status }) => status === 200)).toBe(true);

@@ -176,7 +176,7 @@ Prefix: `/api/requests`.
 | GET | `/:requestId` | Public | One `request` |
 | GET | `/:roomId/filter?status=pending` | Public | `requests` matching the status |
 
-The normal create handler accepts Spotify search fields `track.id`, `track.name`, `track.artist`, and optional `track.albumImage`. It stores normalized track fields and derived Spotify links. Use the shared client track mapper rather than assuming search and stored track shapes are identical. New requests, duplicate submissions, and votes return 409 after the room has ended.
+The normal create handler accepts Spotify search fields `track.id`, `track.name`, `track.artist`, and optional `track.albumImage`. It stores normalized track fields and derived Spotify links. Use the shared client track mapper rather than assuming search and stored track shapes are identical. New requests, duplicate submissions, and votes return 409 after the room has ended. A room holds at most 200 pending requests, and each guest at most 5. The 5-request cap and the guest rate limits don't apply when the signed-in DJ adds to their own room, for example from the recommendations panel.
 
 Demo submissions instead require `track.spotifyTrackId` and resolve canonical metadata server side. The client mapper supplies the aliases needed by both contracts. This server verification is specific to the demo path, not a guarantee of the legacy normal request handler.
 
@@ -323,9 +323,9 @@ Limits are split by audience ([rate-limiters](src/middlewares/rate-limiters/)). 
 | --- | --- | --- | --- |
 | Credentials | `POST /api/auth` (signup), `POST /api/auth/login` | IP plus the lowercased account the route uses (`email` for signup, `identifier` for login), with a separate budget per route | 10 per 15 minutes |
 | Credential IP ceiling | The same two routes | IP | 50 per 15 minutes, so rotating emails can't get around the first limit |
-| DJ | Every authenticated route under `/api/auth`, `/api/users`, `/api/rooms`, `/api/exports`, and `/api/analytics/:userId/request-activity` | User ID (mounted after `protect`) | 600 per 15 minutes per DJ, so a long set with focus refetches never locks a DJ out, and DJs sharing a venue IP don't share a budget |
+| DJ | Every authenticated route under `/api/auth`, `/api/users`, `/api/rooms`, `/api/exports`, and `/api/analytics/:userId/request-activity`, plus `POST /api/requests` when the signed-in DJ adds to their own room | User ID (mounted after `protect`) | 600 per 15 minutes per DJ, so a long set with focus refetches never locks a DJ out, and DJs sharing a venue IP don't share a budget |
 | Public reads | Global analytics, public profile analytics, public user lookups, username/email availability | IP | 300 per 15 minutes, shared across those routes |
-| Guest writes | `POST /api/requests` and `PUT /api/requests/vote`, one shared budget | `sway_guest` cookie | 30 per minute per guest |
+| Guest writes | `POST /api/requests` and `PUT /api/requests/vote`, one shared budget | `sway_guest` cookie | 30 per minute per guest. Skipped for the room's own DJ, who gets the DJ budget instead |
 | Guest write IP ceiling | The same two routes | IP | 300 per minute, high enough for venue Wi-Fi, so clearing cookies can't get around the first limit |
 | Spotify catalog | Every route under `/api/spotify` (search, track, artist top tracks), one shared budget | `sway_guest` cookie | 60 per minute per guest. Search is also debounced on the client and cached on the server for five minutes |
 | Spotify IP ceiling | The same routes | IP | 1,200 per minute |
