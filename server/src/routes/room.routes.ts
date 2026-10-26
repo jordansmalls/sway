@@ -1,3 +1,4 @@
+import { ensureGuestId } from "../middlewares/guest.middleware";
 import express from "express";
 import { protect } from "../middlewares/auth.middleware";
 import {
@@ -77,7 +78,7 @@ router.get("/:roomCode", fetchRoomDetails);
  * @route   GET /api/rooms/:roomCode/fetch/requests
  * @access  PUBLIC
  */
-router.get("/:roomCode/fetch/requests", fetchRoomRequests);
+router.get("/:roomCode/fetch/requests", ensureGuestId, fetchRoomRequests);
 
 /**
  * @desc	Fetch a Room's Played Requests (with Spotify Links + URIs)

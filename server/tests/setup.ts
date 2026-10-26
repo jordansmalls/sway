@@ -9,6 +9,7 @@ vi.mock("../src/middlewares/rate-limiters/general.limiter.ts", () => ({
 
 vi.mock("../src/middlewares/rate-limiters/vote.limiter.ts", () => ({
     voteLimiter: (req: any, res: any, next: any) => next(),
+    guestIpLimiter: (req: any, res: any, next: any) => next(),
 }));
 
 let mongod: MongoMemoryServer;
@@ -31,6 +32,7 @@ beforeAll(async () => {
 
     // Connect to the in-memory database
     await mongoose.connect(uri);
+    await (await import("../src/models/vote.model")).default.init();
 });
 
 afterAll(async () => {

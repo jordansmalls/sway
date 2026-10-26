@@ -49,6 +49,8 @@ export type CreateRequestTrack = RequestTrack & {
 }
 
 export type SongRequest = {
+  hasVoted?: boolean
+  replayOf?: string
   _id: string
   roomId: string | Room
   status: RequestStatus
