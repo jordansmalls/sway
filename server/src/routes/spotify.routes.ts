@@ -5,6 +5,11 @@ import {
     fetchArtistTopTracks,
     fetchTrackDetails,
 } from "../controllers/spotify.controller";
+import { ensureGuestId } from "../middlewares/guest.middleware";
+import { spotifyGuestLimiter, spotifyIpLimiter } from "../middlewares/rate-limiters/spotify.limiter";
+
+// One budget per guest across all catalog routes; the IP check runs first so cookie-clearing scripts still hit a ceiling.
+router.use(spotifyIpLimiter, ensureGuestId, spotifyGuestLimiter);
 
 /**
  * @desc    Search Spotify for Tracks

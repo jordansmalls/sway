@@ -28,6 +28,13 @@ vi.mock("../src/middlewares/rate-limiters/public-read.limiter.ts", () => ({
     publicReadLimiter: pass,
 }));
 
+vi.mock("../src/middlewares/rate-limiters/spotify.limiter.ts", () => ({
+    SPOTIFY_GUEST_LIMIT: 60,
+    SPOTIFY_IP_LIMIT: 1200,
+    spotifyGuestLimiter: pass,
+    spotifyIpLimiter: pass,
+}));
+
 vi.mock("../src/services/spotify-client.ts", async (importOriginal) => {
     const actual = await importOriginal<typeof import("../src/services/spotify-client")>();
     return { ...actual, getSpotifyTrack: vi.fn().mockRejectedValue(new actual.SpotifyError(503, "Spotify is temporarily unavailable.")) };

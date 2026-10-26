@@ -19,11 +19,14 @@ const upstreamError = Object.assign(new Error(secret), {
     config: { headers: { Authorization: `Bearer ${secret}` }, params: { secret } },
 });
 
-beforeEach(() => {
+// Modules are reset per test, so spy on the logger instance the freshly imported controllers will use.
+let logger: typeof import("../src/config/logger").logger;
+beforeEach(async () => {
     vi.resetModules();
     vi.mocked(axios).mockReset();
     vi.mocked(axios.get).mockReset();
-    vi.spyOn(console, "error").mockImplementation(() => {});
+    ({ logger } = await import("../src/config/logger"));
+    vi.spyOn(logger, "error");
 });
 
 afterEach(() => vi.restoreAllMocks());
@@ -33,10 +36,10 @@ describe("Spotify error logging", () => {
         vi.mocked(axios).mockRejectedValueOnce(upstreamError);
         const { getAccessToken } = await import("../src/controllers/spotify.controller");
         await expect(getAccessToken()).rejects.toBe(upstreamError);
-        expect(console.error).toHaveBeenCalledExactlyOnceWith("Spotify request failed:", {
+        expect(logger.error).toHaveBeenCalledExactlyOnceWith({
             endpoint: "/api/token", status: 502, code: "ERR_BAD_RESPONSE",
-        });
-        expect(JSON.stringify(vi.mocked(console.error).mock.calls)).not.toContain(secret);
+        }, "Spotify request failed");
+        expect(JSON.stringify(vi.mocked(logger.error).mock.calls)).not.toContain(secret);
     });
 
     it.each([
@@ -48,17 +51,17 @@ describe("Spotify error logging", () => {
         vi.mocked(axios.get).mockRejectedValueOnce(upstreamError);
         const controllers = await import("../src/controllers/spotify.controller");
         const response = { status: vi.fn().mockReturnThis(), json: vi.fn().mockReturnThis() };
-        await controllers[handler]({ query: { q: "test" }, params: { id: "track-id" } } as any, response as any);
+        await controllers[handler]({ query: { q: "test" }, params: { id: "track-id" }, log: logger } as any, response as any);
         expect(response.status).toHaveBeenCalledWith(503);
         expect(response.json).toHaveBeenCalledWith({
             success: false,
             error: "Service Unavailable",
             message: "Spotify is temporarily unavailable. Please try again shortly.",
         });
-        expect(console.error).toHaveBeenCalledExactlyOnceWith("Spotify request failed:", {
+        expect(logger.error).toHaveBeenCalledExactlyOnceWith({
             endpoint, status: 502, code: "ERR_BAD_RESPONSE",
-        });
-        expect(JSON.stringify(vi.mocked(console.error).mock.calls)).not.toContain(secret);
+        }, "Spotify request failed");
+        expect(JSON.stringify(vi.mocked(logger.error).mock.calls)).not.toContain(secret);
         expect(JSON.stringify(response.json.mock.calls)).not.toContain(secret);
     });
 
@@ -69,7 +72,7 @@ describe("Spotify error logging", () => {
         vi.mocked(axios).mockRejectedValueOnce(error);
         const controllers = await import("../src/controllers/spotify.controller");
         const response = { status: vi.fn().mockReturnThis(), json: vi.fn().mockReturnThis(), set: vi.fn().mockReturnThis() };
-        await controllers.searchTracks({ query: { q: "token failure" } } as any, response as any);
+        await controllers.searchTracks({ query: { q: "token failure" }, log: logger } as any, response as any);
         expect(response.status).toHaveBeenCalledWith(status);
         expect(axios).toHaveBeenCalledWith(expect.objectContaining({ url: "https://accounts.spotify.com/api/token", timeout: 8000 }));
         expect(axios.get).not.toHaveBeenCalled();
@@ -80,8 +83,8 @@ describe("Spotify error logging", () => {
         vi.mocked(axios).mockRejectedValueOnce(new Error(secret));
         const { getAccessToken } = await import("../src/controllers/spotify.controller");
         await expect(getAccessToken()).rejects.toThrow(secret);
-        expect(console.error).toHaveBeenCalledExactlyOnceWith("Spotify request failed:", {
+        expect(logger.error).toHaveBeenCalledExactlyOnceWith({
             endpoint: "/api/token", status: undefined, code: undefined,
-        });
+        }, "Spotify request failed");
     });
 });

@@ -7,6 +7,7 @@ import { app } from "../src/app";
 import Room from "../src/models/room.model";
 import SongRequest from "../src/models/request.model";
 import { initSocketIO } from "../src/controllers/request.controller";
+import { logger } from "../src/config/logger";
 
 vi.unmock("../src/services/spotify-client.ts");
 vi.mock("../src/services/spotify-token", () => ({ getAccessToken: vi.fn().mockResolvedValue("test-token") }));
@@ -22,6 +23,7 @@ const client = { id, name: "Forged title", artist: "Forged artist", albumImage: 
 const emit = vi.fn();
 let roomId: string;
 let now = Date.now();
+let logged = "";
 const submit = (track: Record<string, unknown> = client) => request(app).post("/api/requests").set("Cookie", `sway_guest=${randomUUID()}`).send({ roomId, track });
 const timeout = () => ({ isAxiosError: true, code: "ECONNABORTED", config: { headers: { Authorization: "secret-upstream-token" } } });
 const throttled = (retryAfter: string) => ({ isAxiosError: true, response: { status: 429, headers: { "retry-after": retryAfter } } });
@@ -29,7 +31,10 @@ const throttled = (retryAfter: string) => ({ isAxiosError: true, response: { sta
 beforeEach(async () => {
     now += 10 * 60_000;
     vi.spyOn(Date, "now").mockImplementation(() => now);
-    vi.spyOn(console, "error").mockImplementation(() => {});
+    // Capture the JSON logs, which are silent in tests by default.
+    logged = "";
+    logger.level = "info";
+    vi.spyOn(process.stdout, "write").mockImplementation((chunk: any) => { logged += String(chunk); return true; });
     vi.mocked(axios.get).mockReset().mockRejectedValue(new Error("Unexpected Spotify HTTP call"));
     await SongRequest.init();
     const room = await Room.create({ roomName: "Spotify", roomDescription: "Spotify resilience", roomCode: "SPOTI", roomCreator: new mongoose.Types.ObjectId() });
@@ -37,7 +42,10 @@ beforeEach(async () => {
     emit.mockClear();
     initSocketIO({ to: () => ({ emit }) });
 });
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => {
+    logger.level = "silent";
+    vi.restoreAllMocks();
+});
 
 const paths = ["/api/spotify/search?q=track", `/api/spotify/tracks/${id}`, `/api/spotify/artists/${id}/top-tracks`];
 describe("Production Spotify resilience", () => {
@@ -47,7 +55,8 @@ describe("Production Spotify resilience", () => {
         expect(response.body).toEqual({ success: false, error: "Service Unavailable", message: "Spotify is temporarily unavailable. Please try again shortly." });
         expect(axios.get).toHaveBeenCalledWith(expect.stringContaining("https://api.spotify.com/v1/"), expect.objectContaining({ timeout: 8000 }));
         expect(JSON.stringify(response.body)).not.toContain("secret-upstream-token");
-        expect(JSON.stringify(vi.mocked(console.error).mock.calls)).not.toContain("secret-upstream-token");
+        expect(logged).toContain("Spotify request failed");
+        expect(logged).not.toContain("secret-upstream-token");
     });
 
     it.each(paths)("returns Retry-After and suppresses further upstream calls after 429 on %s", async (path) => {

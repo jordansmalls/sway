@@ -5,6 +5,7 @@ import { ownedRequestFilter, transitionRequestStatus } from "../services/request
 import Room from "../models/room.model.js";
 import Request from "../models/request.model.js";
 import { resolveRequestTrack } from "../services/request-track.js";
+import { logger } from "../config/logger.js";
 
 // Socket.io instance - to be initalized in index.js and passed here
 let io;
@@ -19,7 +20,7 @@ const emitToRoom = (roomId, event, data) => {
     if (io) {
         io.to(`room-${roomId}`).emit(event, data);
     } else {
-        console.warn("emitToRoom called but io is not initialized");
+        logger.warn({ roomId: String(roomId), event }, "emitToRoom called but io is not initialized");
     }
 };
 
@@ -129,7 +130,6 @@ export const createRequest = async (req: any, res: Response, next: NextFunction)
             });
         });
     } catch (err) {
-        console.error("There was a database error while attempting to create a request:", err);
         next(err);
     }
 };
@@ -142,6 +142,8 @@ export const createRequest = async (req: any, res: Response, next: NextFunction)
 export const upvoteRequest = async (req: any, res: Response, next: NextFunction) => {
     try {
         const result = await castVote(req.body.requestId, req.cookies.sway_guest);
+        // The route only carries a request ID; expose the room to the request log.
+        res.locals.roomId = String(result.request.roomId);
         if (!result.alreadyVoted) emitToRoom(result.request.roomId, "request:updated", result.request);
         return res.status(200).json({
             success: true, alreadyVoted: result.alreadyVoted,
@@ -149,7 +151,6 @@ export const upvoteRequest = async (req: any, res: Response, next: NextFunction)
             request: { ...result.request.toObject(), hasVoted: true },
         });
     } catch (err) {
-        console.error("There was an error while attempting to log an upvote on a request:", err);
         next(err);
     }
 };
@@ -162,6 +163,7 @@ export const upvoteRequest = async (req: any, res: Response, next: NextFunction)
 const markRequestStatus = (to: "playing" | "played") => async (req: any, res: Response, next: NextFunction) => {
     try {
         const result = await transitionRequestStatus(req.params.requestId, req.user.id, to);
+        res.locals.roomId = String(result.request.roomId);
         for (const previous of result.demoted) emitToRoom(previous.roomId, "request:played", previous);
         if (result.changed) emitToRoom(result.request.roomId, `request:${to}`, result.request);
         return res.status(200).json({ success: true, message: `Request marked as ${to}.`, request: result.request });
@@ -188,6 +190,7 @@ export const deleteRequest = async (req: any, res: Response, next: NextFunction)
 
         await Vote.deleteMany({ requestId });
         const roomId = request.roomId; // Store roomId before deletion
+        res.locals.roomId = String(roomId);
 
         // Emit socket event for deletion
         emitToRoom(roomId, "request:deleted", { requestId });
@@ -221,7 +224,7 @@ export const fetchRoomRequests = async (req, res) => {
 
         return res.status(200).json({ success: true, requests });
     } catch (err) {
-        console.error("There was an error while fetching the requests for a room:", err);
+        req.log.error({ err }, "There was an error while fetching the requests for a room");
         return res.status(500).json({
             success: false,
             error: "Internal Server Error",
@@ -253,7 +256,7 @@ export const fetchRequestDetails = async (req, res) => {
             request,
         });
     } catch (err) {
-        console.error("There was an error attempting to fetch request details:", err);
+        req.log.error({ err }, "There was an error attempting to fetch request details");
         return res.status(500).json({
             success: false,
             error: "Internal Server Error",
@@ -293,7 +296,7 @@ export const filterRequests = async (req, res) => {
 
         return res.status(200).json({ success: true, requests });
     } catch (err) {
-        console.error("There was an error attempting to filter requests:", err);
+        req.log.error({ err }, "There was an error attempting to filter requests");
         return res.status(500).json({
             success: false,
             error: "Internal Server Error",

@@ -124,6 +124,34 @@ describe("Request logging", () => {
         expect(completed("POST", "/api/requests")).toMatchObject({ roomId });
     });
 
+    it("adds roomId to request mutations whose URL and body carry only a request ID", async () => {
+        const dj = await register();
+        const created = await request(app).post("/api/rooms").set("Cookie", dj.cookie)
+            .send({ roomName: "Live", roomDescription: "Logged" }).expect(201);
+        const roomId = String(created.body.newRoom._id);
+        const submitted = await request(app).post("/api/requests").send({ roomId, track: { id: "t", name: "Song", artist: "Artist" } }).expect(201);
+        const requestId = String(submitted.body.request._id);
+
+        await request(app).put("/api/requests/vote").send({ requestId }).expect(200);
+        await request(app).put(`/api/requests/${requestId}/mark-playing`).set("Cookie", dj.cookie).expect(200);
+        await request(app).put(`/api/requests/${requestId}/mark-played`).set("Cookie", dj.cookie).expect(200);
+        await request(app).delete(`/api/requests/${requestId}/delete`).set("Cookie", dj.cookie).expect(200);
+
+        expect(completed("PUT", "/api/requests/vote")).toMatchObject({ roomId });
+        for (const [method, url] of [["PUT", `/api/requests/${requestId}/mark-playing`], ["PUT", `/api/requests/${requestId}/mark-played`], ["DELETE", `/api/requests/${requestId}/delete`]]) {
+            expect(completed(method!, url!)).toMatchObject({ userId: dj.id, roomId });
+        }
+    });
+
+    it("logs Spotify failures through the request logger, so they share the request ID", async () => {
+        // The shared test setup fails every track lookup with a 503.
+        const response = await request(app).get("/api/spotify/tracks/4uLU6hMCjMI75M1A2tKUQC");
+
+        const failure = lines.find((line) => line.msg === "Spotify request failed");
+        expect(failure).toMatchObject({ level: 50, endpoint: "/v1/tracks/:id" });
+        expect(failure!.req.id).toBe(response.headers["x-request-id"]);
+    });
+
     it("logs unexpected errors once at error level with the stack, while the response stays generic", async () => {
         const boom = express();
         boom.use(httpLogger);
