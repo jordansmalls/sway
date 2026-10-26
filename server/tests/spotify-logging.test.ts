@@ -5,9 +5,11 @@ vi.mock("axios", async (importOriginal) => {
     const original = await importOriginal<typeof import("axios")>();
     return {
         ...original,
-        default: Object.assign(vi.fn(), { isAxiosError: original.default.isAxiosError }),
+        default: Object.assign(vi.fn(), { get: vi.fn(), isAxiosError: original.default.isAxiosError }),
     };
 });
+
+vi.unmock("../src/services/spotify-client.ts");
 
 const secret = "secret-spotify-credential";
 const upstreamError = Object.assign(new Error(secret), {
@@ -20,6 +22,7 @@ const upstreamError = Object.assign(new Error(secret), {
 beforeEach(() => {
     vi.resetModules();
     vi.mocked(axios).mockReset();
+    vi.mocked(axios.get).mockReset();
     vi.spyOn(console, "error").mockImplementation(() => {});
 });
 
@@ -41,23 +44,36 @@ describe("Spotify error logging", () => {
         ["fetchTrackDetails", "/v1/tracks/:id"],
         ["fetchArtistTopTracks", "/v1/artists/:id/top-tracks"],
     ] as const)("keeps credentials out of %s logs and responses", async (handler, endpoint) => {
-        vi.mocked(axios)
-            .mockResolvedValueOnce({ data: { access_token: secret, expires_in: 3600 } })
-            .mockRejectedValueOnce(upstreamError);
+        vi.mocked(axios).mockResolvedValueOnce({ data: { access_token: secret, expires_in: 3600 } });
+        vi.mocked(axios.get).mockRejectedValueOnce(upstreamError);
         const controllers = await import("../src/controllers/spotify.controller");
         const response = { status: vi.fn().mockReturnThis(), json: vi.fn().mockReturnThis() };
-        await controllers[handler]({ query: { q: "test" }, params: { id: "track-id" } }, response);
-        expect(response.status).toHaveBeenCalledWith(500);
+        await controllers[handler]({ query: { q: "test" }, params: { id: "track-id" } } as any, response as any);
+        expect(response.status).toHaveBeenCalledWith(503);
         expect(response.json).toHaveBeenCalledWith({
             success: false,
-            error: "Internal Server Error",
-            message: "We're having trouble, please try again.",
+            error: "Service Unavailable",
+            message: "Spotify is temporarily unavailable. Please try again shortly.",
         });
         expect(console.error).toHaveBeenCalledExactlyOnceWith("Spotify request failed:", {
             endpoint, status: 502, code: "ERR_BAD_RESPONSE",
         });
         expect(JSON.stringify(vi.mocked(console.error).mock.calls)).not.toContain(secret);
         expect(JSON.stringify(response.json.mock.calls)).not.toContain(secret);
+    });
+
+    it.each([503, 429])("returns a clean %s when the token endpoint fails", async (status) => {
+        const error = status === 429
+            ? { isAxiosError: true, response: { status: 429, headers: { "retry-after": "45" } } }
+            : { isAxiosError: true, code: "ECONNABORTED" };
+        vi.mocked(axios).mockRejectedValueOnce(error);
+        const controllers = await import("../src/controllers/spotify.controller");
+        const response = { status: vi.fn().mockReturnThis(), json: vi.fn().mockReturnThis(), set: vi.fn().mockReturnThis() };
+        await controllers.searchTracks({ query: { q: "token failure" } } as any, response as any);
+        expect(response.status).toHaveBeenCalledWith(status);
+        expect(axios).toHaveBeenCalledWith(expect.objectContaining({ url: "https://accounts.spotify.com/api/token", timeout: 8000 }));
+        expect(axios.get).not.toHaveBeenCalled();
+        if (status === 429) expect(response.set).toHaveBeenCalledWith("Retry-After", "45");
     });
 
     it("omits details from unexpected errors", async () => {

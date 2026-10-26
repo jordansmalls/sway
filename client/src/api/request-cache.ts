@@ -27,7 +27,7 @@ export function upsertRequestInRoomCache(queryClient: QueryClient, request: Song
     success: true,
     requests: sortRequestsForQueue([
       ...(current?.requests ?? []).filter((item) => item._id !== request._id),
-      request,
+      { ...request, hasVoted: request.hasVoted ?? current?.requests.find((item) => item._id === request._id)?.hasVoted },
     ]),
   }))
 }
@@ -45,11 +45,13 @@ export function optimisticallyUpdateRequest(queryClient: QueryClient, requestId:
   const rollbacks: (() => void)[] = []
   for (const [key, data] of queryClient.getQueriesData<RequestsResponse>({ queryKey: ["requests", "room"] })) {
     if (key.length !== 3 || !data?.requests.some((item) => item._id === requestId)) continue
+    // A replay creates or promotes a different row; keep history until the server responds.
+    if (action === "playing" && data.requests.find((item) => item._id === requestId)?.status === "played") continue
     const before = data.requests
     const next = before.flatMap((item): SongRequest[] => {
       if (item._id === requestId) {
         if (action === "delete") return []
-        if (action === "vote") return [{ ...item, votes: item.votes + 1 }]
+        if (action === "vote") return [item.hasVoted ? item : { ...item, votes: item.votes + 1, hasVoted: true }]
         if (action === "playing") return [{ ...item, status: "playing", playedAt: now, completedAt: null }]
         return [{ ...item, status: "played", playedAt: item.playedAt ?? now, completedAt: now }]
       }
@@ -70,7 +72,10 @@ export function optimisticallyUpdateRequest(queryClient: QueryClient, requestId:
         else if (optimistic && present) {
           const row = { ...present }
           // Preserve fields that have since changed through another action.
-          if (present.votes === optimistic.votes) row.votes = original.votes
+          if (present.votes === optimistic.votes) {
+            row.votes = original.votes
+            row.hasVoted = original.hasVoted
+          }
           if (present.status === optimistic.status && present.playedAt === optimistic.playedAt && present.completedAt === optimistic.completedAt) {
             row.status = original.status
             row.playedAt = original.playedAt

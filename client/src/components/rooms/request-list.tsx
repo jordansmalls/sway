@@ -17,8 +17,8 @@ const RequestList: React.FC<Props> = ({ roomId }) => {
 
   const handleUpvote = async (requestId: string) => {
     try {
-      const { request } = await upvoteMutation.mutateAsync({ requestId });
-      toast.success('Vote added', { description: `You voted for ${request.track.title} by ${request.track.artist}.` });
+      const { request, alreadyVoted } = await upvoteMutation.mutateAsync({ requestId });
+      toast.success(alreadyVoted ? 'Already voted' : 'Vote added', { description: `You voted for ${request.track.title} by ${request.track.artist}.` });
     } catch (error) {
       toast.error("Couldn't add your vote", { description: getApiErrorMessage(error, 'Your vote was not saved. Please try again.') });
     }
@@ -58,14 +58,14 @@ const RequestItem = ({ request, position, onUpvote, disabled }: { request: SongR
     <div className="flex shrink-0 items-center">
       <Tooltip>
         <TooltipTrigger asChild>
-      <button type="button" onClick={() => onUpvote(request._id)} disabled={disabled} aria-label={`Upvote ${request.track.title}. ${request.votes} votes`} className="group flex min-h-11 min-w-11 items-center justify-center rounded-full text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50">
+      <button type="button" onClick={() => onUpvote(request._id)} disabled={disabled || request.hasVoted} aria-label={`Upvote ${request.track.title}. ${request.votes} votes`} className="group flex min-h-11 min-w-11 items-center justify-center rounded-full text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50">
         <span className="inline-flex items-center gap-1 rounded-full border border-border/70 bg-muted/30 px-2 py-1 transition-colors group-hover:border-border group-hover:bg-accent group-active:bg-accent">
           <ThumbsUp className="size-4" strokeWidth={2} aria-hidden="true" />
           <span className="text-xs font-medium tabular-nums">{request.votes}</span>
         </span>
       </button>
         </TooltipTrigger>
-        <TooltipContent>Upvote song</TooltipContent>
+        <TooltipContent>{request.hasVoted ? 'You voted for this song' : 'Upvote song'}</TooltipContent>
       </Tooltip>
       {request.track.spotifyLink && (
         <Tooltip>

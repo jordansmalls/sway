@@ -1,3 +1,4 @@
+import Vote from "../models/vote.model";
 import Room from "../models/room.model";
 import { getUniqueRoomCode } from "../utils/generate.room.code";
 import mongoose, { isObjectIdOrHexString } from "mongoose";
@@ -412,6 +413,7 @@ export const deleteRoom = async (req, res) => {
 
         // delete the requests that were created in the room
         await Request.deleteMany({ roomId: room._id });
+        await Vote.deleteMany({ roomId: room._id });
 
         // return success response
         return res.status(200).json({
@@ -507,6 +509,8 @@ export const fetchRoomRequests = async (req, res) => {
         }
 
         const requests = await Request.find({ roomId: room._id });
+        const votes = await Vote.find({ roomId: room._id, guestId: req.cookies.sway_guest }).select("requestId").lean();
+        const voted = new Set(votes.map((vote) => String(vote.requestId)));
 
         const data = requests.map((req) => ({
             id: req._id,
@@ -517,6 +521,7 @@ export const fetchRoomRequests = async (req, res) => {
             spotifyLink: createSpotifyLink(req.track.spotifyTrackId),
             status: req.status,
             votes: req.votes,
+            hasVoted: voted.has(String(req._id)),
             requestedAt: req.createdAt,
             requestedBy: req.requestedBy,
             playedAt: req.playedAt,
