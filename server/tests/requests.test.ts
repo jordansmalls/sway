@@ -41,6 +41,28 @@ describe("Request queue", () => {
         expect((await SongRequest.findOne({ roomId }))?.votes).toBe(8);
     });
 
+    it("lists a room's requests in one read: sorted, filtered, 404 for a missing room", async () => {
+        const base = (id: string, status: "pending" | "played", votes: number) => ({ roomId, status, votes, requestedBy: "Guest", guestId: "hidden-guest",
+            track: { spotifyTrackId: id, title: id, artist: "Artist", spotifyLink: `https://open.spotify.com/track/${id}`, spotifyURI: `spotify:track:${id}` } });
+        await SongRequest.create([base("low", "pending", 1), base("high", "pending", 5), base("done", "played", 9)]);
+        // A row written before playedAt and completedAt existed.
+        await SongRequest.collection.insertOne({ ...base("legacy", "played", 0), roomId: new mongoose.Types.ObjectId(roomId), createdAt: new Date(0) });
+
+        const all = await request(app).get(`/api/requests/${roomId}/requests`).expect(200);
+        expect(all.body.requests.map((item: any) => item.track.spotifyTrackId)).toEqual(["done", "high", "low", "legacy"]);
+        for (const item of all.body.requests) {
+            expect(item.hasVoted).toBe(false);
+            expect(item.guestId).toBeUndefined();
+        }
+        expect(all.body.requests.at(-1)).toMatchObject({ playedAt: null, completedAt: null });
+        const pending = await request(app).get(`/api/requests/${roomId}/filter?status=pending`).expect(200);
+        expect(pending.body.requests.map((item: any) => item.track.spotifyTrackId)).toEqual(["high", "low"]);
+
+        const missing = String(new mongoose.Types.ObjectId());
+        await request(app).get(`/api/requests/${missing}/requests`).expect(404);
+        await request(app).get(`/api/requests/${missing}/filter?status=pending`).expect(404);
+    });
+
     it("uses oldest-first order for ties and moves a song up when voted for", async () => {
         const first = await add();
         const second = await add({ ...track, id: "track-two", name: "Second song" });
