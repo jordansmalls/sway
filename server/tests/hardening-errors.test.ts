@@ -41,7 +41,6 @@ describe("Error middleware", () => {
     });
 
     it("hides unexpected errors and invalid statuses behind a generic 500", async () => {
-        vi.spyOn(console, "error").mockImplementation(() => {});
         for (const error of [
             new Error("connection string mongodb://user:pass@host"),
             Object.assign(new Error("upstream secret"), { status: 502, expose: false }),

@@ -83,7 +83,7 @@ export const exportTracklistJson = async (req, res) => {
             tracklist,
         });
     } catch (err) {
-        console.error("There was an error attempting to export a tracklist as JSON:", err);
+        req.log.error({ err }, "There was an error attempting to export a tracklist as JSON");
         return res.status(500).json({
             success: false,
             error: "Internal Server Error",
@@ -188,7 +188,7 @@ export const exportTracklistCsv = async (req, res) => {
         res.write(csvBody);
         res.end();
     } catch (err) {
-        console.error("There was an error attempting to export a tracklist as CSV:", err);
+        req.log.error({ err }, "There was an error attempting to export a tracklist as CSV");
         return res.status(500).json({
             success: false,
             error: "Internal Server Error",
@@ -286,7 +286,7 @@ export const exportTracklistTxt = async (req, res) => {
         );
         res.send(txt);
     } catch (err) {
-        console.error("There was an error attempting to export a tracklist as plaintext:", err);
+        req.log.error({ err }, "There was an error attempting to export a tracklist as plaintext");
         return res.status(500).json({
             success: false,
             error: "Internal Server Error",
@@ -370,7 +370,7 @@ export const exportRoomRequestsJson = async (req, res) => {
             data,
         });
     } catch (err) {
-        console.error("There was an error exporting a room's requests as JSON:", err);
+        req.log.error({ err }, "There was an error exporting a room's requests as JSON");
         return res.status(500).json({
             success: false,
             error: "Internal Server Error",
@@ -474,7 +474,7 @@ export const exportRoomRequestsCsv = async (req, res) => {
         res.write(csvBody);
         res.end();
     } catch (err) {
-        console.error("There was an error attempting to export a room's requests as CSV:", err);
+        req.log.error({ err }, "There was an error attempting to export a room's requests as CSV");
         return res.status(500).json({
             success: false,
             error: "Internal Server Error",
@@ -576,7 +576,7 @@ export const exportRoomRequestsTxt = async (req, res) => {
         res.setHeader("Content-Disposition", `attachment; filename="requests-${roomCode}.txt"`);
         res.send(txt);
     } catch (err) {
-        console.error("There was an error exporting requests as plaintext:", err);
+        req.log.error({ err }, "There was an error exporting requests as plaintext");
         return res.status(500).json({
             success: false,
             error: "Internal Server Error",

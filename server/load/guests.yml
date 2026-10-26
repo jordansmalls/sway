@@ -1,0 +1,98 @@
+# Load test: 150 guests in one live room, plus bursts, over HTTP and Socket.IO.
+# Run against staging only, never production. See "Load testing" in server/README.md.
+#
+#   TARGET=https://staging-api.example.com ROOM_CODE=ABCDE ROOM_ID=<24-hex room id> \
+#     npx artillery@latest run load/guests.yml --output load/report.json
+config:
+  target: "{{ $env.TARGET }}"
+  processor: processor.cjs
+  http:
+    timeout: 15
+  socketio:
+    transports: ["websocket"]
+  payload:
+    path: queries.csv
+    fields: ["query"]
+    skipHeader: true
+    order: random
+  variables:
+    roomCode: "{{ $env.ROOM_CODE }}"
+    roomId: "{{ $env.ROOM_ID }}"
+  phases:
+    # Guests trickle in as the room fills: 150 arrivals over two minutes.
+    - name: guests join
+      duration: 120
+      arrivalCount: 150
+    # Everyone reacts to a drop at once.
+    - name: drop burst
+      duration: 10
+      arrivalRate: 15
+    # Steady state while the earlier guests keep looping.
+    - name: steady
+      duration: 120
+      arrivalRate: 1
+  ensure:
+    thresholds:
+      - http.response_time.p95: 500
+      - http.response_time.p99: 1500
+    maxErrorRate: 1
+  plugins:
+    expect: {}
+    metrics-by-endpoint:
+      useOnlyRequestNames: true
+
+scenarios:
+  # One virtual user is one guest's phone: a Socket.IO subscription to the room that stays open
+  # (receiving every broadcast) while the guest joins, loads the queue, and then searches, submits
+  # and votes a few times. Artillery's socketio engine runs the HTTP steps in the same session,
+  # and cookies persist per virtual user.
+  - name: guest
+    engine: socketio
+    flow:
+      - emit:
+          channel: join-room
+          data: "{{ roomId }}"
+      - post:
+          name: join room
+          url: /api/rooms/join
+          json: { roomCode: "{{ roomCode }}" }
+          expect: [{ statusCode: 200 }]
+      - get:
+          name: room queue
+          url: "/api/requests/{{ roomId }}/requests"
+          expect: [{ statusCode: 200 }]
+      - loop:
+          - think: 8
+          - get:
+              name: search
+              url: /api/spotify/search
+              qs: { q: "{{ query }}" }
+              capture:
+                - { json: "$.tracks[0].id", as: trackId }
+                - { json: "$.tracks[0].name", as: trackName }
+                - { json: "$.tracks[0].artist", as: trackArtist }
+                - { json: "$.tracks[0].albumImage", as: trackImage }
+              expect: [{ statusCode: 200 }]
+          - post:
+              name: submit request
+              url: /api/requests
+              json:
+                roomId: "{{ roomId }}"
+                requestedBy: "Load guest"
+                track: { id: "{{ trackId }}", name: "{{ trackName }}", artist: "{{ trackArtist }}", albumImage: "{{ trackImage }}" }
+              # Sets requestId and submitted only on 200/201, so the vote below is skipped after a rejection.
+              afterResponse: rememberSubmittedRequest
+              # 201 new, 200 duplicate/upvote; 409/429 are policy rejections (queue caps, ended room, limits), not failures.
+              expect: [{ statusCode: [200, 201, 409, 429] }]
+          - get:
+              name: room queue
+              url: "/api/requests/{{ roomId }}/requests"
+          - put:
+              name: vote
+              ifTrue: "submitted"
+              url: /api/requests/vote
+              json: { requestId: "{{ requestId }}" }
+              expect: [{ statusCode: [200, 409, 429] }]
+        count: 5
+      # Keep listening to broadcasts after the last vote.
+      - think: 60

@@ -2,6 +2,7 @@ import config from "./config/config.js";
 import { Server as HttpServer } from "http";
 import { Server, Socket } from "socket.io";
 import { initSocketIO } from "./controllers/request.controller.js";
+import { logger } from "./config/logger.js";
 
 const allowedOrigins = [config.frontend_url];
 
@@ -40,7 +41,7 @@ export const initSocket = (httpServer: HttpServer): Server => {
 
         // Room updates are emitted only by server controllers.
         socket.on("disconnect", () => {
-            console.log("❌ Client disconnected:", socket.id);
+            logger.debug({ socketId: socket.id }, "Socket disconnected");
         });
     });
 

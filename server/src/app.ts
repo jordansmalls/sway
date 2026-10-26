@@ -1,6 +1,6 @@
 import express from "express";
 import config from "./config/config";
-import { logger } from "./config/logger";
+import { httpLogger } from "./config/logger";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 
@@ -24,8 +24,9 @@ export const app = express();
 // request metadata and IP-based rate limits accurate without trusting every hop.
 if (config.node_env === "production") app.set("trust proxy", 1);
 
+// Log first so body-parser failures (malformed or oversized JSON) still get a request ID and a completion line.
+app.use(httpLogger);
 app.use(express.json());
-app.use(logger);
 app.use(cookieParser());
 app.use(cors(config.cors_options));
 

@@ -80,10 +80,7 @@ export const mostRequestedTracks = async (req, res) => {
         });
 
     } catch (err) {
-        console.error(
-            "There was an error fetching the most requested tracks on Sway:",
-            err,
-        );
+        req.log.error({ err }, "There was an error fetching the most requested tracks on Sway");
         return res.status(500).json({
             success: false,
             error: "Internal Server Error",
@@ -135,7 +132,7 @@ export const mostPlayedTracks = async (req, res) => {
         const tracks = await fetchMostPlayedTracks();
         return res.status(200).json({ success: true, cached, data: tracks });
     } catch (err) {
-        console.error("There was an error fetching the most played tracks on Sway:", err);
+        req.log.error({ err }, "There was an error fetching the most played tracks on Sway");
         return res.status(500).json({
             success: false,
             error: "Internal Server Error",
@@ -201,7 +198,7 @@ export const mostRequestedArtists = async (req, res) => {
             data: topArtists,
         });
     } catch (err) {
-        console.error("There was an error fetching the most requested artists on Sway:", err);
+        req.log.error({ err }, "There was an error fetching the most requested artists on Sway");
         return res.status(500).json({
             success: false,
             error: "Internal Server Error",
@@ -238,10 +235,7 @@ export const totalSongsRequested = async (req, res) => {
         }
 
     } catch (err) {
-        console.error(
-            "There was an error fetching the total number of songs requested on Sway:",
-            err,
-        );
+        req.log.error({ err }, "There was an error fetching the total number of songs requested on Sway");
         return res.status(500).json({
             success: false,
             error: "Internal Server Error",
@@ -276,7 +270,7 @@ export const totalRoomsCreated = async (req, res) => {
         })
         }
     } catch (err) {
-       console.error("There was an error fetching the total number of rooms created on Sway:", err);
+       req.log.error({ err }, "There was an error fetching the total number of rooms created on Sway");
        return res.status(500).json({
         success: false,
         error: "Internal Server Error",

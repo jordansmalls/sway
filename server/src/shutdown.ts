@@ -2,6 +2,7 @@ import type { Server as HttpServer } from "http";
 import type { Server as SocketServer } from "socket.io";
 import mongoose from "mongoose";
 import { setShuttingDown } from "./controllers/health.controller";
+import { logger } from "./config/logger";
 
 type ShutdownOptions = {
     server: HttpServer;
@@ -21,7 +22,7 @@ export const createShutdown = ({
     io,
     timeoutMs = 10_000,
     disconnect = () => mongoose.disconnect(),
-    log = console.log,
+    log = (message) => logger.info(message),
 }: ShutdownOptions) => {
     let shutdown: Promise<{ timedOut: boolean }> | undefined;
 

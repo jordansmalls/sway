@@ -209,7 +209,7 @@ export const requestActivity = async (req: any, res: any) => {
             data,
         });
     } catch (err) {
-        console.error("There was an error fetching request activity:", err);
+        req.log.error({ err }, "There was an error fetching request activity");
         return res.status(500).json({
             success: false,
             error: "Internal Server Error",
@@ -301,7 +301,7 @@ export const mostRequestedSongs = async (req: any, res: any) => {
             songs,
         });
     } catch (err) {
-        console.error("There was an error attempting to fetch a user's most requested songs:", err);
+        req.log.error({ err }, "There was an error attempting to fetch a user's most requested songs");
         return res.status(500).json({
             success: false,
             error: "Internal Server Error",
@@ -337,7 +337,7 @@ export const mostPlayedSongs = async (req: any, res: any) => {
             songs,
         });
     } catch (err) {
-        console.error("There was an error attempting to fetch a user's most played songs:", err);
+        req.log.error({ err }, "There was an error attempting to fetch a user's most played songs");
         return res.status(500).json({
             success: false,
             error: "Internal Server Error",
@@ -373,7 +373,7 @@ export const mostUpvotedSongs = async (req: any, res: any) => {
             songs,
         });
     } catch (err) {
-        console.error("There was an error attempting to fetch a user's most upvoted songs:", err);
+        req.log.error({ err }, "There was an error attempting to fetch a user's most upvoted songs");
         return res.status(500).json({
             success: false,
             error: "Internal Server Error",
@@ -426,7 +426,7 @@ export const recommendedTracks = async (req: any, res: any) => {
             tracks,
         });
     } catch (err) {
-        console.error("There was an error attempting to fetch a user's recommended tracks:", err);
+        req.log.error({ err }, "There was an error attempting to fetch a user's recommended tracks");
         return res.status(500).json({
             success: false,
             error: "Internal Server Error",

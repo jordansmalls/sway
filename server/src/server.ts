@@ -4,6 +4,7 @@ import config, { validateRuntimeConfig } from "./config/config";
 import connectDB from "./config/db";
 import { initSocket } from "./socket";
 import { createShutdown } from "./shutdown";
+import { logger } from "./config/logger";
 import { startDemoCleanup } from "./demo/demo.model";
 import Vote from "./models/vote.model";
 import Request from "./models/request.model";
@@ -20,8 +21,7 @@ const start = async () => {
 
     // Start the Express server
     const server = app.listen(config.port, () => {
-        console.log(`🚀 Server is live @ http://localhost:${config.port}`);
-        console.log(`⚡ Runtime: Bun v${Bun.version}`);
+        logger.info({ port: config.port, runtime: `Bun v${Bun.version}` }, "Server is live");
     });
 
     // Wrap the running server instance with Socket.io
@@ -34,7 +34,7 @@ const start = async () => {
             shutdown(signal)
                 .then(() => process.exit(0))
                 .catch((err) => {
-                    console.error("Shutdown failed:", err);
+                    logger.error({ err }, "Shutdown failed");
                     process.exit(1);
                 });
         });

@@ -79,7 +79,7 @@ export const createUserAccount = async (req, res) => {
             },
         });
     } catch (err) {
-        console.error("There was an error creating a user account:", err);
+        req.log.error({ err }, "There was an error creating a user account");
 
         if (err.code === 11000) {
             const field = Object.keys(err.keyValue)[0];
@@ -183,7 +183,7 @@ export const createUsername = async (req, res) => {
             },
         });
     } catch (err) {
-        console.error("There was an error assigning a user a username:", err);
+        req.log.error({ err }, "There was an error assigning a user a username");
         return res.status(500).json({
             success: false,
             error: "Internal Server Error",
@@ -232,7 +232,7 @@ export const checkUsernameAvailability = async (req, res) => {
             });
         }
     } catch (err) {
-        console.error("There was an error attempting to check username availability:", err);
+        req.log.error({ err }, "There was an error attempting to check username availability");
         return res.status(500).json({
             success: false,
             error: "Internal Server Error",
@@ -275,7 +275,7 @@ export const checkEmailAvailability = async (req, res) => {
             });
         }
     } catch (err) {
-        console.error("There was an error fetching the availability of an email:", err);
+        req.log.error({ err }, "There was an error fetching the availability of an email");
         return res.status(500).json({
             success: false,
             error: "Internal Server Error",
@@ -329,7 +329,7 @@ export const loginUserAccount = async (req, res) => {
             });
         }
     } catch (err) {
-        console.error("There was an error attempting to log a user in:", err);
+        req.log.error({ err }, "There was an error attempting to log a user in");
         return res.status(500).json({
             success: false,
             error: "Internal Server Error",
@@ -353,7 +353,7 @@ export const logoutUserAccount = (req, res) => {
             message: "Logged out successfully. Please come back soon.",
         });
     } catch (err) {
-        console.error("There was an error attempting to logout a user:", err);
+        req.log.error({ err }, "There was an error attempting to logout a user");
         return res.status(500).json({
             success: false,
             error: "Internal Server Error",

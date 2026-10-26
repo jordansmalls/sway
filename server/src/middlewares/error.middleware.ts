@@ -38,7 +38,8 @@ const errorHandler: ErrorRequestHandler = (err, req, res, next) => {
         });
     }
 
-    console.error("Unhandled error:", err);
+    // pino-http logs the request at error level with this attached as `err`.
+    res.err = err;
     return res.status(500).json({
         success: false,
         error: "Internal Server Error",
