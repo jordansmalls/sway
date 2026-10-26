@@ -6,12 +6,14 @@ import { initSocket } from "./socket";
 import { startDemoCleanup } from "./demo/demo.model";
 import Vote from "./models/vote.model";
 import Request from "./models/request.model";
+import Room from "./models/room.model";
 
 const start = async () => {
     validateRuntimeConfig();
     await connectDB();
-    // Do not accept writes until duplicate submissions are protected by the index.
+    // Do not accept writes until duplicate submissions and second active rooms are blocked by indexes.
     await Request.init();
+    await Room.init();
     await Vote.init();
     startDemoCleanup();
 

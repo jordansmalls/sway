@@ -98,7 +98,7 @@ Usernames accept 3–20 letters, digits, or underscores. Passwords have an 8 cha
 
 Requests have `pending`, `playing`, `played`, or `rejected` status. Votes start at one. Track metadata includes `spotifyTrackId`, `title`, `artist`, `albumArtUrl`, `spotifyLink`, and `spotifyURI`. Playback transitions maintain timestamps for history and analytics.
 
-Room creation enforces one active room per DJ. Deleting a room removes its requests. The `scheduledAt` field exists, but room creation and automatic scheduled activation are not implemented as a complete scheduling workflow. (coming soon)
+The partial unique index `one_active_room_per_creator` enforces one active room per DJ, so concurrent creates get a `409` instead of a second room. Ending a room is a single conditional update. `hasActiveRoom` in API responses is computed from the rooms collection; the stored `User.hasActiveRoom` field is no longer written. Deleting a room removes its requests. The `scheduledAt` field exists, but room creation and automatic scheduled activation are not implemented as a complete scheduling workflow. (coming soon)
 
 ## API conventions
 
@@ -142,9 +142,9 @@ Prefix: `/api/rooms`.
 
 | Method | Path | Access | Input / result |
 | --- | --- | --- | --- |
-| POST | `/` | Private | `roomName`, `roomDescription`; returns `newRoom` |
+| POST | `/` | Private | `roomName`, `roomDescription`; returns `newRoom`, or `409` if the DJ already has an active room |
 | POST | `/join` | Public | `roomCode`; returns `roomDetails` for an active room |
-| PUT | `/end` | Private | `roomId`; end the room |
+| PUT | `/end` | Private, owner only | `roomId`; end the room. `400` malformed ID, `403` another DJ's room, `404` missing, `409` already ended |
 | GET | `/recent` | Private | `latestRooms`: up to five rooms, active first, then newest |
 | GET | `/active/summary` | Private | `activeRoom` with summary metrics, or `null` |
 | PUT | `/:roomId` | Private | `roomName` and/or `roomDescription`; returns `updatedRoom` |
@@ -343,7 +343,7 @@ For UI verification, run `pnpm build` from `client/` and follow its [build and d
 
 [CI](../.github/workflows/ci.yml) installs frozen lockfiles and runs the server tests and `bun run typecheck:check`, plus client lint, build, and unit tests. Dependency audits report findings without blocking these checks.
 
-The server's full typecheck still fails on 223 existing semantic errors. The guard in [scripts/check-typecheck.ts](scripts/check-typecheck.ts) counts TypeScript diagnostic objects and compares the count with [typecheck-baseline.json](typecheck-baseline.json). Compiler, configuration, syntax, and global failures always fail the guard. It forces semantic checking even if `noCheck` is enabled. Twelve CLI integration tests verify the guard against isolated project fixtures. Fix new diagnostics instead of increasing `maxErrors`. When a change reduces the count, lower the baseline to preserve that improvement. At zero, any TypeScript error fails CI.
+The server's full typecheck still fails on 220 existing semantic errors. The guard in [scripts/check-typecheck.ts](scripts/check-typecheck.ts) counts TypeScript diagnostic objects and compares the count with [typecheck-baseline.json](typecheck-baseline.json). Compiler, configuration, syntax, and global failures always fail the guard. It forces semantic checking even if `noCheck` is enabled. Twelve CLI integration tests verify the guard against isolated project fixtures. Fix new diagnostics instead of increasing `maxErrors`. When a change reduces the count, lower the baseline to preserve that improvement. At zero, any TypeScript error fails CI.
 
 ## Deployment notes
 
@@ -363,6 +363,15 @@ FRONTEND_URL=https://app.sway.onl
 ```
 
 `COOKIE_DOMAIN` is optional in this deployment because production defaults to `.sway.onl`. Preserve the existing `JWT_SECRET` and `MONGO_URI` during migration if existing sessions and data should remain valid. The server trusts exactly one production proxy hop for Railway's forwarded client IPs; do not broaden this to arbitrary proxy chains.
+
+Before deploying the one-active-room index, end duplicate active rooms. The server runs `Room.init()` at boot and will not start while a DJ has two active rooms:
+
+```bash
+bun run scripts/repair-active-rooms.ts          # dry run: counts the rooms it would end
+bun run scripts/repair-active-rooms.ts --apply  # ends all but each DJ's newest active room, then builds the index
+```
+
+Stop the old server, for example by scaling the service to zero, before running `--apply`, and only resume traffic when the new server starts. While the old code is still serving, a create can add a duplicate after the repair reads its snapshot, and then the index build fails. If that happens, run `--apply` again. It is safe to repeat.
 
 Keep one Railway replica until Socket.IO has a multi-instance adapter and the process-local rate limits and caches have shared backing stores. Preserve the `X-Demo-Token` request header through any additional proxy or CDN layer.
 

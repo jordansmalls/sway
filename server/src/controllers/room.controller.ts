@@ -1,11 +1,8 @@
 import Vote from "../models/vote.model";
-import User from "../models/user.model";
 import Room from "../models/room.model";
 import { getUniqueRoomCode } from "../utils/generate.room.code";
-import { setActiveRoomStatus } from "../utils/set.user.active.room";
-import mongoose from "mongoose";
+import mongoose, { isObjectIdOrHexString } from "mongoose";
 import { emitRoomEnded, emitRoomUpdated } from "./request.controller";
-import { setRoomInactive } from "../utils/set.room.inactive";
 import Request from "../models/request.model";
 import { createSpotifyLink, createSpotifyUriLink } from "../utils/formatters/format.spotify";
 import { generateRoomQr } from "../utils/room.qr";
@@ -107,6 +104,9 @@ export const fetchActiveRoomSummary = async (req, res) => {
     }
 };
 
+const isActiveRoomConflict = (err: any) =>
+    err?.code === 11000 && (err.keyPattern?.roomCreator || String(err.message).includes("one_active_room_per_creator"));
+
 /**
  * @desc    Create a Room
  * @route   POST /api/rooms
@@ -125,60 +125,20 @@ export const createRoom = async (req, res) => {
             });
         }
 
-        // check if user has active room already
-        const user = await User.findById(req.user._id);
-
-        if (user && user.hasActiveRoom) {
-            console.error(
-                "There was an error creating a room:",
-                `Cannot create room for ${user.username}, as they already have an active room!`,
-            );
-
-            return res.status(400).json({
-                success: false,
-                error: "Invalid Credentials: user has active room",
-                message: "You must all end all active rooms before creating a new one.",
-            });
-        }
-
         // generate room code to use during room creation
         const roomCode = await getUniqueRoomCode();
 
-        // create the room
+        // The one_active_room_per_creator index rejects a second active room, even under concurrent creates.
         const newRoom = await Room.create({
             roomName,
             roomDescription,
             roomCode,
-            roomCreator: user._id,
+            roomCreator: req.user._id,
             active: true,
         });
 
-        if (!newRoom) {
-            console.error("There was an error with MongoDB creating a room:");
-            return res.status(500).json({
-                success: false,
-                error: "Internal Server Error -Failed to create room",
-                message: "Failed to create room, please try again.",
-            });
-        }
-
         //  generate room QR code
         await Room.generateRoomQr(newRoom._id);
-
-        // update the user's hasActiveRoom status
-        try {
-            await setActiveRoomStatus(req.user._id, true);
-        } catch (err) {
-            console.error("User hasActiveRoom update failed:", err);
-            //    delete the room we just created and throw error
-            await Room.findByIdAndDelete(newRoom._id);
-
-            return res.status(500).json({
-                success: false,
-                error: "Internal Server Error: trouble changing active room status",
-                message: "We're having trouble creating your room, please try again soon.",
-            });
-        }
 
         return res.status(201).json({
             success: true,
@@ -186,6 +146,14 @@ export const createRoom = async (req, res) => {
             newRoom,
         });
     } catch (err) {
+        if (isActiveRoomConflict(err)) {
+            return res.status(409).json({
+                success: false,
+                error: "Conflict: user has active room",
+                message: "You already have an active room.",
+            });
+        }
+
         console.error("There was an error attempting to create a room:", err);
         return res.status(500).json({
             success: false,
@@ -352,9 +320,27 @@ export const endRoom = async (req, res, next: NextFunction) => {
     const userId = req.user._id;
 
     try {
+        if (!isObjectIdOrHexString(roomId)) {
+            throw Object.assign(new Error("Room ID is invalid."), { status: 400, expose: true });
+        }
 
-        await setRoomInactive(roomId, userId);
-        await setActiveRoomStatus(userId, false);
+        // One conditional write: only the owner can end it, and only once.
+        const ended = await Room.findOneAndUpdate(
+            { _id: roomId, roomCreator: userId, active: true },
+            { active: false },
+        );
+
+        if (!ended) {
+            // Explain the rejection without changing anything.
+            const room = await Room.findById(roomId).select("roomCreator active").lean();
+            if (!room) {
+                throw Object.assign(new Error("Room not found."), { status: 404, expose: true });
+            }
+            if (room.roomCreator.toString() !== userId.toString()) {
+                throw Object.assign(new Error("You are not authorized to end this room."), { status: 403, expose: true });
+            }
+            throw Object.assign(new Error("Room has already ended."), { status: 409, expose: true });
+        }
 
         emitRoomEnded(roomId);
 
@@ -371,7 +357,7 @@ export const endRoom = async (req, res, next: NextFunction) => {
  * @desc    Delete a room
  * @route   DELETE /api/rooms/:roomId
  * @access  PRIVATE
- * @feats   Deletes a room from existence and as a safety, set's a user's hasActiveRoom prop to false.
+ * @feats   Deletes a room and its requests.
  */
 
 export const deleteRoom = async (req, res) => {
@@ -428,20 +414,6 @@ export const deleteRoom = async (req, res) => {
         // delete the requests that were created in the room
         await Request.deleteMany({ roomId: room._id });
         await Vote.deleteMany({ roomId: room._id });
-
-        // double check the user's hasActiveRoom prop is false
-        const user = await User.findById(userId);
-
-        if (!user) {
-            return res.status(404).json({
-                success: false,
-                error: "Resource not found",
-                message: "User not found.",
-            });
-        }
-
-        user.hasActiveRoom = false;
-        await user.save();
 
         // return success response
         return res.status(200).json({

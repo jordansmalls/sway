@@ -4,6 +4,7 @@ import validator from "validator";
 import Room from "../models/room.model";
 import Request from "../models/request.model";
 import { clearAuthToken } from "../utils/generate.jwt";
+import { userHasActiveRoom } from "../utils/user.has.active.room";
 
 /**
  * @desc    Update user profile
@@ -107,7 +108,7 @@ export const updateProfile = async (req, res) => {
                 _id: updatedUser._id,
                 username: updatedUser.username,
                 email: updatedUser.email,
-                hasActiveRoom: updatedUser.hasActiveRoom,
+                hasActiveRoom: await userHasActiveRoom(updatedUser._id),
                 hasUsername: updatedUser.hasUsername,
                 createdAt: updatedUser.createdAt,
                 updatedAt: updatedUser.updatedAt,
@@ -227,7 +228,7 @@ export const getUserProfile = async (req, res) => {
                 _id: user._id,
                 username: user.username,
                 email: user.email,
-                hasActiveRoom: user.hasActiveRoom,
+                hasActiveRoom: await userHasActiveRoom(user._id),
                 hasUsername: user.hasUsername,
                 createdAt: user.createdAt,
                 updatedAt: user.updatedAt,
@@ -354,7 +355,7 @@ export const fetchUserHasActiveRoom = async (req, res) => {
             });
         }
 
-        const hasActiveRoom = user.hasActiveRoom;
+        const hasActiveRoom = await userHasActiveRoom(user._id);
 
         return res.status(200).json({
             success: true,

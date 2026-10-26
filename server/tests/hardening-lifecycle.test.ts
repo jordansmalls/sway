@@ -4,7 +4,6 @@ import request from "supertest";
 import { app } from "../src/app";
 import Room from "../src/models/room.model";
 import SongRequest from "../src/models/request.model";
-import User from "../src/models/user.model";
 import { initSocketIO } from "../src/controllers/request.controller";
 
 const emit = vi.fn();
@@ -73,7 +72,8 @@ describe("Ended rooms are read-only", () => {
         const ended = await request(app).put("/api/rooms/end").set("Cookie", owner.cookie).send({ roomId });
         expect(ended.status).toBe(200);
         expect(await Room.findById(roomId).lean()).toMatchObject({ active: false });
-        expect(await User.findById(owner.id).lean()).toMatchObject({ hasActiveRoom: false });
+        const me = await request(app).get("/api/users/me").set("Cookie", owner.cookie).expect(200);
+        expect(me.body.user.hasActiveRoom).toBe(false);
         expect(emit).toHaveBeenCalledExactlyOnceWith("room:ended", { roomId });
 
         const exportHistory = async () => {
