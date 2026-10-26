@@ -16,6 +16,15 @@ function setup() {
 }
 
 describe("Optimistic request cache", () => {
+    it("preserves played history while a replay is in flight", () => {
+        const { client, rows } = setup();
+        const original = { ...song("history", 0, "played"), playedAt: "2026-01-01T00:00:00.000Z" };
+        upsertRequestInRoomCache(client, original);
+        optimisticallyUpdateRequest(client, "history", "playing");
+        expect(rows().find((row) => row._id === "history")).toEqual(original);
+        upsertRequestInRoomCache(client, song("replay", 4, "playing"));
+        expect(rows().find((row) => row._id === "history")).toEqual(original);
+    });
     it("keeps tied requests in arrival order through socket replacements", () => {
         const { client, rows } = setup();
         upsertRequestInRoomCache(client, song("a", 0));

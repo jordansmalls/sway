@@ -55,7 +55,7 @@ const snapshot = async () => ({
     users: (await User.find().sort({ _id: 1 }).lean()).map(({ _id, hasActiveRoom }) => ({ _id: String(_id), hasActiveRoom })),
 });
 
-// Phase 1 will reconcile route and body IDs; until then both carry the same ID.
+// Body IDs must never override the route target.
 const markPlaying = (requestId: string, bodyId = requestId) =>
     request(app).put(`/api/requests/${requestId}/mark-playing`).send({ requestId: bodyId });
 const markPlayed = (requestId: string, bodyId = requestId) =>
@@ -105,17 +105,16 @@ describe("Request mutations are owner-only", () => {
         expect(emit).not.toHaveBeenCalled();
     });
 
-    it("authorizes the request the controller acts on, so another DJ cannot route through their own request", async () => {
+    it("authorizes the route target even when the body names another request", async () => {
         const { other, requestIds: [ownerRequestId] } = await setup();
         const otherRoomId = await openRoom(other, "Other room");
         const otherRequestId = await addRequest(otherRoomId, "three");
         emit.mockClear();
         const before = await snapshot();
 
-        // Known Phase 1 gap: controllers read body.requestId and ignore the route ID.
-        // Pointing the route at B's own request must still not authorize A's request.
+        // Point the route at A's request and forge B's own request in the body.
         for (const call of [markPlaying, markPlayed, deleteRequest]) {
-            expectRejected(await call(otherRequestId, ownerRequestId).set("Cookie", other.cookie), 403);
+            expectRejected(await call(ownerRequestId, otherRequestId).set("Cookie", other.cookie), 403);
         }
         expect(await snapshot()).toEqual(before);
         expect(emit).not.toHaveBeenCalled();
