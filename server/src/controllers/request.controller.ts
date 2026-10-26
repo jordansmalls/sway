@@ -5,7 +5,7 @@ import { castVote, checkQueueCapacity, withQueueAdmission } from "../services/gu
 import { ownedRequestFilter, transitionRequestStatus } from "../services/request-transitions.js";
 import Room from "../models/room.model.js";
 import Request from "../models/request.model.js";
-import { createSpotifyLink, createSpotifyUriLink } from "../utils/formatters/format.spotify.js";
+import { resolveRequestTrack } from "../services/request-track.js";
 
 // Socket.io instance - to be initalized in index.js and passed here
 let io;
@@ -61,10 +61,10 @@ export const createRequest = async (req: any, res: Response, next: NextFunction)
         });
     }
 
-    const { id: spotifyTrackId, name: title, artist, albumImage: albumArtUrl } = track;
+    const { id: spotifyTrackId } = track;
 
     // Validate track details
-    if (!spotifyTrackId || !title || !artist) {
+    if (typeof spotifyTrackId !== "string" || !/^[A-Za-z0-9_-]{1,128}$/.test(spotifyTrackId)) {
         return res.status(400).json({
             success: false,
             error: "Invalid Credentials: missing required track details",
@@ -92,19 +92,25 @@ export const createRequest = async (req: any, res: Response, next: NextFunction)
     }
 
     try {
+        const guestId = req.cookies.sway_guest;
+        const filter = { roomId, "track.spotifyTrackId": spotifyTrackId, status: { $in: ["pending", "playing"] as const } };
+        let metadata: Awaited<ReturnType<typeof resolveRequestTrack>> | undefined;
+        if (!await Request.exists(filter)) {
+            await checkQueueCapacity(roomId, guestId);
+            metadata = await resolveRequestTrack(track);
+        }
         return await withQueueAdmission(String(roomId), async () => {
-            const guestId = req.cookies.sway_guest;
-            const filter = { roomId, "track.spotifyTrackId": spotifyTrackId, status: { $in: ["pending", "playing"] as const } };
             const queued = await Request.findOne(filter);
             if (!queued) await checkQueueCapacity(roomId, guestId);
             let request = queued;
             let alreadyQueued = Boolean(queued);
             if (!request) {
+                metadata ??= await resolveRequestTrack(track);
                 try {
                     const result = await Request.findOneAndUpdate(filter, { $setOnInsert: {
                         roomId, guestId, status: "pending", votes: 0, playedAt: null, completedAt: null,
                         requestedBy: requestedBy || null,
-                        track: { spotifyTrackId, title, artist, albumArtUrl, spotifyLink: createSpotifyLink(spotifyTrackId), spotifyURI: createSpotifyUriLink(spotifyTrackId) },
+                        track: metadata,
                     } }, { upsert: true, returnDocument: "after", includeResultMetadata: true, setDefaultsOnInsert: false, runValidators: true });
                     request = result.value;
                     alreadyQueued = Boolean(result.lastErrorObject?.updatedExisting);
