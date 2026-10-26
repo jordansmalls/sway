@@ -41,6 +41,8 @@ type fetchUserIdResponse = {
 export type UpdateProfileInput = {
   username?: string
   email?: string
+  // Required by the server when the email changes.
+  currentPassword?: string
 }
 
 export type UpdatePasswordInput = {

@@ -12,11 +12,11 @@ const register = async (email = "owner@example.com") => {
     expect(response.status).toBe(201);
     return { id: response.body.user._id, cookie: response.headers["set-cookie"][0].split(";")[0] };
 };
-const profile = (cookie: string) =>
+const profile = (cookie: string, currentPassword = "password123") =>
     request(app)
         .put("/api/users/profile")
         .set("Cookie", cookie)
-        .send({ email: "changed@example.com" });
+        .send({ email: "changed@example.com", currentPassword });
 
 describe("Room deletion authorization", () => {
     it("rejects a forged owner ID without deleting the room or requests, and allows the owner without a body", async () => {
@@ -72,7 +72,7 @@ describe("Session revocation", () => {
             .post("/api/auth/login")
             .send({ identifier: "owner@example.com", password: "newpassword456" })
             .expect(200);
-        await profile(fresh.headers["set-cookie"][0].split(";")[0]).expect(200);
+        await profile(fresh.headers["set-cookie"][0].split(";")[0], "newpassword456").expect(200);
     });
 
     it("revokes legacy sessions for users stored before session versions existed", async () => {

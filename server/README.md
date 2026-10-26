@@ -128,7 +128,7 @@ Prefix: `/api/users`.
 | Method | Path | Access | Input / result |
 | --- | --- | --- | --- |
 | GET | `/me` | Private | Current `user` |
-| PUT | `/profile` | Private | Update `username` and/or `email` |
+| PUT | `/profile` | Private | Update `username` and/or `email`. Changing the email also requires `currentPassword` |
 | POST | `/password` | Private | `currentPassword`, `newPassword` |
 | DELETE | `/profile` | Private | Deactivate the account and clear its cookie |
 | GET | `/:userId/rooms/active` | Public | `activeRoom` |
@@ -312,7 +312,7 @@ Cross-origin deployments must allow `X-Demo-Token`. Do not cache personalized de
 
 The shared general limiter allows 100 requests per two hours per IP. It is mounted on authentication, users, global analytics, exports, and room creation, not every API route. Normal votes have a separate limit of five per 30 seconds per IP.
 
-The normal Spotify router has no dedicated limiter mounted, and the general limiter in the user analytics router is currently commented out. Demo limits are separate and do not harden those normal routes. Review normal endpoint exposure before a public rollout.
+The public user analytics routes (everything under `/api/analytics/:userId` except the private `request-activity`) use a generous public-read limiter of 300 requests per 15 minutes per IP, which returns a JSON `429`. The public profile page reads them, so they stay public on purpose. The normal Spotify router has no dedicated limiter mounted. Demo limits are separate and do not harden those normal routes. Review normal endpoint exposure before a public rollout.
 
 ## Socket.IO
 
@@ -325,7 +325,17 @@ The server supports WebSocket and polling transports. A client emits `join-room`
 | `request:created`, `request:updated`, `request:playing`, `request:played` | Request document |
 | `request:deleted` | `{ requestId }` |
 
-The client normalizes request events into its query cache. A legacy client `room:update` event is also rebroadcast as `room:updated`. Socket handlers currently have no dedicated authentication/room-authorization layer; do not treat channel membership as private access control.
+The client normalizes request events into its query cache. Client-sent events other than `join-room` and `leave-room` are ignored. [socket.test.ts](tests/socket.test.ts) checks that a forged `room:update` broadcasts nothing.
+
+### Threat model: `join-room` is public on purpose
+
+Any client can join any room's channel by its ID without logging in. That is deliberate. Guests join without accounts, and every event broadcast to a room carries data that is already public through REST (`GET /api/requests/:roomId/requests`, `GET /api/rooms/:roomCode`). Joining a channel grants read access to that public data and nothing else:
+
+- Clients cannot broadcast. Every state change goes through an authorized REST endpoint, and only server controllers emit room events.
+- `join-room` and `leave-room` accept only a 24-character hex ID, so a client cannot subscribe to arbitrary channel names.
+- Room IDs are not secrets. Do not put private data, such as guest contact details or DJ-only state, into room broadcasts.
+
+Revisit this before adding a DJ-only realtime event. That event needs socket authentication, using the `jwt` cookie at handshake, and a separate owner-only channel.
 
 ## Tests
 
@@ -343,7 +353,7 @@ For UI verification, run `pnpm build` from `client/` and follow its [build and d
 
 [CI](../.github/workflows/ci.yml) installs frozen lockfiles and runs the server tests and `bun run typecheck:check`, plus client lint, build, and unit tests. Dependency audits report findings without blocking these checks.
 
-The server's full typecheck still fails on 220 existing semantic errors. The guard in [scripts/check-typecheck.ts](scripts/check-typecheck.ts) counts TypeScript diagnostic objects and compares the count with [typecheck-baseline.json](typecheck-baseline.json). Compiler, configuration, syntax, and global failures always fail the guard. It forces semantic checking even if `noCheck` is enabled. Twelve CLI integration tests verify the guard against isolated project fixtures. Fix new diagnostics instead of increasing `maxErrors`. When a change reduces the count, lower the baseline to preserve that improvement. At zero, any TypeScript error fails CI.
+The server's full typecheck still fails on 217 existing semantic errors. The guard in [scripts/check-typecheck.ts](scripts/check-typecheck.ts) counts TypeScript diagnostic objects and compares the count with [typecheck-baseline.json](typecheck-baseline.json). Compiler, configuration, syntax, and global failures always fail the guard. It forces semantic checking even if `noCheck` is enabled. Twelve CLI integration tests verify the guard against isolated project fixtures. Fix new diagnostics instead of increasing `maxErrors`. When a change reduces the count, lower the baseline to preserve that improvement. At zero, any TypeScript error fails CI.
 
 ## Deployment notes
 
