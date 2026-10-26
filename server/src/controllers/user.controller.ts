@@ -1,3 +1,4 @@
+import Vote from "../models/vote.model";
 import User from "../models/user.model";
 import validator from "validator";
 import Room from "../models/room.model";
@@ -277,6 +278,7 @@ export const deleteAccount = async (req, res) => {
             });
         }
 
+        await Vote.deleteMany({ roomId: { $in: await Room.distinct("_id", { roomCreator: user._id }) } });
         user.active = false;
         await user.save();
 

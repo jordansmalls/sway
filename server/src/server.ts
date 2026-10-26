@@ -5,6 +5,7 @@ import connectDB from "./config/db";
 import { initSocket } from "./socket";
 import { createShutdown } from "./shutdown";
 import { startDemoCleanup } from "./demo/demo.model";
+import Vote from "./models/vote.model";
 import Request from "./models/request.model";
 import Room from "./models/room.model";
 
@@ -14,6 +15,7 @@ const start = async () => {
     // Do not accept writes until duplicate submissions and second active rooms are blocked by indexes.
     await Request.init();
     await Room.init();
+    await Vote.init();
     startDemoCleanup();
 
     // Start the Express server

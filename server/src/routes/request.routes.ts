@@ -10,7 +10,8 @@ import {
 } from "../controllers/request.controller.js";
 import express from "express";
 import { protect } from "../middlewares/auth.middleware.js";
-import { voteLimiter } from "../middlewares/rate-limiters/vote.limiter.js";
+import { ensureGuestId } from "../middlewares/guest.middleware.js";
+import { guestIpLimiter, voteLimiter } from "../middlewares/rate-limiters/vote.limiter.js";
 const router = express.Router();
 
 // === Private Routes === //
@@ -43,21 +44,21 @@ router.delete("/:requestId/delete", protect, deleteRequest);
  * @route   POST /api/requests
  * @access  PUBLIC
  */
-router.post("/", createRequest);
+router.post("/", ensureGuestId, guestIpLimiter, voteLimiter, createRequest);
 
 /**
  * @desc    Upvote a song
  * @route   PUT /api/requests/vote
  * @access  PUBLIC
  */
-router.put("/vote", voteLimiter, upvoteRequest);
+router.put("/vote", ensureGuestId, guestIpLimiter, voteLimiter, upvoteRequest);
 
 /**
  * @desc    Get Room Requests
  * @route   GET /api/requests/:roomId/requests
  * @access  PUBLIC
  */
-router.get("/:roomId/requests", fetchRoomRequests);
+router.get("/:roomId/requests", ensureGuestId, fetchRoomRequests);
 
 /**
  * @desc    Get Request details
@@ -71,6 +72,6 @@ router.get("/:requestId", fetchRequestDetails);
  * @route   GET /api/requests/:roomId/filter
  * @access  PUBLIC
  */
-router.get("/:roomId/filter", filterRequests);
+router.get("/:roomId/filter", ensureGuestId, filterRequests);
 
 export default router;
