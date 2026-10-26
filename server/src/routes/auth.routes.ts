@@ -11,8 +11,13 @@ import { protect } from "../middlewares/auth.middleware";
 import { credentialIpLimiter, loginLimiter, signupLimiter } from "../middlewares/rate-limiters/auth.limiter";
 import { djLimiter } from "../middlewares/rate-limiters/dj.limiter";
 import { publicReadLimiter } from "../middlewares/rate-limiters/public-read.limiter";
+import { forgotPassword, completePasswordReset } from "../controllers/password-reset.controller";
+import { passwordResetAttemptLimiter, passwordResetIpLimiter, passwordResetRequestLimiter } from "../middlewares/rate-limiters/auth.limiter";
 
 const router = express.Router();
+
+router.post("/forgot-password", passwordResetIpLimiter, passwordResetRequestLimiter, forgotPassword);
+router.post("/reset-password", passwordResetAttemptLimiter, completePasswordReset);
 
 /**
  * @desc    Create user account

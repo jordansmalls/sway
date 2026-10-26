@@ -36,6 +36,14 @@ const register = async (email = "dj@example.com") => {
 };
 
 describe("Request logging", () => {
+    it("does not log password-reset tokens or new passwords from request bodies", async () => {
+        const token = "a".repeat(64);
+        const password = "sensitive-reset-password";
+        await request(app).post("/api/auth/reset-password").send({ token, newPassword: password }).expect(400);
+        expect(completed("POST", "/api/auth/reset-password")).toMatchObject({ res: { statusCode: 400 } });
+        expect(JSON.stringify(lines)).not.toContain(token);
+        expect(JSON.stringify(lines)).not.toContain(password);
+    });
     it("logs one JSON line per request with a request ID that is returned to the client", async () => {
         const response = await request(app).get("/health/ready").expect(200);
 

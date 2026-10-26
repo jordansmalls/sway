@@ -3,7 +3,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 import request from "supertest";
 import { ipKeyGenerator } from "express-rate-limit";
 import { app } from "../src/app";
-import { CREDENTIAL_IP_LIMIT, CREDENTIAL_LIMIT, credentialIpLimiter } from "../src/middlewares/rate-limiters/auth.limiter";
+import { CREDENTIAL_IP_LIMIT, CREDENTIAL_LIMIT, credentialIpLimiter, PASSWORD_RESET_IP_LIMIT, PASSWORD_RESET_REQUEST_LIMIT, passwordResetAttemptLimiter, passwordResetIpLimiter } from "../src/middlewares/rate-limiters/auth.limiter";
 import { DJ_LIMIT } from "../src/middlewares/rate-limiters/dj.limiter";
 import { PUBLIC_READ_LIMIT, publicReadLimiter } from "../src/middlewares/rate-limiters/public-read.limiter";
 
@@ -57,6 +57,45 @@ beforeEach(async () => {
     prefix += 1;
     await credentialIpLimiter.resetKey(loopbackKey);
     await publicReadLimiter.resetKey(loopbackKey);
+    await passwordResetIpLimiter.resetKey(loopbackKey);
+    await passwordResetAttemptLimiter.resetKey(loopbackKey);
+});
+
+describe("Password reset limits", () => {
+    it("shares one budget per normalized email and ignores decoy fields", async () => {
+        const target = email("reset-target");
+        const previousTrustProxy = app.get("trust proxy");
+        app.set("trust proxy", 1);
+        try {
+            for (let index = 0; index < PASSWORD_RESET_REQUEST_LIMIT; index++) {
+                await request(server).post("/api/auth/forgot-password").set("X-Forwarded-For", `192.0.2.${index + 1}`).send({
+                    email: index % 2 ? ` ${target.toUpperCase()} ` : target, identifier: email(`decoy-${index}`),
+                }).expect(200);
+            }
+            expectLimited(await request(server).post("/api/auth/forgot-password").set("X-Forwarded-For", "192.0.2.100").send({ email: target }));
+            await request(server).post("/api/auth/forgot-password").send({ email: email("another-reset") }).expect(200);
+        } finally {
+            app.set("trust proxy", previousTrustProxy);
+        }
+    });
+
+    it("caps reset emails across accounts without using up login or reset-completion budgets", async () => {
+        const address = email("can-login");
+        await register(address);
+        for (let index = 0; index < PASSWORD_RESET_IP_LIMIT; index++) {
+            await request(server).post("/api/auth/forgot-password").send({ email: email(`reset-${index}`) }).expect(200);
+        }
+        expectLimited(await request(server).post("/api/auth/forgot-password").send({ email: email("over-reset-limit") }));
+        await login(address, "password123").expect(200);
+        await request(server).post("/api/auth/reset-password").send({ token: "invalid", newPassword: "password123" }).expect(400);
+    });
+
+    it("limits completion attempts by IP even when the submitted token changes", async () => {
+        for (let index = 0; index < PASSWORD_RESET_IP_LIMIT; index++) {
+            await request(server).post("/api/auth/reset-password").send({ token: String(index), newPassword: "password123" }).expect(400);
+        }
+        expectLimited(await request(server).post("/api/auth/reset-password").send({ token: "different", newPassword: "password123" }));
+    });
 });
 
 describe("Login and signup limits", () => {

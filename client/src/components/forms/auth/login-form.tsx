@@ -78,7 +78,10 @@ export function LoginForm({ className, ...props }: React.ComponentProps<'form'>)
           />
         </Field>
         <Field>
-          <FieldLabel htmlFor="password">Password</FieldLabel>
+          <div className="flex items-center justify-between gap-4">
+            <FieldLabel htmlFor="password">Password</FieldLabel>
+            <Link to="/forgot-password" className="text-xs text-white/70 underline-offset-4 hover:underline">Forgot password?</Link>
+          </div>
           <Input
             id="password"
             name="password"

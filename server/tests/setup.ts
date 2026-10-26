@@ -11,6 +11,11 @@ vi.mock("../src/middlewares/rate-limiters/auth.limiter.ts", () => ({
     signupLimiter: pass,
     loginLimiter: pass,
     credentialIpLimiter: pass,
+    PASSWORD_RESET_REQUEST_LIMIT: 3,
+    PASSWORD_RESET_IP_LIMIT: 20,
+    passwordResetRequestLimiter: pass,
+    passwordResetIpLimiter: pass,
+    passwordResetAttemptLimiter: pass,
 }));
 
 vi.mock("../src/middlewares/rate-limiters/dj.limiter.ts", () => ({
