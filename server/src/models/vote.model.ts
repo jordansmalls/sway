@@ -7,6 +7,7 @@ const voteSchema = new Schema({
     createdAt: { type: Date, default: Date.now },
 });
 voteSchema.index({ requestId: 1, guestId: 1 }, { unique: true });
-voteSchema.index({ roomId: 1 });
+// Serves room-wide cleanup and the per-guest hasVoted lookup on every request-list read.
+voteSchema.index({ roomId: 1, guestId: 1 });
 
 export default mongoose.model("Vote", voteSchema);

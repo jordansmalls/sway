@@ -1,5 +1,4 @@
 import type { NextFunction, Response } from "express";
-import type { HydratedDocument, InferSchemaType } from "mongoose";
 import Vote from "../models/vote.model.js";
 import { castVote, checkQueueCapacity, withQueueAdmission } from "../services/guest-votes.js";
 import { ownedRequestFilter, transitionRequestStatus } from "../services/request-transitions.js";
@@ -211,9 +210,8 @@ export const fetchRoomRequests = async (req, res) => {
     const { roomId } = req.params;
 
     try {
-        // Check if room exists
-        const room = await Room.findById(roomId);
-        if (!room) {
+        const requests = await listRoomRequests({ roomId }, req.cookies.sway_guest);
+        if (!requests) {
             return res.status(404).json({
                 success: false,
                 error: "Resource not found",
@@ -221,13 +219,7 @@ export const fetchRoomRequests = async (req, res) => {
             });
         }
 
-        // Get requests for room, sort by votes (descending)
-        const requests = await Request.find({ roomId }).sort({ votes: -1, createdAt: 1, _id: 1 });
-
-        return res.status(200).json({
-            success: true,
-            requests: await withVotedState(requests, roomId, req.cookies.sway_guest),
-        });
+        return res.status(200).json({ success: true, requests });
     } catch (err) {
         console.error("There was an error while fetching the requests for a room:", err);
         return res.status(500).json({
@@ -290,9 +282,8 @@ export const filterRequests = async (req, res) => {
             });
         }
 
-        // Check if room exists
-        const room = await Room.findById(roomId);
-        if (!room) {
+        const requests = await listRoomRequests(status ? { roomId, status } : { roomId }, req.cookies.sway_guest);
+        if (!requests) {
             return res.status(404).json({
                 success: false,
                 error: "Resource not found",
@@ -300,18 +291,7 @@ export const filterRequests = async (req, res) => {
             });
         }
 
-        // Build filter
-        const filter = { roomId };
-        if (status) {
-            filter.status = status;
-        }
-
-        // Get filtered requests
-        const requests = await Request.find(filter).sort({ votes: -1, createdAt: 1, _id: 1 });
-        return res.status(200).json({
-            success: true,
-            requests: await withVotedState(requests, roomId, req.cookies.sway_guest),
-        });
+        return res.status(200).json({ success: true, requests });
     } catch (err) {
         console.error("There was an error attempting to filter requests:", err);
         return res.status(500).json({
@@ -322,8 +302,26 @@ export const filterRequests = async (req, res) => {
     }
 };
 
-async function withVotedState(requests: HydratedDocument<InferSchemaType<typeof Request.schema>>[], roomId: string, guestId: string) {
-    const votes = await Vote.find({ roomId, guestId }).select("requestId").lean();
+/**
+ * A room's requests, sorted by votes, with the guest's `hasVoted` on each, or null if the room doesn't exist.
+ * Guests poll this, so the three reads run in parallel (one database round trip of latency instead of three),
+ * the room check skips the stored QR image, and rows come back as plain objects instead of Mongoose documents.
+ */
+type RequestStatus = "pending" | "playing" | "played" | "rejected";
+
+async function listRoomRequests(filter: { roomId: string; status?: RequestStatus }, guestId: string) {
+    const [room, requests, votes] = await Promise.all([
+        Room.exists({ _id: filter.roomId }),
+        Request.find(filter).sort({ votes: -1, createdAt: 1, _id: 1 }).lean(),
+        Vote.find({ roomId: filter.roomId, guestId }).select("requestId").lean(),
+    ]);
+    if (!room) return null;
     const voted = new Set(votes.map((vote) => String(vote.requestId)));
-    return requests.map((request) => ({ ...request.toObject(), hasVoted: voted.has(String(request._id)) }));
+    // Plain objects skip schema defaults, so older rows missing these fields still match the client's types.
+    return requests.map((request) => ({
+        playedAt: null,
+        completedAt: null,
+        ...request,
+        hasVoted: voted.has(String(request._id)),
+    }));
 }
