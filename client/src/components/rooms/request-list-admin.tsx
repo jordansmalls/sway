@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 import { cn } from '@/lib/utils';
 import { AnimatedList } from '@/registry/magicui/animated-list';
+import { ExplicitBadge } from './explicit-badge';
 import { toast } from 'sonner';
 import { getApiErrorMessage } from '@/api/client';
 import { useDemoSession } from '@/components/demo/demo-context';
@@ -105,8 +106,11 @@ const AdminRequestRow = ({
     )}
 
     <div className="min-w-0 flex-1">
-      <div className="truncate text-sm font-semibold">
-        {request.track.title}
+      <div className="flex min-w-0 items-center gap-1.5">
+        <div className="truncate text-sm font-semibold">
+          {request.track.title}
+        </div>
+        <ExplicitBadge explicit={request.track.explicit} />
       </div>
       <div className="truncate text-sm text-muted-foreground">
         {request.track.artist}

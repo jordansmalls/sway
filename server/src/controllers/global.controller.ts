@@ -128,12 +128,15 @@ export const fetchMostPlayedTracks = async (): Promise<any[]> => {
                 albumArtUrl: { $first: "$track.albumArtUrl" },
                 spotifyLink: { $first: "$track.spotifyLink" },
                 spotifyURI: { $first: "$track.spotifyURI" },
+                explicit: { $top: { sortBy: { createdAt: -1 }, output: "$track.explicit" } },
                 playCount: { $sum: 1 },
                 latestPlayedAt: { $max: "$playedAt" },
             },
         },
         { $sort: { playCount: -1, latestPlayedAt: -1 } },
         { $limit: 20 },
+        // Unknown (legacy rows) is left off rather than sent as null
+        { $set: { explicit: { $ifNull: ["$explicit", "$$REMOVE"] } } },
     ]);
 
     mostPlayedTracksCache = tracks;

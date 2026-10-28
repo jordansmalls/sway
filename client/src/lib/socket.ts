@@ -19,6 +19,7 @@ export type RoomUpdatedPayload = Partial<Room> & {
   _id?: string
   roomName?: string
   roomDescription?: string
+  allowExplicit?: boolean
 }
 
 export type RoomEndedPayload = {

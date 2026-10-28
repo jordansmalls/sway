@@ -41,6 +41,10 @@ const roomSchema = Schema.create(
             type: Date,
             default: null,
         },
+        allowExplicit: {
+            type: Boolean,
+            default: true,
+        },
     },
     {
         timestamps: true,

@@ -40,12 +40,16 @@ export const emitRoomEnded = (roomId: RoomId) => {
 // 	emitToRoom(roomId, "room:updated", updatedData)
 // }
 
-export const emitRoomUpdated = (roomId: RoomId, updatedData: { roomName: string; roomDescription: string }) => {
+export const emitRoomUpdated = (
+    roomId: RoomId,
+    updatedData: { roomName: string; roomDescription: string; allowExplicit: boolean },
+) => {
     // normalize payload: include roomId as `roomId` so client can check easily
     const payload = {
         roomId,
         roomName: updatedData.roomName,
         roomDescription: updatedData.roomDescription,
+        allowExplicit: updatedData.allowExplicit,
     };
     emitToRoom(roomId, "room:updated", payload);
 };
@@ -102,13 +106,39 @@ export const createRequest = async (req: ExpressRequest, res: Response, next: Ne
         const capacity = { roomOwner: Boolean(res.locals.roomOwner) };
         const filter = { roomId, "track.spotifyTrackId": spotifyTrackId, status: { $in: ["pending", "playing"] as const } };
         let metadata: Awaited<ReturnType<typeof resolveRequestTrack>> | undefined;
-        if (!await Request.exists(filter)) {
+        // When the room blocks explicit songs, only a track Spotify confirmed clean gets in (D4).
+        // Rejections return before any write, vote, or emit; checkQueueCapacity only reads counts.
+        const blocksExplicit = room.allowExplicit === false;
+        const rejectExplicit = (explicit: boolean | undefined) => {
+            if (!blocksExplicit || explicit === false) return undefined;
+            return explicit
+                ? res.status(422).json({ success: false, error: "Unprocessable Entity: explicit track", message: "This room isn't accepting explicit songs." })
+                : res.status(503).json({ success: false, error: "Service Unavailable", message: "We couldn't check this song right now, please try again shortly." });
+        };
+        // Legacy queued rows have no stored flag, so ask Spotify (metadata is reused if already resolved).
+        const queuedExplicit = async (queued: { track: { title: string; artist: string; explicit?: boolean | null } }) => {
+            if (typeof queued.track.explicit === "boolean") return queued.track.explicit;
+            metadata ??= await resolveRequestTrack({ id: spotifyTrackId, name: queued.track.title, artist: queued.track.artist });
+            return metadata.explicit;
+        };
+        const existing = await Request.findOne(filter).select("track");
+        if (!existing) {
             await checkQueueCapacity(roomId, guestId, capacity);
             metadata = await resolveRequestTrack(track);
+            const rejected = rejectExplicit(metadata.explicit);
+            if (rejected) return rejected;
+        } else if (blocksExplicit) {
+            const rejected = rejectExplicit(await queuedExplicit(existing));
+            if (rejected) return rejected;
         }
         return await withQueueAdmission(String(roomId), async () => {
             const queued = await Request.findOne(filter);
             if (!queued) await checkQueueCapacity(roomId, guestId, capacity);
+            // Re-check inside the lock: the queue may have changed since the pre-check.
+            if (blocksExplicit) {
+                const rejected = rejectExplicit(queued ? await queuedExplicit(queued) : (metadata ??= await resolveRequestTrack(track)).explicit);
+                if (rejected) return rejected;
+            }
             let request = queued;
             let alreadyQueued = Boolean(queued);
             if (!request) {
