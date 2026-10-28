@@ -45,7 +45,7 @@ export async function transitionRequestStatus(requestId: string, ownerId: string
     for (let attempt = 0; attempt <= 2; attempt++) {
         // A replay uses a pending re-request, or a new row, never the played original.
         const target = original.status === "played"
-            ? await Request.findOne({ roomId: filter.roomId, "track.spotifyTrackId": original.track!.spotifyTrackId, status: { $in: ["pending", "playing"] } })
+            ? await Request.findOne({ roomId: filter.roomId, "track.spotifyTrackId": original.track.spotifyTrackId, status: { $in: ["pending", "playing"] } })
             : await Request.findOne(filter);
         if (target?.status === "playing") return { request: target, changed: false, demoted };
         if (target && target.status !== "pending") failure(409, "Request changed. Please try again.");

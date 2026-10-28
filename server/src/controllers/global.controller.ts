@@ -1,5 +1,25 @@
+import type { Request as ExpressRequest, Response } from "express";
 import Request from "../models/request.model";
 import Room from "../models/room.model";
+
+interface TopTrack {
+    _id: string;
+    title: string;
+    artist: string;
+    albumArtUrl?: string;
+    spotifyLink: string;
+    totalVotes: number;
+    requestCount: number;
+    playCount: number;
+    latestRequestedAt: Date;
+    latestPlayedAt: Date | null;
+}
+
+interface TopArtist {
+    artist: string;
+    totalVotes: number;
+    totalSongRequests: number;
+}
 
 
 /**
@@ -11,7 +31,7 @@ import Room from "../models/room.model";
 
 // simple in memory cache objects
 
-let topTracksCache = null;
+let topTracksCache: TopTrack[] | null = null;
 let topTracksCacheTime = 0;
 let mostPlayedTracksCache: any[] | null = null;
 let mostPlayedTracksCacheTime = 0;
@@ -20,7 +40,7 @@ const CACHE_DURATION = 5 * 24 * 60 * 60 * 1000; // 5 days in milliseconds
 
 
 
-export const mostRequestedTracks = async (req, res) => {
+export const mostRequestedTracks = async (req: ExpressRequest, res: Response) => {
     try {
 
         const now = Date.now();
@@ -34,7 +54,7 @@ export const mostRequestedTracks = async (req, res) => {
             });
         }
 
-        const topTracks = await Request.aggregate([
+        const topTracks = await Request.aggregate<TopTrack>([
             // Filter out rejected requests from being counted
             { $match: { status: { $ne: "rejected" } } },
 
@@ -126,7 +146,7 @@ export const fetchMostPlayedTracks = async (): Promise<any[]> => {
  * @route   GET /api/global/tracks/played
  * @access  PUBLIC
  */
-export const mostPlayedTracks = async (req, res) => {
+export const mostPlayedTracks = async (req: ExpressRequest, res: Response) => {
     try {
         const cached = mostPlayedTracksCache !== null && Date.now() - mostPlayedTracksCacheTime < MOST_PLAYED_TRACKS_CACHE_DURATION;
         const tracks = await fetchMostPlayedTracks();
@@ -150,10 +170,10 @@ export const mostPlayedTracks = async (req, res) => {
  * @access  PUBLIC
  */
 
-let topArtistsCache = null;
+let topArtistsCache: TopArtist[] | null = null;
 let topArtistsCacheTime = 0;
 
-export const mostRequestedArtists = async (req, res) => {
+export const mostRequestedArtists = async (req: ExpressRequest, res: Response) => {
     try {
         const now = Date.now();
 
@@ -165,7 +185,7 @@ export const mostRequestedArtists = async (req, res) => {
             });
         }
 
-        const topArtists = await Request.aggregate([
+        const topArtists = await Request.aggregate<TopArtist>([
             { $match: { status: { $ne: "rejected" } } },
 
             // Group by artist name
@@ -214,7 +234,7 @@ export const mostRequestedArtists = async (req, res) => {
  * @access  PUBLIC
  */
 
-export const totalSongsRequested = async (req, res) => {
+export const totalSongsRequested = async (req: ExpressRequest, res: Response) => {
     try {
 
         const totalRequests = await Request.countDocuments({});
@@ -251,7 +271,7 @@ export const totalSongsRequested = async (req, res) => {
  * @access  PUBLIC
  */
 
-export const totalRoomsCreated = async (req, res) => {
+export const totalRoomsCreated = async (req: ExpressRequest, res: Response) => {
     try {
         const totalRooms = await Room.countDocuments({});
 

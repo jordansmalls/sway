@@ -1,7 +1,7 @@
-import mongoose, { Schema } from "mongoose";
+import mongoose, { Schema, type Types } from "mongoose";
 import { generateRoomQr } from "../utils/room.qr";
 
-const roomSchema = new mongoose.Schema(
+const roomSchema = Schema.create(
     {
         roomName: {
             type: String,
@@ -44,6 +44,21 @@ const roomSchema = new mongoose.Schema(
     },
     {
         timestamps: true,
+        statics: {
+            async generateRoomQr(roomId: Types.ObjectId | string) {
+                const room = await this.findById(roomId);
+
+                if (!room) throw new Error("Room not found");
+
+                const qrDataUrl = await generateRoomQr(room.roomCode);
+
+                // save the generated QR code to the model
+                room.roomQr = qrDataUrl;
+                await room.save();
+
+                return room;
+            },
+        },
     },
 );
 
@@ -53,20 +68,6 @@ roomSchema.index({ roomCreator: 1, active: 1 }, {
     unique: true,
     partialFilterExpression: { active: true },
 });
-
-roomSchema.statics.generateRoomQr = async function (roomId) {
-    const room = await this.findById(roomId);
-
-    if (!room) throw new Error("Room not found");
-
-    const qrDataUrl = await generateRoomQr(room.roomCode);
-
-    // save the generated QR code to the model
-    room.roomQr = qrDataUrl;
-    await room.save();
-
-    return room;
-};
 
 const Room = mongoose.model("Room", roomSchema);
 export default Room;

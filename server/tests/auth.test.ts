@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { beforeEach, describe, it, expect } from "vitest";
 import request from "supertest";
 import { app } from "../src/app";
 import User from "../src/models/user.model";
@@ -49,9 +49,9 @@ describe("Auth API Endpoints", () => {
             expect(res.body.user).not.toHaveProperty("password");
             
             // Check if cookie is set
-            const cookies = res.headers["set-cookie"];
+            const cookies = res.get("Set-Cookie");
             expect(cookies).toBeDefined();
-            const jwtCookie = cookies.find((cookie: string) => cookie.startsWith("jwt="));
+            const jwtCookie = cookies!.find((cookie) => cookie.startsWith("jwt="));
             expect(jwtCookie).toBeDefined();
         });
 
@@ -214,9 +214,9 @@ describe("Auth API Endpoints", () => {
             expect(res.body.success).toBe(true);
             expect(res.body.user.email).toBe("login_test@example.com");
 
-            const cookies = res.headers["set-cookie"];
+            const cookies = res.get("Set-Cookie");
             expect(cookies).toBeDefined();
-            const jwtCookie = cookies.find((cookie: string) => cookie.startsWith("jwt="));
+            const jwtCookie = cookies!.find((cookie) => cookie.startsWith("jwt="));
             expect(jwtCookie).toBeDefined();
         });
 
@@ -239,9 +239,9 @@ describe("Auth API Endpoints", () => {
             expect(res.body.success).toBe(true);
             expect(res.body.message).toContain("Logged out successfully");
 
-            const cookies = res.headers["set-cookie"];
+            const cookies = res.get("Set-Cookie");
             expect(cookies).toBeDefined();
-            const jwtCookie = cookies.find((cookie: string) => cookie.startsWith("jwt="));
+            const jwtCookie = cookies!.find((cookie) => cookie.startsWith("jwt="));
             // Expires should be set to past date or empty value
             expect(jwtCookie).toContain("Expires=Thu, 01 Jan 1970 00:00:00 GMT");
         });

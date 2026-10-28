@@ -61,7 +61,7 @@ function parseCsv(csv: string): string[][] {
     return rows;
 }
 
-async function seedCsvCells(values: { title: string; artist: string; requestedBy?: string }[]) {
+async function seedCsvCells(values: { title: string; artist: string; requestedBy?: string; playedAt?: Date | null }[]) {
     await SongRequest.deleteMany({ roomId });
     // Keep legacy/untrusted leading whitespace intact rather than applying the
     // model's title/artist trimming before testing the export boundary.
@@ -69,7 +69,7 @@ async function seedCsvCells(values: { title: string; artist: string; requestedBy
         roomId: new mongoose.Types.ObjectId(roomId),
         status: "played",
         votes: 2,
-        playedAt,
+        playedAt: value.playedAt === undefined ? playedAt : value.playedAt,
         createdAt,
         updatedAt: createdAt,
         requestedBy: value.requestedBy,
@@ -250,6 +250,21 @@ describe.each(kinds)("%s exports", (kind) => {
             expect(response.text).toContain("+Artist");
             if (kind === "requests") expect(response.text).toContain("@Guest");
             expect(response.text).not.toContain("'=1+1");
+        }
+    });
+});
+
+describe("tracklist exports", () => {
+    it.each(formats)("leaves Played At blank for a played song saved without playedAt in %s", async (format) => {
+        await seedCsvCells([{ title: "Untimed song", artist: "Untimed artist", playedAt: null }]);
+        const response = await request(app).get(exportPath("tracklist", format)).set("Cookie", ownerCookie).expect(200);
+        if (format === "json") {
+            expect(response.body.tracklist).toEqual([{ title: "Untimed song", artist: "Untimed artist", playedAt: "" }]);
+        } else if (format === "csv") {
+            expect(parseCsv(response.text).slice(1)).toEqual([["Untimed song", "Untimed artist", ""]]);
+        } else {
+            const line = response.text.split("\n").find((line) => line.includes("Untimed song"));
+            expect(line?.split("|").map((cell) => cell.trim())).toEqual(["Untimed song", "Untimed artist", ""]);
         }
     });
 });

@@ -1,3 +1,4 @@
+import type { Request as ExpressRequest, Response } from "express";
 import Vote from "../models/vote.model";
 import User from "../models/user.model";
 import validator from "validator";
@@ -5,6 +6,7 @@ import Room from "../models/room.model";
 import Request from "../models/request.model";
 import { clearAuthToken } from "../utils/generate.jwt";
 import { userHasActiveRoom } from "../utils/user.has.active.room";
+import { isDuplicateKeyError } from "../utils/is.duplicate.key.error";
 
 /**
  * @desc    Update user profile
@@ -12,9 +14,9 @@ import { userHasActiveRoom } from "../utils/user.has.active.room";
  * @access  PRIVATE
  */
 
-export const updateProfile = async (req, res) => {
+export const updateProfile = async (req: ExpressRequest, res: Response) => {
     try {
-        const user = await User.findById(req.user._id).select("+password");
+        const user = await User.findById(req.user!._id).select("+password");
 
         if (!user) {
             return res.status(404).json({
@@ -134,7 +136,7 @@ export const updateProfile = async (req, res) => {
     } catch (err) {
         req.log.error({ err }, "There was an error updating a user's profile");
 
-        if (err.code === 11000) {
+        if (isDuplicateKeyError(err)) {
             const field = Object.keys(err.keyValue)[0];
             return res.status(400).json({
                 success: false,
@@ -156,7 +158,7 @@ export const updateProfile = async (req, res) => {
  * @route   POST /api/users/password
  * @access  PRIVATE
  */
-export const updatePassword = async (req, res) => {
+export const updatePassword = async (req: ExpressRequest, res: Response) => {
     try {
         const { currentPassword, newPassword } = req.body;
 
@@ -181,7 +183,7 @@ export const updatePassword = async (req, res) => {
             });
         }
 
-        const user = await User.findById(req.user._id).select("+password");
+        const user = await User.findById(req.user!._id).select("+password");
 
         if (!user) {
             return res.status(404).json({
@@ -227,9 +229,9 @@ export const updatePassword = async (req, res) => {
  * @access  PRIVATE
  */
 
-export const getUserProfile = async (req, res) => {
+export const getUserProfile = async (req: ExpressRequest, res: Response) => {
     try {
-        const user = await User.findOne(req.user._id);
+        const user = await User.findOne(req.user!._id);
 
         if (!user) {
             return res.status(404).json({
@@ -266,9 +268,9 @@ export const getUserProfile = async (req, res) => {
  * @route   DELETE /api/users/profile
  * @access  PRIVATE
  */
-export const deleteAccount = async (req, res) => {
+export const deleteAccount = async (req: ExpressRequest, res: Response) => {
     try {
-        const user = await User.findById(req.user._id);
+        const user = await User.findById(req.user!._id);
 
         if (!user) {
             return res.status(404).json({
@@ -278,7 +280,7 @@ export const deleteAccount = async (req, res) => {
             });
         }
 
-        await Vote.deleteMany({ roomId: { $in: await Room.distinct("_id", { roomCreator: user._id }) } });
+        await Vote.deleteMany({ roomId: { $in: await Room.find({ roomCreator: user._id }).distinct("_id") } });
         user.active = false;
         await user.save();
 
@@ -306,7 +308,7 @@ export const deleteAccount = async (req, res) => {
  * @access  PUBLIC
  */
 
-export const fetchUserActiveRoom = async (req, res) => {
+export const fetchUserActiveRoom = async (req: ExpressRequest, res: Response) => {
     const { userId } = req.params;
 
     if (!userId) {
@@ -359,7 +361,7 @@ export const fetchUserActiveRoom = async (req, res) => {
  * @access  PRIVATE
  */
 
-export const fetchUserHasActiveRoom = async (req, res) => {
+export const fetchUserHasActiveRoom = async (req: ExpressRequest, res: Response) => {
     const { userId } = req.params;
     try {
         const user = await User.findById(userId);
@@ -382,7 +384,7 @@ export const fetchUserHasActiveRoom = async (req, res) => {
         req.log.error({ err }, "There was an error fetching a user's active room");
         return res.status(500).json({
             success: false,
-            error: `Internal Server Error - ${err.message}`,
+            error: "Internal Server Error",
             message: "We're having trouble, please try again.",
         });
     }
@@ -395,9 +397,9 @@ export const fetchUserHasActiveRoom = async (req, res) => {
  * @feats   Get an array of objects of users' inactive rooms
  */
 
-export const fetchUserInactiveRooms = async (req, res) => {
+export const fetchUserInactiveRooms = async (req: ExpressRequest, res: Response) => {
     // Room history is private: only the authenticated user may read their own.
-    const userId = req.user._id;
+    const userId = req.user!._id;
     if (req.params.userId !== userId.toString()) {
         return res.status(403).json({
             success: false,
@@ -450,7 +452,7 @@ export const fetchUserInactiveRooms = async (req, res) => {
         req.log.error({ err }, "There was an error attempting to fetch a user's inactive rooms");
         return res.status(500).json({
             success: false,
-            error: `Internal Server Error - ${err.message}`,
+            error: "Internal Server Error",
             message: "We're having trouble, please try again soon.",
         });
     }
@@ -463,7 +465,7 @@ export const fetchUserInactiveRooms = async (req, res) => {
  * @access  PUBLIC
  */
 
-export const fetchUserId = async (req, res) => {
+export const fetchUserId = async (req: ExpressRequest, res: Response) => {
     const { username } = req.params;
 
     try {

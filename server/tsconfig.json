@@ -13,6 +13,11 @@
         "allowImportingTsExtensions": true,
         "verbatimModuleSyntax": true,
         "noEmit": true,
+        // csv-writer's `types` is its raw src/*.ts; resolve to the built JS (same file as its
+        // `main`) so tsc stops checking those sources. Types: src/types/csv-writer.d.ts.
+        "paths": {
+            "csv-writer": ["./node_modules/csv-writer/dist/index.js"]
+        },
 
         // Best practices
         "strict": true,

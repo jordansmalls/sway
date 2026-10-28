@@ -1,7 +1,9 @@
+import type { Request, Response } from "express";
 import User from "../models/user.model";
 import generateToken, { clearAuthToken } from "../utils/generate.jwt";
 import validator from "validator";
 import { userHasActiveRoom } from "../utils/user.has.active.room";
+import { isDuplicateKeyError } from "../utils/is.duplicate.key.error";
 
 /**
  * @desc    Create user account
@@ -9,7 +11,7 @@ import { userHasActiveRoom } from "../utils/user.has.active.room";
  * @access  PUBLIC
  */
 
-export const createUserAccount = async (req, res) => {
+export const createUserAccount = async (req: Request, res: Response) => {
     const { email, password } = req.body;
 
     try {
@@ -81,7 +83,7 @@ export const createUserAccount = async (req, res) => {
     } catch (err) {
         req.log.error({ err }, "There was an error creating a user account");
 
-        if (err.code === 11000) {
+        if (isDuplicateKeyError(err)) {
             const field = Object.keys(err.keyValue)[0];
             return res.status(400).json({
                 message: `${field === "email" ? "Email" : "Username"} already exists`,
@@ -102,11 +104,11 @@ export const createUserAccount = async (req, res) => {
  * @access  PRIVATE
  */
 
-export const createUsername = async (req, res) => {
+export const createUsername = async (req: Request, res: Response) => {
     const { username } = req.body;
 
     try {
-        const userId = req.user._id;
+        const userId = req.user!._id;
 
         if (!userId) {
             return res.status(401).json({
@@ -198,7 +200,7 @@ export const createUsername = async (req, res) => {
  * @access  PUBLIC
  */
 
-export const checkUsernameAvailability = async (req, res) => {
+export const checkUsernameAvailability = async (req: Request, res: Response) => {
     const { username } = req.params;
 
     try {
@@ -247,11 +249,11 @@ export const checkUsernameAvailability = async (req, res) => {
  * @access  PUBLIC
  */
 
-export const checkEmailAvailability = async (req, res) => {
+export const checkEmailAvailability = async (req: Request, res: Response) => {
     const { email } = req.params;
 
     try {
-        if (!validator.isEmail(email)) {
+        if (typeof email !== "string" || !validator.isEmail(email)) {
             return res.status(400).json({
                 success: false,
                 error: "Invalid Credentials: invalid email",
@@ -289,7 +291,7 @@ export const checkEmailAvailability = async (req, res) => {
  * @route   POST /api/auth/login
  * @access  PUBLIC
  */
-export const loginUserAccount = async (req, res) => {
+export const loginUserAccount = async (req: Request, res: Response) => {
     const { identifier, password } = req.body;
 
     try {
@@ -344,7 +346,7 @@ export const loginUserAccount = async (req, res) => {
  * @access  PUBLIC
  */
 
-export const logoutUserAccount = (req, res) => {
+export const logoutUserAccount = (req: Request, res: Response) => {
     try {
         clearAuthToken(res);
 

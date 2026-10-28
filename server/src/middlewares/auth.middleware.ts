@@ -6,7 +6,15 @@ import Room from "../models/room.model.js";
 import config from "../config/config.js";
 
 type SessionUser = NonNullable<Awaited<ReturnType<typeof resolveSession>>["user"]>;
-type AuthenticatedRequest = Request & { user?: SessionUser };
+
+declare global {
+    namespace Express {
+        interface Request {
+            /** Set by `protect` (always) and `identifyRoomOwner` (when the DJ owns the room). */
+            user?: SessionUser;
+        }
+    }
+}
 
 /** The active user behind a session token, or the reason it was rejected. */
 const resolveSession = async (token: string) => {
@@ -41,7 +49,7 @@ const resolveSession = async (token: string) => {
     return { user, failure: null };
 };
 
-const protect = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+const protect = async (req: Request, res: Response, next: NextFunction) => {
     const token = req.cookies?.jwt;
     if (!token) {
         return res.status(401).json({ message: "Not authorized, no token" });
@@ -60,7 +68,7 @@ const protect = async (req: AuthenticatedRequest, res: Response, next: NextFunct
  * For public routes that take a `roomId` body: marks a signed-in DJ adding to their own room, so
  * guest limits can step aside. Never rejects; anyone else continues as a guest.
  */
-const identifyRoomOwner = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+const identifyRoomOwner = async (req: Request, res: Response, next: NextFunction) => {
     const token = req.cookies?.jwt;
     const roomId = req.body?.roomId;
     if (typeof token === "string" && token && typeof roomId === "string" && Types.ObjectId.isValid(roomId)) {
@@ -74,3 +82,4 @@ const identifyRoomOwner = async (req: AuthenticatedRequest, res: Response, next:
 };
 
 export { protect, identifyRoomOwner };
+export type { SessionUser };

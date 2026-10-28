@@ -1,5 +1,38 @@
 import mongoose, { Schema } from "mongoose";
 
+// No `_id`, so stored requests keep the same shape as when `track` was a nested path.
+const trackSchema = new Schema(
+    {
+        spotifyTrackId: {
+            type: String,
+            required: true,
+        },
+        title: {
+            type: String,
+            required: true,
+            trim: true,
+        },
+        artist: {
+            type: String,
+            required: true,
+            trim: true,
+        },
+        albumArtUrl: {
+            type: String,
+            required: false,
+        },
+        spotifyLink: {
+            type: String,
+            required: true,
+        },
+        spotifyURI: {
+            type: String,
+            required: true,
+        },
+    },
+    { _id: false },
+);
+
 const requestSchema = new Schema(
     {
         roomId: {
@@ -34,34 +67,8 @@ const requestSchema = new Schema(
             type: Date,
             default: null,
         },
-        track: {
-            spotifyTrackId: {
-                type: String,
-                required: true,
-            },
-            title: {
-                type: String,
-                required: true,
-                trim: true,
-            },
-            artist: {
-                type: String,
-                required: true,
-                trim: true,
-            },
-            albumArtUrl: {
-                type: String,
-                required: false,
-            },
-            spotifyLink: {
-                type: String,
-                required: true,
-            },
-            spotifyURI: {
-                type: String,
-                required: true,
-            },
-        },
+        // A required subdocument (not a nested path) so `track` is typed as always present.
+        track: { type: trackSchema, required: true },
     },
     {
         timestamps: true,

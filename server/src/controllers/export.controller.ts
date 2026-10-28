@@ -4,6 +4,7 @@ import { formatTo12HourTime, formatToFullDate12Hour } from "../utils/formatters/
 import { createObjectCsvStringifier } from "csv-writer";
 import { pad, truncate } from "../utils/formatters/plaintext-helpers.js";
 import { isObjectIdOrHexString } from "mongoose";
+import type { Request as ExpressRequest, Response } from "express";
 
 const neutralizeCsvCell = (value: string | null | undefined) => {
     const text = value ?? "";
@@ -20,7 +21,7 @@ const neutralizeCsvCell = (value: string | null | undefined) => {
  * @feats   Allows authorized users to export the tracklist for a room, once it's over. (only songs that were played during the room)
  */
 
-export const exportTracklistJson = async (req, res) => {
+export const exportTracklistJson = async (req: ExpressRequest, res: Response) => {
     const { roomId } = req.params;
 
     try {
@@ -50,7 +51,7 @@ export const exportTracklistJson = async (req, res) => {
             });
         }
 
-        const user = req.user._id;
+        const user = req.user!._id;
 
         if (room.roomCreator.toString() !== user.toString()) {
             return res.status(403).json({
@@ -74,7 +75,7 @@ export const exportTracklistJson = async (req, res) => {
         const tracklist = playedSongs.map((request) => ({
             title: request.track.title,
             artist: request.track.artist,
-            playedAt: formatTo12HourTime(request.playedAt),
+            playedAt: request.playedAt ? formatTo12HourTime(request.playedAt) : "",
         }));
 
         return res.status(200).json({
@@ -98,7 +99,7 @@ export const exportTracklistJson = async (req, res) => {
  * @access  PRIVATE
  * @feats   Allows authorized users to export the tracklist as CSV for a room, once it's over.
  */
-export const exportTracklistCsv = async (req, res) => {
+export const exportTracklistCsv = async (req: ExpressRequest, res: Response) => {
     const { roomId } = req.params;
 
 
@@ -129,7 +130,7 @@ export const exportTracklistCsv = async (req, res) => {
             });
         }
 
-        const user = req.user._id;
+        const user = req.user!._id;
         if (room.roomCreator.toString() !== user.toString()) {
             return res.status(403).json({
                 success: false,
@@ -161,7 +162,7 @@ export const exportTracklistCsv = async (req, res) => {
         const rows = playedSongs.map((request) => ({
             title: neutralizeCsvCell(request.track.title),
             artist: neutralizeCsvCell(request.track.artist),
-            playedAt: formatTo12HourTime(request.playedAt),
+            playedAt: request.playedAt ? formatTo12HourTime(request.playedAt) : "",
         }));
 
         // --- CSV writer --- \\
@@ -203,7 +204,7 @@ export const exportTracklistCsv = async (req, res) => {
  * @access  PRIVATE
  * @feats   Allows auth'd users to export the tracklist as txt for a room, once it's over.
  */
-export const exportTracklistTxt = async (req, res) => {
+export const exportTracklistTxt = async (req: ExpressRequest, res: Response) => {
     const { roomId } = req.params;
 
     try {
@@ -233,7 +234,7 @@ export const exportTracklistTxt = async (req, res) => {
             });
         }
 
-        const user = req.user._id;
+        const user = req.user!._id;
         if (room.roomCreator.toString() !== user.toString()) {
             return res.status(403).json({
                 success: false,
@@ -271,7 +272,7 @@ export const exportTracklistTxt = async (req, res) => {
             const line = [
                 pad(truncate(request.track.title, 35), 35),
                 pad(truncate(request.track.artist, 30), 30),
-                pad(formatTo12HourTime(request.playedAt), 12),
+                pad(request.playedAt ? formatTo12HourTime(request.playedAt) : "", 12),
             ].join(" | ");
             lines.push(line);
         }
@@ -302,7 +303,7 @@ export const exportTracklistTxt = async (req, res) => {
  * @feats   Exports all requests from an inactive room for its owner.
  */
 
-export const exportRoomRequestsJson = async (req, res) => {
+export const exportRoomRequestsJson = async (req: ExpressRequest, res: Response) => {
     const { roomCode } = req.params;
 
     if (!roomCode) {
@@ -325,7 +326,7 @@ export const exportRoomRequestsJson = async (req, res) => {
             });
         }
 
-        if (room.roomCreator.toString() !== req.user._id.toString()) {
+        if (room.roomCreator.toString() !== req.user!._id.toString()) {
             return res.status(403).json({
                 success: false,
                 error: "Forbidden - Not authorized",
@@ -386,7 +387,7 @@ export const exportRoomRequestsJson = async (req, res) => {
  * @feats   Exports all requests from an inactive room for its owner.
  */
 
-export const exportRoomRequestsCsv = async (req, res) => {
+export const exportRoomRequestsCsv = async (req: ExpressRequest, res: Response) => {
     const { roomCode } = req.params;
 
     if (!roomCode) {
@@ -408,7 +409,7 @@ export const exportRoomRequestsCsv = async (req, res) => {
             });
         }
 
-        if (room.roomCreator.toString() !== req.user._id.toString()) {
+        if (room.roomCreator.toString() !== req.user!._id.toString()) {
             return res.status(403).json({
                 success: false,
                 error: "Forbidden - Not authorized",
@@ -490,7 +491,7 @@ export const exportRoomRequestsCsv = async (req, res) => {
  * @feats   Exports all requests from an inactive room for its owner.
  */
 
-export const exportRoomRequestsTxt = async (req, res) => {
+export const exportRoomRequestsTxt = async (req: ExpressRequest, res: Response) => {
     const { roomCode } = req.params;
 
     if (!roomCode) {
@@ -512,7 +513,7 @@ export const exportRoomRequestsTxt = async (req, res) => {
             });
         }
 
-        if (room.roomCreator.toString() !== req.user._id.toString()) {
+        if (room.roomCreator.toString() !== req.user!._id.toString()) {
             return res.status(403).json({
                 success: false,
                 error: "Forbidden - Not authorized",
@@ -564,7 +565,7 @@ export const exportRoomRequestsTxt = async (req, res) => {
                 pad(r.status, 10),
                 pad(r.playedAt ? formatTo12HourTime(r.playedAt) : "", 12),
                 pad(formatToFullDate12Hour(r.createdAt), 20),
-                pad(r.requestedBy, 20),
+                pad(String(r.requestedBy), 20),
             ].join(" | ");
             lines.push(line);
         }

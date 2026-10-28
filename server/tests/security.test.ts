@@ -6,11 +6,17 @@ import config from "../src/config/config";
 import User from "../src/models/user.model";
 import Room from "../src/models/room.model";
 import SongRequest from "../src/models/request.model";
+import { authCookie, setCookies } from "./cookies";
 
 const register = async (email = "owner@example.com") => {
     const response = await request(app).post("/api/auth").send({ email, password: "password123" });
     expect(response.status).toBe(201);
-    return { id: response.body.user._id, cookie: response.headers["set-cookie"][0].split(";")[0] };
+    return { id: response.body.user._id, cookie: authCookie(response) };
+};
+// A cookie signed without a session version, as issued before revocation existed.
+const legacyCookieFor = (userId: string) => {
+    if (!config.jwt_secret) throw new Error("JWT secret is not configured for tests.");
+    return `jwt=${jwt.sign({ userId }, config.jwt_secret)}`;
 };
 const profile = (cookie: string, currentPassword = "password123") =>
     request(app)
@@ -53,15 +59,15 @@ describe("Session revocation", () => {
             .post("/api/auth/login")
             .send({ identifier: "owner@example.com", password: "password123" })
             .expect(200);
-        const secondCookie = login.headers["set-cookie"][0].split(";")[0];
-        const legacyCookie = `jwt=${jwt.sign({ userId: owner.id }, config.jwt_secret)}`;
+        const secondCookie = authCookie(login);
+        const legacyCookie = legacyCookieFor(owner.id);
         await request(app).get("/api/users/me").set("Cookie", legacyCookie).expect(200);
         const changed = await request(app)
             .post("/api/users/password")
             .set("Cookie", owner.cookie)
             .send({ currentPassword: "password123", newPassword: "newpassword456" })
             .expect(200);
-        expect(changed.headers["set-cookie"][0]).toContain("Expires=Thu, 01 Jan 1970");
+        expect(setCookies(changed)[0]).toContain("Expires=Thu, 01 Jan 1970");
         for (const cookie of [owner.cookie, secondCookie, legacyCookie])
             await profile(cookie).expect(401);
         await request(app)
@@ -72,7 +78,7 @@ describe("Session revocation", () => {
             .post("/api/auth/login")
             .send({ identifier: "owner@example.com", password: "newpassword456" })
             .expect(200);
-        await profile(fresh.headers["set-cookie"][0].split(";")[0], "newpassword456").expect(200);
+        await profile(authCookie(fresh), "newpassword456").expect(200);
     });
 
     it("revokes legacy sessions for users stored before session versions existed", async () => {
@@ -81,7 +87,7 @@ describe("Session revocation", () => {
             { _id: (await User.findById(owner.id))!._id },
             { $unset: { sessionVersion: "" } },
         );
-        const cookie = `jwt=${jwt.sign({ userId: owner.id }, config.jwt_secret)}`;
+        const cookie = legacyCookieFor(owner.id);
         await request(app)
             .post("/api/users/password")
             .set("Cookie", cookie)

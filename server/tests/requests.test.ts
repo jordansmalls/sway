@@ -69,11 +69,11 @@ describe("Request queue", () => {
         const ids = [first.body.request._id, second.body.request._id];
         for (const path of ["requests", "filter?status=pending"]) {
             const response = await request(app).get(`/api/requests/${roomId}/${path}`);
-            expect(response.body.requests.map((item) => item._id)).toEqual(ids);
+            expect(response.body.requests.map((item: { _id: string }) => item._id)).toEqual(ids);
         }
         await request(app).put("/api/requests/vote").send({ requestId: ids[1] });
         const voted = await request(app).get(`/api/requests/${roomId}/requests`);
-        expect(voted.body.requests.map((item) => item._id)).toEqual([...ids].reverse());
+        expect(voted.body.requests.map((item: { _id: string }) => item._id)).toEqual([...ids].reverse());
     });
 
     it("votes on playing songs but allows a new request after a song has been played", async () => {
@@ -108,7 +108,7 @@ describe("Played tracklist", () => {
         }
         const response = await request(app).get("/api/rooms/QUEUE/fetch/spotify/played");
         expect(response.status).toBe(200);
-        expect(response.body.data.map((item) => item.playedAt)).toEqual([...times].sort());
+        expect(response.body.data.map((item: { playedAt: string }) => item.playedAt)).toEqual([...times].sort());
         expect(Number.isNaN(Date.parse(response.body.data[0].requestedAt))).toBe(false);
     });
 });

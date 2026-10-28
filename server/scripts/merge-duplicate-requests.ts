@@ -3,6 +3,7 @@ import config from "../src/config/config";
 
 // Stop request writes before applying this migration. Dry-run is the default.
 // Transactions require a replica set, including MongoDB Atlas deployments.
+if (!config.mongo_uri) throw new Error("MONGO_URI is required.");
 await mongoose.connect(config.mongo_uri, { autoIndex: false });
 try {
     const requests = mongoose.connection.collection("requests");
