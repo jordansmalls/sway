@@ -15,11 +15,14 @@ export async function resolveRequestTrack(track: ClientTrack) {
     let title: string;
     let artist: string;
     let albumArtUrl: string | undefined;
+    // Only Spotify's answer counts; undefined means it couldn't be checked.
+    let explicit: boolean | undefined;
     try {
         const canonical = await getSpotifyTrack(track.id);
         title = boundedText(canonical.name, 200);
         artist = boundedText(canonical.artist, 200);
         albumArtUrl = artwork(canonical.albumImage);
+        explicit = canonical.explicit;
     } catch (error) {
         if (!(error instanceof SpotifyError) || ![429, 503].includes(error.status)) throw error;
         // A provider outage must not stop the queue during a set.
@@ -28,5 +31,6 @@ export async function resolveRequestTrack(track: ClientTrack) {
         albumArtUrl = artwork(track.albumImage);
     }
     if (!title || !artist) throw Object.assign(new Error("Please provide a track title and artist."), { status: 400, expose: true });
-    return { spotifyTrackId: track.id, title, artist, albumArtUrl, spotifyLink: createSpotifyLink(track.id), spotifyURI: createSpotifyUriLink(track.id) };
+    return { spotifyTrackId: track.id, title, artist, albumArtUrl, spotifyLink: createSpotifyLink(track.id), spotifyURI: createSpotifyUriLink(track.id),
+        ...(explicit === undefined ? {} : { explicit }) };
 }

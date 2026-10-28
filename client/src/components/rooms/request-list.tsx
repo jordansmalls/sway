@@ -6,6 +6,7 @@ import { sortRequestsForQueue, useRequestsByRoomQuery, useUpvoteRequestMutation 
 import type { SongRequest } from '@/api/types';
 import { getApiErrorMessage } from '@/api/client';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
+import { ExplicitBadge } from './explicit-badge';
 
 interface Props { roomId: string; }
 
@@ -51,7 +52,10 @@ const RequestItem = ({ request, position, onUpvote, disabled }: { request: SongR
     <span className="hidden w-5 shrink-0 text-center text-xs font-medium text-muted-foreground sm:block">{position}</span>
     <img src={request.track.albumArtUrl} alt="" className="size-12 shrink-0 rounded-lg bg-muted object-cover sm:size-16 sm:rounded-xl" />
     <div className="min-w-0 flex-1">
-      <p className="truncate text-sm font-medium leading-snug tracking-tight sm:text-base">{request.track.title}</p>
+      <div className="flex min-w-0 items-center gap-1.5">
+        <p className="truncate text-sm font-medium leading-snug tracking-tight sm:text-base">{request.track.title}</p>
+        <ExplicitBadge explicit={request.track.explicit} />
+      </div>
       <p className="mt-0.5 truncate text-xs text-muted-foreground sm:text-sm">{request.track.artist}</p>
       {request.requestedBy && <p className="mt-1 truncate text-[0.7rem] text-muted-foreground">Requested by {request.requestedBy}</p>}
     </div>

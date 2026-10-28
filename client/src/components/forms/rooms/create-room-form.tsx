@@ -9,11 +9,13 @@ import {
 } from '@/components/ui/card';
 import {
   Field,
+  FieldContent,
   FieldDescription,
   FieldGroup,
   FieldLabel,
 } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
 import { Textarea } from '../../ui/textarea';
 import { toast } from 'sonner';
 import { useState } from 'react';
@@ -27,6 +29,7 @@ export function CreateRoomForm({
 }: React.ComponentProps<'div'>) {
   const [roomName, setRoomName] = useState('');
   const [roomDescription, setRoomDescription] = useState('');
+  const [allowExplicit, setAllowExplicit] = useState(true);
 
   const createRoom = useCreateRoomMutation();
   const navigate = useNavigate();
@@ -35,7 +38,7 @@ export function CreateRoomForm({
     e.preventDefault();
 
     createRoom.mutate(
-      { roomName, roomDescription },
+      { roomName, roomDescription, allowExplicit },
       {
         onSuccess: (data) => {
           toast.success("Success!",{ description: `The ${data.newRoom.roomName} room has been created and is now active.` })
@@ -87,6 +90,22 @@ export function CreateRoomForm({
                   rows={4}
                   value={roomDescription}
                   onChange={(e) => setRoomDescription(e.target.value)}
+                />
+              </Field>
+              <Field orientation="horizontal">
+                <FieldContent>
+                  <FieldLabel htmlFor="allowExplicit">
+                    Allow explicit songs
+                  </FieldLabel>
+                  <FieldDescription>
+                    When off, guests can't request songs Spotify marks
+                    explicit. You can change this later.
+                  </FieldDescription>
+                </FieldContent>
+                <Switch
+                  id="allowExplicit"
+                  checked={allowExplicit}
+                  onCheckedChange={setAllowExplicit}
                 />
               </Field>
               <Field>

@@ -6,10 +6,12 @@ import { getAccessToken } from "./spotify-token.js";
 export type SpotifyCatalogTrack = {
     id: string; name: string; artist: string; duration_ms: number;
     albumImage?: string; uri: string; album?: string; popularity?: number; previewUrl?: string | null;
+    // Always set by normalize(); optional only so the demo snapshot tracks still type-check.
+    explicit?: boolean;
 };
 type SpotifyRawTrack = {
     id: string; name: string; artists: { name: string }[]; duration_ms: number;
-    album: { name: string; images: { url: string }[] }; popularity?: number; preview_url?: string | null;
+    album: { name: string; images: { url: string }[] }; popularity?: number; preview_url?: string | null; explicit?: boolean;
 };
 
 export class SpotifyError extends Error {
@@ -38,13 +40,14 @@ function cached<T>(key: string, load: () => Promise<T>): Promise<T> {
     return cacheValue(key, load());
 }
 
-function normalize(track: SpotifyRawTrack): SpotifyCatalogTrack {
+export function normalize(track: SpotifyRawTrack): SpotifyCatalogTrack {
     if (!track || typeof track.name !== "string" || !Array.isArray(track.artists) || !Array.isArray(track.album?.images)) {
         throw new SpotifyError(503, "Spotify is temporarily unavailable. Please try again shortly.");
     }
     return { id: track.id, name: track.name, artist: track.artists.map((a) => a.name).join(", "),
         album: track.album.name, albumImage: track.album.images[0]?.url, duration_ms: track.duration_ms,
-        uri: `spotify:track:${track.id}`, popularity: track.popularity ?? 0, previewUrl: track.preview_url ?? null };
+        uri: `spotify:track:${track.id}`, popularity: track.popularity ?? 0, previewUrl: track.preview_url ?? null,
+        explicit: Boolean(track.explicit) };
 }
 
 async function spotifyGet<T>(path: string, params?: Record<string, string | number>, beforeUpstream?: () => void): Promise<T> {

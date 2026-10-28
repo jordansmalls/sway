@@ -23,6 +23,7 @@ export type Room = {
   roomQr?: string
   roomCreator?: string | User
   active: boolean
+  allowExplicit: boolean
   scheduledAt?: string | null
   createdAt: string
   updatedAt: string
@@ -37,6 +38,7 @@ export type RequestTrack = {
   albumArtUrl?: string
   spotifyLink: string
   spotifyURI: string
+  explicit?: boolean
 }
 
 export type CreateRequestTrack = RequestTrack & {
@@ -75,6 +77,7 @@ export type QueueRequest = {
   requestedAt: string
   requestedBy?: string
   playedAt: string | null
+  explicit?: boolean
 }
 
 export type SpotifyTrack = {
@@ -84,6 +87,7 @@ export type SpotifyTrack = {
   duration_ms: number
   albumImage?: string
   uri: string
+  explicit?: boolean
 }
 
 export type SpotifyTrackDetails = SpotifyTrack & {

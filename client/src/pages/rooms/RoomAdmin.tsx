@@ -16,6 +16,7 @@ import { Folder, MonitorUp, SquareArrowOutUpRight } from 'lucide-react';
 import { SidebarTrigger } from '../../components/ui/sidebar';
 import NotFound from '../def/NotFound';
 import RoomStatusBadge from '../../components/rooms/room-status-badge';
+import { Badge } from '../../components/ui/badge';
 import { AppLoading } from '@/components/app-loading';
 import { RecommendedTracks } from '@/components/rooms/recommended-tracks';
 import { useDemoSession } from '@/components/demo/demo-context';
@@ -95,6 +96,9 @@ const RoomAdmin = () => {
               <Folder className={`size-4 shrink-0 text-muted-foreground ${room.active ? "dark:text-icon-gold" : "dark:text-icon-gray"}`} />
               <span className="truncate text-sm font-semibold">{room.roomName}</span>
               <RoomStatusBadge active={room.active} />
+              {room.allowExplicit === false && (
+                <Badge variant="secondary">Clean only</Badge>
+              )}
             </div>
           </div>
         </header>

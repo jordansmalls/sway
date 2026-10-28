@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { useState, useEffect, type FormEvent } from 'react';
 import { toast } from 'sonner';
 import { useUpdateRoomMutation } from '@/api/rooms';
@@ -39,6 +40,9 @@ export function EditRoomDialog({
   const [roomDescription, setRoomDescription] = useState(
     roomData.roomDescription
   );
+  const [allowExplicit, setAllowExplicit] = useState(
+    roomData.allowExplicit ?? true
+  );
   const realUser = useCurrentUser();
   const demo = useDemoSession();
   const user = demo?.user ?? realUser;
@@ -53,6 +57,7 @@ export function EditRoomDialog({
     if (nextOpen) {
       setRoomName(roomData.roomName);
       setRoomDescription(roomData.roomDescription);
+      setAllowExplicit(roomData.allowExplicit ?? true);
     }
 
     setOpen(nextOpen);
@@ -83,6 +88,7 @@ export function EditRoomDialog({
         roomId: roomData._id,
         roomName,
         roomDescription,
+        allowExplicit,
       });
 
       toast.success('Room updated successfully!', {
@@ -116,8 +122,8 @@ export function EditRoomDialog({
           <DialogHeader>
             <DialogTitle>Edit Room</DialogTitle>
             <DialogDescription>
-              Update your room's name or description here. Click save when
-              you’re done.
+              Update your room's name, description, or whether explicit songs
+              are allowed. Click save when you’re done.
             </DialogDescription>
           </DialogHeader>
 
@@ -139,6 +145,23 @@ export function EditRoomDialog({
                 value={roomDescription}
                 onChange={(e) => setRoomDescription(e.target.value)}
               />
+            </div>
+
+            <div className="grid gap-2">
+              <div className="flex items-center justify-between gap-4">
+                <Label htmlFor="allowExplicit">Allow explicit songs</Label>
+                <Switch
+                  id="allowExplicit"
+                  checked={allowExplicit}
+                  onCheckedChange={setAllowExplicit}
+                />
+              </div>
+              {!allowExplicit && (roomData.allowExplicit ?? true) && (
+                <p className="text-xs text-muted-foreground">
+                  Explicit songs already in the queue stay until you remove
+                  them.
+                </p>
+              )}
             </div>
           </div>
 

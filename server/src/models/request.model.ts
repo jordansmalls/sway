@@ -29,6 +29,11 @@ const trackSchema = new Schema(
             type: String,
             required: true,
         },
+        // No default: undefined means Spotify never confirmed it (legacy rows, outage fallback).
+        explicit: {
+            type: Boolean,
+            required: false,
+        },
     },
     { _id: false },
 );

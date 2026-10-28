@@ -1,7 +1,10 @@
 import { Check, Loader2, Music2, Plus, TrendingUp } from 'lucide-react';
 import type { CSSProperties } from 'react';
+import { useParams } from 'react-router-dom';
 
 import { useRecommendedTracksQuery, type RecommendationSource, type RecommendedTrack } from '@/api/analytics';
+import { useRoomDetailsQuery } from '@/api/rooms';
+import { ExplicitBadge } from '@/components/rooms/explicit-badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useRecommendedTrackQueue, type RecommendedTrackQueueState } from '@/hooks/use-recommended-track-queue';
@@ -100,7 +103,10 @@ function TrackCard({ track, queueState, onAddToQueue }: TrackCardProps) {
         <div className="grid size-12 shrink-0 place-items-center rounded-lg bg-muted"><Music2 className="size-5 text-muted-foreground" /></div>
       )}
       <div className="min-w-0 flex-1">
-        <div className="truncate text-sm font-medium">{track.title}</div>
+        <div className="flex min-w-0 items-center gap-1.5">
+          <span className="truncate text-sm font-medium">{track.title}</span>
+          <ExplicitBadge explicit={track.explicit} />
+        </div>
         <div className="mt-0.5 truncate text-xs text-muted-foreground">{track.artist}</div>
       </div>
       {track.playCount > 0 && (
@@ -167,7 +173,11 @@ type RecommendedTracksProps = {
 export function RecommendedTracks({ userId, roomId, requestedBy, active }: RecommendedTracksProps) {
   const { data, isLoading } = useRecommendedTracksQuery(userId);
   const { addToQueue, getTrackState } = useRecommendedTrackQueue({ roomId, requestedBy, active });
-  const tracks = data?.tracks ?? [];
+  // Same cached query the room page uses; room:updated invalidates it, so the toggle shows up live.
+  const { roomCode: rawRoomCode } = useParams<{ roomCode: string }>();
+  const allowExplicit = useRoomDetailsQuery(rawRoomCode?.toUpperCase() ?? '').data?.roomDetails.allowExplicit ?? true;
+  // Unknown stays visible; the server checks it when it's queued.
+  const tracks = (data?.tracks ?? []).filter((track) => allowExplicit || track.explicit !== true);
   const half = Math.ceil(tracks.length / 2);
 
   return (

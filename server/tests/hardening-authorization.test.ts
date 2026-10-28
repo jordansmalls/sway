@@ -235,6 +235,6 @@ describe("Room mutations are owner-only", () => {
         });
         expect(String((await Room.findById(roomId).lean())?.roomCreator)).toBe(owner.id);
         expect(emit).toHaveBeenCalledExactlyOnceWith(`room-${roomId}`, "room:updated",
-            { roomId, roomName: "Renamed", roomDescription: "New description" });
+            { roomId, roomName: "Renamed", roomDescription: "New description", allowExplicit: true });
     });
 });

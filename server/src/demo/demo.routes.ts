@@ -5,7 +5,7 @@ import { rateLimit, type Options } from "express-rate-limit";
 import { DemoSession, type DemoDocument } from "./demo.model";
 import { demoRecommendations, demoRequest, seedDemo } from "./demo.seed";
 import { demoDisplayQr } from "./demo.display";
-import { getDemoSpotifyTrack, searchDemoSpotify, sendDemoSpotifyError } from "./demo.spotify";
+import { DemoSpotifyError, getDemoSpotifyTrack, searchDemoSpotify, sendDemoSpotifyError } from "./demo.spotify";
 
 export const DEMO_LIFETIME_MS = 30 * 60_000;
 export const hashDemoToken = (token: string) => createHash("sha256").update(token).digest("hex");
@@ -112,7 +112,7 @@ demoRouter.use("/api", async (req, res) => {
                 : requests;
             return ok({ data: rows.map((r) => ({
                 id: r._id, title: r.track.title, artist: r.track.artist, albumArtUrl: r.track.albumArtUrl,
-                spotifyUri: r.track.spotifyURI, spotifyLink: r.track.spotifyLink, status: r.status, votes: r.votes,
+                spotifyUri: r.track.spotifyURI, spotifyLink: r.track.spotifyLink, explicit: r.track.explicit, status: r.status, votes: r.votes,
                 requestedAt: r.createdAt, requestedBy: r.requestedBy, playedAt: r.playedAt,
             })) });
         }
@@ -154,10 +154,13 @@ demoRouter.use("/api", async (req, res) => {
     if (req.method === "PUT" && editRoom) {
         if (!dj()) return fail(res, 403, "Only the DJ can edit the demo room.");
         if (!ownRoom(editRoom[1])) return notFound();
+        if (body.allowExplicit !== undefined && typeof body.allowExplicit !== "boolean")
+            return res.status(400).json({ success: false, error: "Invalid Credentials: allowExplicit must be a boolean", message: "The explicit songs setting must be on or off." });
         if (typeof body.roomName !== "string" || !body.roomName.trim() || body.roomName.length > 100 ||
             typeof body.roomDescription !== "string" || !body.roomDescription.trim() || body.roomDescription.length > 450)
             return fail(res, 400, "Enter a room name (up to 100 characters) and description (up to 450 characters).");
         room.roomName = body.roomName.trim(); room.roomDescription = body.roomDescription.trim(); room.updatedAt = new Date().toISOString();
+        if (body.allowExplicit !== undefined) room.allowExplicit = body.allowExplicit;
         if (await save(session, res)) return ok({ updatedRoom: room });
         return;
     }
@@ -167,6 +170,30 @@ demoRouter.use("/api", async (req, res) => {
         const trackId = body.track?.spotifyTrackId;
         if (typeof trackId !== "string" || !/^[A-Za-z0-9]{22}$/.test(trackId)) return fail(res, 400, "Choose a valid Spotify track.");
         const existing = requests.find((r) => r.track.spotifyTrackId === trackId && ["pending", "playing"].includes(r.status));
+        // Mirrors the real app (D4, D5, D7): with the filter on, only a track Spotify confirmed clean gets in,
+        // including votes through this route on an already-queued song. Sessions saved before the flag existed allow explicit.
+        const blocksExplicit = room.allowExplicit === false;
+        const lookup = async () => {
+            try { return await getDemoSpotifyTrack(trackId); }
+            catch (error) {
+                if (!blocksExplicit || !(error instanceof DemoSpotifyError) || ![429, 503].includes(error.status)) { sendDemoSpotifyError(error, res); return undefined; }
+                if (error.retryAfter) res.set("Retry-After", String(error.retryAfter));
+                res.status(503).json({ success: false, error: "Service Unavailable", message: "We couldn't check this song right now, please try again shortly." });
+                return undefined;
+            }
+        };
+        const rejectExplicit = (explicit: boolean | undefined) => blocksExplicit && explicit !== false
+            ? res.status(422).json({ success: false, error: "Unprocessable Entity: explicit track", message: "This room isn't accepting explicit songs." })
+            : undefined;
+        if (existing && blocksExplicit) {
+            let explicit = existing.track.explicit;
+            if (typeof explicit !== "boolean") {
+                const canonical = await lookup();
+                if (!canonical) return;
+                explicit = canonical.explicit;
+            }
+            if (rejectExplicit(explicit)) return;
+        }
         if (existing) {
             if (session.votedIds.includes(existing._id)) return fail(res, 409, "You already voted for this song.");
             session.votedIds.push(existing._id);
@@ -176,9 +203,8 @@ demoRouter.use("/api", async (req, res) => {
             return;
         }
         if (requests.length >= 60) return fail(res, 400, "Demo request limit reached. Reset the demo to try again.");
-        let track;
-        try { track = await getDemoSpotifyTrack(trackId); }
-        catch (error) { return sendDemoSpotifyError(error, res); }
+        const track = await lookup();
+        if (!track || rejectExplicit(track.explicit)) return;
         // Slow provider responses must not let a session outlive its fixed expiry.
         if (session.expiresAt.getTime() <= Date.now()) return fail(res, 410, "Your demo has expired. Start a new demo to keep exploring.");
         const item = demoRequest(track, room._id, String(body.requestedBy ?? "Demo guest").trim().slice(0, 40) || "Demo guest");

@@ -105,14 +105,14 @@ Demo requests use `X-Demo-Token`, which is included in the API's allowed headers
 | Model | Important fields and behavior |
 | --- | --- |
 | [User](src/models/user.model.ts) | Unique email, optional unique username, bcrypt-hashed password, `active`, `sessionVersion`, hidden `emailTokens`, `hasActiveRoom`, `hasUsername`, `admin`, timestamps |
-| [Room](src/models/room.model.ts) | `roomName` (100 characters), `roomDescription` (450), unique room code (up to 5), QR data URL, creator reference, active state, nullable `scheduledAt`, timestamps |
+| [Room](src/models/room.model.ts) | `roomName` (100 characters), `roomDescription` (450), unique room code (up to 5), QR data URL, creator reference, active state, `allowExplicit` (default `true`), nullable `scheduledAt`, timestamps |
 | [Request](src/models/request.model.ts) | Room reference, status, votes, optional requester, hidden `guestId`, optional `replayOf`, `playedAt`, `completedAt`, required Spotify `track` metadata, timestamps |
 | [Vote](src/models/vote.model.ts) | One document per guest per request (`requestId`, `roomId`, `guestId`), unique on request and guest |
 | [DemoSession](src/demo/demo.model.ts) | Separate `demosessions` document containing a synthetic host, room, requests, vote history, token hashes, and fixed expiry |
 
 Usernames accept 3–20 letters, digits, or underscores. Passwords have an 8 character minimum and are hashed before saving. Changing the password or deactivating the account increments `sessionVersion`, which revokes existing login cookies. Account “deletion” sets `active=false`, removes vote records for the DJ's rooms, and clears the login cookie. It does not purge the user or their room history.
 
-Requests have `pending`, `playing`, `played`, or `rejected` status. A new request starts with one vote, the submitter's. Track metadata includes `spotifyTrackId`, `title`, `artist`, `albumArtUrl`, `spotifyLink`, and `spotifyURI`.
+Requests have `pending`, `playing`, `played`, or `rejected` status. A new request starts with one vote, the submitter's. Track metadata includes `spotifyTrackId`, `title`, `artist`, `albumArtUrl`, `spotifyLink`, `spotifyURI`, and `explicit`. `explicit` has no default: it is `undefined` on requests created before the field existed and on requests saved through the Spotify outage fallback.
 
 Playback moves a request from `pending` to `playing`, then to `played`. Marking a track playing moves whichever track was playing to `played`, and the partial unique index `one_playing_per_room` keeps a room to one playing request. Replaying a `played` track never reopens the original: it promotes a pending re-request of the same track, or creates a new request with `replayOf` pointing at the original. Any other transition returns `409`. `playedAt` records when a track started playing and `completedAt` when it finished. The `unique_active_track_per_room` index keeps a track from appearing twice among a room's pending and playing requests.
 
@@ -162,16 +162,18 @@ Prefix: `/api/rooms`.
 
 | Method | Path | Access | Input / result |
 | --- | --- | --- | --- |
-| POST | `/` | Private | `roomName`, `roomDescription`; returns `newRoom`, or `409` if the DJ already has an active room |
+| POST | `/` | Private | `roomName`, `roomDescription`, optional `allowExplicit` (boolean, default `true`); returns `newRoom`, or `409` if the DJ already has an active room |
 | POST | `/join` | Public | `roomCode`; returns `roomDetails` for an active room |
 | PUT | `/end` | Private, owner only | `roomId`; end the room. `400` malformed ID, `403` another DJ's room, `404` missing, `409` already ended |
 | GET | `/recent` | Private | `latestRooms`: up to five rooms, active first, then newest |
 | GET | `/active/summary` | Private | `activeRoom` with summary metrics, or `null` |
-| PUT | `/:roomId` | Private, owner only | `roomName` and/or `roomDescription`; returns `updatedRoom` |
+| PUT | `/:roomId` | Private, owner only | Any of `roomName`, `roomDescription`, `allowExplicit`; only the fields sent are updated. Returns `updatedRoom` |
 | DELETE | `/:roomId` | Private, owner only | Removes the room and its requests; no body required |
 | GET | `/:roomCode` | Public | `roomDetails` |
-| GET | `/:roomCode/fetch/requests` | Public | Normalized queue in `data`, including Spotify links and status |
+| GET | `/:roomCode/fetch/requests` | Public | Normalized queue in `data`, including Spotify links, status, and `explicit` |
 | GET | `/:roomCode/fetch/spotify/played` | Public | Played tracklist in `data` with formatted request/play times |
+
+A non-boolean `allowExplicit` (for example the string `"false"`) returns `400`. Join, room details, and the active summary all return `allowExplicit`.
 
 The active summary includes `requestsReceived`, `requestsPlayed`, `requestsWaiting`, `totalVotes`, and up to four `recentRequests` inside `activeRoom`. Waiting includes both pending and currently playing requests. These endpoints power the new dashboard experience and recent room sidebar quick glance functionality.
 
@@ -194,6 +196,8 @@ Prefix: `/api/requests`.
 
 The normal create handler accepts the Spotify search shape: `track.id` is required, and `track.name`, `track.artist`, and `track.albumImage` are fallbacks. The server looks up the canonical title, artist, and artwork from Spotify, then stores them with derived Spotify links. It uses the submitted metadata only when Spotify returns `429` or `503`, so a provider outage doesn't stop the queue. Use the shared client track mapper rather than assuming search and stored track shapes are identical.
 
+When the room's `allowExplicit` is `false`, the server checks Spotify's `explicit` flag before any capacity check, write, or vote. An explicit track returns `422` (`error: "Unprocessable Entity: explicit track"`, `message: "This room isn't accepting explicit songs."`), including a duplicate submission of an explicit track that was queued before the filter was turned on. If Spotify can't confirm the track, the request fails closed with `503` ("We couldn't check this song right now, please try again shortly."). The rule applies to the room's DJ too. Voting on an already-queued request with `PUT /vote` is never blocked, and turning the filter on leaves explicit songs already in the queue for the DJ to remove.
+
 Submitting a track that is already pending or playing adds the guest's vote to the existing request instead of creating a duplicate. Each guest gets one vote per request, tracked by the `sway_guest` cookie. New requests, duplicate submissions, and votes return 409 after the room has ended, and votes also return 409 once a request has been played. A room holds at most 200 pending requests, and each guest at most 5. The 5-request cap and the guest rate limits don't apply when the signed-in DJ adds to their own room, for example from the recommendations panel.
 
 Demo submissions instead require `track.spotifyTrackId` and also resolve canonical metadata server side. The client mapper supplies the aliases needed by both contracts.
@@ -208,7 +212,7 @@ Prefix: `/api/spotify`. These normal routes are public.
 | GET | `/tracks/:id` | One `track` |
 | GET | `/artists/:id/top-tracks` | Artist's top `tracks` in the US market |
 
-Tracks include `id`, `name`, `artist`, `album`, `albumImage`, `duration_ms`, `uri`, `popularity`, and `previewUrl`. The server uses a cached Spotify client credentials access token. No visitor Spotify login, external account connection, or audio playback is involved.
+Tracks include `id`, `name`, `artist`, `album`, `albumImage`, `duration_ms`, `uri`, `popularity`, `previewUrl`, and `explicit`. The server uses a cached Spotify client credentials access token. No visitor Spotify login, external account connection, or audio playback is involved.
 
 The shared [Spotify client](src/services/spotify-client.ts) serves these routes, request metadata lookups, and the demo. Results go into a bounded 500-entry, five-minute in-process cache, and search results also prime the track cache. Upstream requests time out after eight seconds. A Spotify `429` pauses all upstream calls for its `Retry-After` period (30 seconds if absent) and returns `429` with `Retry-After`. Other upstream failures return `503`, and missing tracks return `404`.
 
@@ -230,9 +234,9 @@ Prefix: `/api/analytics/:userId`.
 | GET | `/recommended-tracks` | Public | `source` and up to 20 recommended `tracks` |
 | GET | `/request-activity?range=7d` | Private, owner or admin | `range`, `interval`, and activity `data` |
 
-Song rankings include Spotify metadata, `requestCount`, `playCount`, `totalVotes`, `latestRequestedAt`, and `latestPlayedAt`. These support profile and dashboard tables.
+Song rankings include Spotify metadata, `explicit` when known (taken from the most recent request), `requestCount`, `playCount`, `totalVotes`, `latestRequestedAt`, and `latestPlayedAt`. These support profile and dashboard tables.
 
-Recommended tracks power the room admin's recommendations panel. Once a DJ has played 20 different songs, the response uses `source: "personal"` and lists their most played songs. Until then, it uses `source: "global"` with Sway's most played tracks, topped up from a curated list of popular songs ([popular.tracks.ts](src/utils/popular.tracks.ts), reusing the demo's verified Spotify snapshots). With no global play history yet, the source is `popular`.
+Recommended tracks power the room admin's recommendations panel. Once a DJ has played 20 different songs, the response uses `source: "personal"` and lists their most played songs. Until then, it uses `source: "global"` with Sway's most played tracks, topped up from a curated list of popular songs ([popular.tracks.ts](src/utils/popular.tracks.ts), reusing the demo's verified Spotify snapshots). With no global play history yet, the source is `popular`. Tracks from play history carry `explicit` when known; the curated popular tracks don't, and the client hides `explicit: true` picks in rooms that block explicit songs.
 
 Request activity defaults to `30d`; accepted ranges are `7d`, `30d`, `90d`, `6m`, `1y`, and `all`. Daily buckets serve the first three ranges, weekly buckets serve `6m`, monthly buckets serve `1y`, and `all` chooses a granularity based on history length. Buckets use UTC and include zero-count periods. Each item contains `date`, `requestsReceived`, and `requestsPlayed`; received counts use creation time, while played counts use played status and `playedAt`. The dashboard currently requests `7d`.
 
@@ -245,7 +249,7 @@ Prefix: `/api/global`. All routes are public.
 | Method | Path | Result |
 | --- | --- | --- |
 | GET | `/tracks` | Top ten requested tracks in `data` |
-| GET | `/tracks/played` | Top 20 played tracks in `data`, including `playCount` and `latestPlayedAt` |
+| GET | `/tracks/played` | Top 20 played tracks in `data`, including `playCount`, `latestPlayedAt`, and `explicit` when known |
 | GET | `/artists` | Top ten requested artists in `data` |
 | GET | `/requests` | `totalRequests` |
 | GET | `/rooms` | `totalRooms` |
@@ -405,7 +409,7 @@ The server supports WebSocket and polling transports. A client emits `join-room`
 
 | Server event | Payload |
 | --- | --- |
-| `room:updated` | Room ID and updated name/description |
+| `room:updated` | `{ roomId, roomName, roomDescription, allowExplicit }` |
 | `room:ended` | `{ roomId }` |
 | `request:created`, `request:updated`, `request:playing`, `request:played` | Request document |
 | `request:deleted` | `{ requestId }` |
