@@ -516,8 +516,7 @@ export const fetchRoomRequests = async (req: ExpressRequest<{ roomCode: string }
         const voted = new Set(votes.map((vote) => String(vote.requestId)));
 
         const data = requests.map((req) => {
-            // Mongoose types nested paths as optional, but every track field is required.
-            const track = req.track!;
+            const track = req.track;
             return {
                 id: req._id,
                 title: track.title,
@@ -583,8 +582,7 @@ export const fetchRoomPlayedRequests = async (req: ExpressRequest<{ roomCode: st
             .populate("track");
 
         const data = requests.map((req) => {
-            // Mongoose types nested paths as optional, but every track field is required.
-            const track = req.track!;
+            const track = req.track;
             return {
                 id: req._id,
                 title: track.title,

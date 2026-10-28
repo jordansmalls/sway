@@ -72,11 +72,10 @@ export const exportTracklistJson = async (req: ExpressRequest, res: Response) =>
 
         const playedSongs = await Request.find({ roomId, status: "played" }).populate("track");
 
-        // new Date(null) is the epoch; `?? 0` keeps that for played rows saved without playedAt.
         const tracklist = playedSongs.map((request) => ({
-            title: request.track!.title,
-            artist: request.track!.artist,
-            playedAt: formatTo12HourTime(request.playedAt ?? 0),
+            title: request.track.title,
+            artist: request.track.artist,
+            playedAt: request.playedAt ? formatTo12HourTime(request.playedAt) : "",
         }));
 
         return res.status(200).json({
@@ -161,9 +160,9 @@ export const exportTracklistCsv = async (req: ExpressRequest, res: Response) => 
 
         // --- Prepare rows --- \\
         const rows = playedSongs.map((request) => ({
-            title: neutralizeCsvCell(request.track!.title),
-            artist: neutralizeCsvCell(request.track!.artist),
-            playedAt: formatTo12HourTime(request.playedAt ?? 0),
+            title: neutralizeCsvCell(request.track.title),
+            artist: neutralizeCsvCell(request.track.artist),
+            playedAt: request.playedAt ? formatTo12HourTime(request.playedAt) : "",
         }));
 
         // --- CSV writer --- \\
@@ -271,9 +270,9 @@ export const exportTracklistTxt = async (req: ExpressRequest, res: Response) => 
 
         for (const request of playedSongs) {
             const line = [
-                pad(truncate(request.track!.title, 35), 35),
-                pad(truncate(request.track!.artist, 30), 30),
-                pad(formatTo12HourTime(request.playedAt ?? 0), 12),
+                pad(truncate(request.track.title, 35), 35),
+                pad(truncate(request.track.artist, 30), 30),
+                pad(request.playedAt ? formatTo12HourTime(request.playedAt) : "", 12),
             ].join(" | ");
             lines.push(line);
         }
@@ -356,8 +355,8 @@ export const exportRoomRequestsJson = async (req: ExpressRequest, res: Response)
         }
 
         const data = requests.map((req) => ({
-            title: req.track!.title,
-            artist: req.track!.artist,
+            title: req.track.title,
+            artist: req.track.artist,
             votes: req.votes,
             status: req.status,
             // playedAt: formatTo12HourTime(req.playedAt),
@@ -441,8 +440,8 @@ export const exportRoomRequestsCsv = async (req: ExpressRequest, res: Response) 
         // --- Prepare rows --- \\
 
         const rows = requests.map((r) => ({
-            title: neutralizeCsvCell(r.track!.title),
-            artist: neutralizeCsvCell(r.track!.artist),
+            title: neutralizeCsvCell(r.track.title),
+            artist: neutralizeCsvCell(r.track.artist),
             votes: r.votes,
             status: r.status,
             // playedAt: r.playedAt ? formatTo12HourTime(r.playedAt) : '',
@@ -560,8 +559,8 @@ export const exportRoomRequestsTxt = async (req: ExpressRequest, res: Response) 
 
         for (const r of requests) {
             const line = [
-                pad(truncate(r.track!.title, 30), 30),
-                pad(truncate(r.track!.artist, 25), 25),
+                pad(truncate(r.track.title, 30), 30),
+                pad(truncate(r.track.artist, 25), 25),
                 pad(String(r.votes), 6),
                 pad(r.status, 10),
                 pad(r.playedAt ? formatTo12HourTime(r.playedAt) : "", 12),

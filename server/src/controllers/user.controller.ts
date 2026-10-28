@@ -6,16 +6,7 @@ import Room from "../models/room.model";
 import Request from "../models/request.model";
 import { clearAuthToken } from "../utils/generate.jwt";
 import { userHasActiveRoom } from "../utils/user.has.active.room";
-
-/** A MongoDB duplicate-key error, which names the colliding field in `keyValue`. */
-const isDuplicateKeyError = (err: unknown): err is { code: 11000; keyValue: object } =>
-    typeof err === "object" &&
-    err !== null &&
-    "code" in err &&
-    err.code === 11000 &&
-    "keyValue" in err &&
-    typeof err.keyValue === "object" &&
-    err.keyValue !== null;
+import { isDuplicateKeyError } from "../utils/is.duplicate.key.error";
 
 /**
  * @desc    Update user profile
@@ -393,7 +384,7 @@ export const fetchUserHasActiveRoom = async (req: ExpressRequest, res: Response)
         req.log.error({ err }, "There was an error fetching a user's active room");
         return res.status(500).json({
             success: false,
-            error: `Internal Server Error - ${err instanceof Error ? err.message : undefined}`,
+            error: "Internal Server Error",
             message: "We're having trouble, please try again.",
         });
     }
@@ -461,7 +452,7 @@ export const fetchUserInactiveRooms = async (req: ExpressRequest, res: Response)
         req.log.error({ err }, "There was an error attempting to fetch a user's inactive rooms");
         return res.status(500).json({
             success: false,
-            error: `Internal Server Error - ${err instanceof Error ? err.message : undefined}`,
+            error: "Internal Server Error",
             message: "We're having trouble, please try again soon.",
         });
     }

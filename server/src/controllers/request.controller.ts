@@ -132,7 +132,7 @@ export const createRequest = async (req: ExpressRequest, res: Response, next: Ne
             if (!result.alreadyVoted) emitToRoom(roomId, alreadyQueued ? "request:updated" : "request:created", result.request);
             return res.status(alreadyQueued ? 200 : 201).json({
                 success: true, alreadyQueued, alreadyVoted: result.alreadyVoted,
-                message: result.alreadyVoted ? "You already voted for this request." : `Success! Your vote for ${result.request.track!.title} has been counted.`,
+                message: result.alreadyVoted ? "You already voted for this request." : `Success! Your vote for ${result.request.track.title} has been counted.`,
                 request: { ...result.request.toObject(), hasVoted: true },
             });
         });
@@ -154,7 +154,7 @@ export const upvoteRequest = async (req: ExpressRequest, res: Response, next: Ne
         if (!result.alreadyVoted) emitToRoom(result.request.roomId, "request:updated", result.request);
         return res.status(200).json({
             success: true, alreadyVoted: result.alreadyVoted,
-            message: result.alreadyVoted ? "You already voted for this request." : `Your upvote on ${result.request.track!.title} has been counted!`,
+            message: result.alreadyVoted ? "You already voted for this request." : `Your upvote on ${result.request.track.title} has been counted!`,
             request: { ...result.request.toObject(), hasVoted: true },
         });
     } catch (err) {

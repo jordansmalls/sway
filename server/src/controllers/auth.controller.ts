@@ -3,16 +3,7 @@ import User from "../models/user.model";
 import generateToken, { clearAuthToken } from "../utils/generate.jwt";
 import validator from "validator";
 import { userHasActiveRoom } from "../utils/user.has.active.room";
-
-/** A MongoDB duplicate-key error, which names the colliding field in `keyValue`. */
-const isDuplicateKeyError = (err: unknown): err is { code: 11000; keyValue: object } =>
-    typeof err === "object" &&
-    err !== null &&
-    "code" in err &&
-    err.code === 11000 &&
-    "keyValue" in err &&
-    typeof err.keyValue === "object" &&
-    err.keyValue !== null;
+import { isDuplicateKeyError } from "../utils/is.duplicate.key.error";
 
 /**
  * @desc    Create user account
