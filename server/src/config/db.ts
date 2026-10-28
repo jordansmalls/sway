@@ -10,6 +10,7 @@ import { logger } from "./logger";
 
 const connectDB = async () => {
     try {
+        if (!config.mongo_uri) throw new Error("MONGO_URI is required.");
         const conn = await mongoose.connect(config.mongo_uri);
         logger.info({ host: conn.connection.host }, "MongoDB connected");
     } catch (err) {

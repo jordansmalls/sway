@@ -6,16 +6,16 @@ import { emitRoomEnded, emitRoomUpdated } from "./request.controller";
 import Request from "../models/request.model";
 import { createSpotifyLink, createSpotifyUriLink } from "../utils/formatters/format.spotify";
 import { generateRoomQr } from "../utils/room.qr";
-import type { NextFunction } from "express";
+import type { NextFunction, Request as ExpressRequest, Response } from "express";
 
 /**
  * @desc    Fetch the authenticated user's five most recently created rooms
  * @route   GET /api/rooms/recent
  * @access  PRIVATE
  */
-export const fetchUserLatestRooms = async (req, res) => {
+export const fetchUserLatestRooms = async (req: ExpressRequest, res: Response) => {
     try {
-        const latestRooms = await Room.find({ roomCreator: req.user._id })
+        const latestRooms = await Room.find({ roomCreator: req.user!._id })
             .select("roomName roomCode active createdAt updatedAt")
             .sort({ active: -1, createdAt: -1 })
             .limit(5)
@@ -40,10 +40,10 @@ export const fetchUserLatestRooms = async (req, res) => {
  * @route   GET /api/rooms/active/summary
  * @access  PRIVATE
  */
-export const fetchActiveRoomSummary = async (req, res) => {
+export const fetchActiveRoomSummary = async (req: ExpressRequest, res: Response) => {
     try {
         const activeRoom = await Room.findOne({
-            roomCreator: req.user._id,
+            roomCreator: req.user!._id,
             active: true,
         })
             .select("roomName roomDescription roomCode roomCreator active scheduledAt createdAt updatedAt")
@@ -113,7 +113,7 @@ const isActiveRoomConflict = (err: any) =>
  * @access  PRIVATE
  */
 
-export const createRoom = async (req, res) => {
+export const createRoom = async (req: ExpressRequest, res: Response) => {
     const { roomName, roomDescription } = req.body;
 
     try {
@@ -133,7 +133,7 @@ export const createRoom = async (req, res) => {
             roomName,
             roomDescription,
             roomCode,
-            roomCreator: req.user._id,
+            roomCreator: req.user!._id,
             active: true,
         });
 
@@ -173,9 +173,9 @@ export const createRoom = async (req, res) => {
  * @feats   Update room name and room description
  */
 
-export const updateRoom = async (req, res) => {
+export const updateRoom = async (req: ExpressRequest<{ roomId: string }>, res: Response) => {
     const { roomName, roomDescription } = req.body;
-    const userId = req.user._id;
+    const userId = req.user!._id;
     const { roomId } = req.params;
 
     try {
@@ -251,7 +251,7 @@ export const updateRoom = async (req, res) => {
  * @access  PUBLIC
  */
 
-export const joinRoom = async (req, res) => {
+export const joinRoom = async (req: ExpressRequest, res: Response) => {
     const { roomCode } = req.body;
 
     try {
@@ -317,10 +317,10 @@ export const joinRoom = async (req, res) => {
  * @access  PRIVATE
  */
 
-export const endRoom = async (req, res, next: NextFunction) => {
+export const endRoom = async (req: ExpressRequest, res: Response, next: NextFunction) => {
 
     const { roomId } = req.body;
-    const userId = req.user._id;
+    const userId = req.user!._id;
 
     try {
         if (!isObjectIdOrHexString(roomId)) {
@@ -363,13 +363,13 @@ export const endRoom = async (req, res, next: NextFunction) => {
  * @feats   Deletes a room and its requests.
  */
 
-export const deleteRoom = async (req, res) => {
+export const deleteRoom = async (req: ExpressRequest<{ roomId: string }>, res: Response) => {
     try {
         // get room ID from URL params
         const { roomId } = req.params;
 
         // Use the authenticated identity, never a client-supplied owner ID.
-        const userId = req.user._id;
+        const userId = req.user!._id;
 
         if (!roomId) {
             return res.status(400).json({
@@ -441,7 +441,7 @@ export const deleteRoom = async (req, res) => {
  * @feats   Finds and returns a room's details based on roomCode
  */
 
-export const fetchRoomDetails = async (req, res) => {
+export const fetchRoomDetails = async (req: ExpressRequest<{ roomCode: string }>, res: Response) => {
     const { roomCode } = req.params;
 
     try {
@@ -489,7 +489,7 @@ export const fetchRoomDetails = async (req, res) => {
  * @access  PUBLIC
  */
 
-export const fetchRoomRequests = async (req, res) => {
+export const fetchRoomRequests = async (req: ExpressRequest<{ roomCode: string }>, res: Response) => {
     const { roomCode } = req.params;
 
     if (!roomCode) {
@@ -515,20 +515,24 @@ export const fetchRoomRequests = async (req, res) => {
         const votes = await Vote.find({ roomId: room._id, guestId: req.cookies.sway_guest }).select("requestId").lean();
         const voted = new Set(votes.map((vote) => String(vote.requestId)));
 
-        const data = requests.map((req) => ({
-            id: req._id,
-            title: req.track.title,
-            artist: req.track.artist,
-            albumArtUrl: req.track.albumArtUrl,
-            spotifyUri: createSpotifyUriLink(req.track.spotifyTrackId),
-            spotifyLink: createSpotifyLink(req.track.spotifyTrackId),
-            status: req.status,
-            votes: req.votes,
-            hasVoted: voted.has(String(req._id)),
-            requestedAt: req.createdAt,
-            requestedBy: req.requestedBy,
-            playedAt: req.playedAt,
-        }));
+        const data = requests.map((req) => {
+            // Mongoose types nested paths as optional, but every track field is required.
+            const track = req.track!;
+            return {
+                id: req._id,
+                title: track.title,
+                artist: track.artist,
+                albumArtUrl: track.albumArtUrl,
+                spotifyUri: createSpotifyUriLink(track.spotifyTrackId),
+                spotifyLink: createSpotifyLink(track.spotifyTrackId),
+                status: req.status,
+                votes: req.votes,
+                hasVoted: voted.has(String(req._id)),
+                requestedAt: req.createdAt,
+                requestedBy: req.requestedBy,
+                playedAt: req.playedAt,
+            };
+        });
 
         return res.status(200).json({
             success: true,
@@ -551,7 +555,7 @@ export const fetchRoomRequests = async (req, res) => {
  * @access	PUBLIC
  */
 
-export const fetchRoomPlayedRequests = async (req, res) => {
+export const fetchRoomPlayedRequests = async (req: ExpressRequest<{ roomCode: string }>, res: Response) => {
     const { roomCode } = req.params;
 
     if (!roomCode) {
@@ -578,20 +582,24 @@ export const fetchRoomPlayedRequests = async (req, res) => {
             .sort({ playedAt: 1 })
             .populate("track");
 
-        const data = requests.map((req) => ({
-            id: req._id,
-            title: req.track.title,
-            artist: req.track.artist,
-            albumArtUrl: req.track.albumArtUrl,
-            spotifyUri: createSpotifyUriLink(req.track.spotifyTrackId),
-            spotifyLink: createSpotifyLink(req.track.spotifyTrackId),
-            status: req.status,
-            votes: req.votes,
-            // ISO timestamps; the client formats them in the viewer's time zone
-            requestedAt: req.createdAt,
-            requestedBy: req.requestedBy,
-            playedAt: req.playedAt,
-        }));
+        const data = requests.map((req) => {
+            // Mongoose types nested paths as optional, but every track field is required.
+            const track = req.track!;
+            return {
+                id: req._id,
+                title: track.title,
+                artist: track.artist,
+                albumArtUrl: track.albumArtUrl,
+                spotifyUri: createSpotifyUriLink(track.spotifyTrackId),
+                spotifyLink: createSpotifyLink(track.spotifyTrackId),
+                status: req.status,
+                votes: req.votes,
+                // ISO timestamps; the client formats them in the viewer's time zone
+                requestedAt: req.createdAt,
+                requestedBy: req.requestedBy,
+                playedAt: req.playedAt,
+            };
+        });
 
         return res.status(200).json({
             success: true,

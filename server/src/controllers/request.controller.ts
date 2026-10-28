@@ -1,4 +1,5 @@
-import type { NextFunction, Response } from "express";
+import type { NextFunction, Request as ExpressRequest, Response } from "express";
+import type { Types } from "mongoose";
 import Vote from "../models/vote.model.js";
 import { castVote, checkQueueCapacity, withQueueAdmission } from "../services/guest-votes.js";
 import { ownedRequestFilter, transitionRequestStatus } from "../services/request-transitions.js";
@@ -7,16 +8,21 @@ import Request from "../models/request.model.js";
 import { resolveRequestTrack } from "../services/request-track.js";
 import { logger } from "../config/logger.js";
 
+/** The slice of the socket.io server the controllers emit through; tests pass a stub. */
+type RoomEmitter = { to(room: string): { emit(event: string, data: unknown): unknown } };
+
 // Socket.io instance - to be initalized in index.js and passed here
-let io;
+let io: RoomEmitter | undefined;
 
 // Initialize socket.io
-export const initSocketIO = (socketIO) => {
+export const initSocketIO = (socketIO: RoomEmitter | undefined) => {
     io = socketIO;
 };
 
+type RoomId = Types.ObjectId | string;
+
 // Emit event to room
-const emitToRoom = (roomId, event, data) => {
+const emitToRoom = (roomId: RoomId, event: string, data: unknown) => {
     if (io) {
         io.to(`room-${roomId}`).emit(event, data);
     } else {
@@ -25,7 +31,7 @@ const emitToRoom = (roomId, event, data) => {
 };
 
 // Emit room ended event
-export const emitRoomEnded = (roomId) => {
+export const emitRoomEnded = (roomId: RoomId) => {
     emitToRoom(roomId, "room:ended", { roomId });
 };
 
@@ -34,7 +40,7 @@ export const emitRoomEnded = (roomId) => {
 // 	emitToRoom(roomId, "room:updated", updatedData)
 // }
 
-export const emitRoomUpdated = (roomId, updatedData) => {
+export const emitRoomUpdated = (roomId: RoomId, updatedData: { roomName: string; roomDescription: string }) => {
     // normalize payload: include roomId as `roomId` so client can check easily
     const payload = {
         roomId,
@@ -49,7 +55,7 @@ export const emitRoomUpdated = (roomId, updatedData) => {
  * @route   POST /api/requests
  * @access  PUBLIC
  */
-export const createRequest = async (req: any, res: Response, next: NextFunction) => {
+export const createRequest = async (req: ExpressRequest, res: Response, next: NextFunction) => {
     const { track, roomId, requestedBy } = req.body;
 
     // Validate required fields
@@ -140,7 +146,7 @@ export const createRequest = async (req: any, res: Response, next: NextFunction)
  * @route   PUT /api/requests/vote
  * @access  PUBLIC
  */
-export const upvoteRequest = async (req: any, res: Response, next: NextFunction) => {
+export const upvoteRequest = async (req: ExpressRequest, res: Response, next: NextFunction) => {
     try {
         const result = await castVote(req.body.requestId, req.cookies.sway_guest);
         // The route only carries a request ID; expose the room to the request log.
@@ -161,9 +167,9 @@ export const upvoteRequest = async (req: any, res: Response, next: NextFunction)
  * @route   PUT /api/requests/:requestId/mark-playing
  * @access  PRIVATE
  */
-const markRequestStatus = (to: "playing" | "played") => async (req: any, res: Response, next: NextFunction) => {
+const markRequestStatus = (to: "playing" | "played") => async (req: ExpressRequest<{ requestId: string }>, res: Response, next: NextFunction) => {
     try {
-        const result = await transitionRequestStatus(req.params.requestId, req.user.id, to);
+        const result = await transitionRequestStatus(req.params.requestId, req.user!.id, to);
         res.locals.roomId = String(result.request.roomId);
         for (const previous of result.demoted) emitToRoom(previous.roomId, "request:played", previous);
         if (result.changed) emitToRoom(result.request.roomId, `request:${to}`, result.request);
@@ -181,11 +187,11 @@ export const markRequestPlayed = markRequestStatus("played");
  * @route   DELETE /api/requests/:requestId/delete
  * @access  PRIVATE
  */
-export const deleteRequest = async (req: any, res: Response, next: NextFunction) => {
+export const deleteRequest = async (req: ExpressRequest<{ requestId: string }>, res: Response, next: NextFunction) => {
     const { requestId } = req.params;
 
     try {
-        const filter = await ownedRequestFilter(requestId, req.user.id);
+        const filter = await ownedRequestFilter(requestId, req.user!.id);
         const request = await Request.findOneAndDelete(filter);
         if (!request) return res.status(404).json({ success: false, error: "Resource not found", message: "Request not found." });
 
@@ -210,7 +216,7 @@ export const deleteRequest = async (req: any, res: Response, next: NextFunction)
  * @route   GET /api/requests/:roomId/requests
  * @access  PUBLIC
  */
-export const fetchRoomRequests = async (req, res) => {
+export const fetchRoomRequests = async (req: ExpressRequest<{ roomId: string }>, res: Response) => {
     const { roomId } = req.params;
 
     try {
@@ -239,7 +245,7 @@ export const fetchRoomRequests = async (req, res) => {
  * @route   GET /api/requests/:requestId
  * @access  PUBLIC
  */
-export const fetchRequestDetails = async (req, res) => {
+export const fetchRequestDetails = async (req: ExpressRequest, res: Response) => {
     const { requestId } = req.params;
 
     try {
@@ -271,14 +277,13 @@ export const fetchRequestDetails = async (req, res) => {
  * @route   GET /api/requests/:roomId/filter
  * @access  PUBLIC
  */
-export const filterRequests = async (req, res) => {
+export const filterRequests = async (req: ExpressRequest<{ roomId: string }>, res: Response) => {
     const { roomId } = req.params;
     const { status } = req.query;
 
     try {
         // Validate status
-        const validStatuses = ["pending", "playing", "played", "rejected"];
-        if (status && !validStatuses.includes(status)) {
+        if (status && !isRequestStatus(status)) {
             return res.status(400).json({
                 success: false,
                 error: "Invalid Credentials: missing status parameter",
@@ -286,7 +291,7 @@ export const filterRequests = async (req, res) => {
             });
         }
 
-        const requests = await listRoomRequests(status ? { roomId, status } : { roomId }, req.cookies.sway_guest);
+        const requests = await listRoomRequests(isRequestStatus(status) ? { roomId, status } : { roomId }, req.cookies.sway_guest);
         if (!requests) {
             return res.status(404).json({
                 success: false,
@@ -306,13 +311,16 @@ export const filterRequests = async (req, res) => {
     }
 };
 
+type RequestStatus = "pending" | "playing" | "played" | "rejected";
+
+const validStatuses: readonly unknown[] = ["pending", "playing", "played", "rejected"] satisfies RequestStatus[];
+const isRequestStatus = (value: unknown): value is RequestStatus => validStatuses.includes(value);
+
 /**
  * A room's requests, sorted by votes, with the guest's `hasVoted` on each, or null if the room doesn't exist.
  * Guests poll this, so the three reads run in parallel (one database round trip of latency instead of three),
  * the room check skips the stored QR image, and rows come back as plain objects instead of Mongoose documents.
  */
-type RequestStatus = "pending" | "playing" | "played" | "rejected";
-
 async function listRoomRequests(filter: { roomId: string; status?: RequestStatus }, guestId: string) {
     const [room, requests, votes] = await Promise.all([
         Room.exists({ _id: filter.roomId }),

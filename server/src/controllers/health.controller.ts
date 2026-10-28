@@ -10,7 +10,7 @@ import formatUptime from "../utils/formatters/format.uptime.js";
  * @access  PUBLIC
  */
 
-export const fetchRootRoute = (req, res) => {
+export const fetchRootRoute = (req: Request, res: Response) => {
     return res.status(200).json({
         success: true,
         message: "What are you doing here? This is Sway's API!",
@@ -53,7 +53,7 @@ export const fetchReadiness = (req: Request, res: Response) => {
  * @access  PRIVATE
  */
 
-export const fetchServerHealth = async (req, res) => {
+export const fetchServerHealth = async (req: Request, res: Response) => {
     if (!req.user || !req.user._id) {
         return res.status(401).json({
             success: false,
@@ -106,7 +106,7 @@ export const fetchServerHealth = async (req, res) => {
  * @access  PUBLIC
  */
 
-export const notFound = (req, res) => {
+export const notFound = (req: Request, res: Response) => {
     // pino-http logs the 404 with the request ID.
     return res.status(404).json({
         success: false,

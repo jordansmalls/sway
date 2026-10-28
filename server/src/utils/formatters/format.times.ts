@@ -1,8 +1,8 @@
-function formatTo12HourTime(dateString) {
+function formatTo12HourTime(dateString: string | number | Date) {
     const date = new Date(dateString);
 
     // Options for formatting
-    const options = {
+    const options: Intl.DateTimeFormatOptions = {
         hour: "numeric", // e.g., '1'
         minute: "2-digit", // e.g., '01'
         hour12: true, // Forces 12-hour format
@@ -14,11 +14,11 @@ function formatTo12HourTime(dateString) {
     return date.toLocaleTimeString(undefined, options);
 }
 
-function formatToFullDate12Hour(dateString) {
+function formatToFullDate12Hour(dateString: string | number | Date) {
     const date = new Date(dateString);
 
     // Options for formatting the full date and time
-    const options = {
+    const options: Intl.DateTimeFormatOptions = {
         weekday: "short", // e.g., 'Mon'
         year: "numeric",
         month: "short", // e.g., 'Sep'
