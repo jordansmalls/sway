@@ -26,8 +26,8 @@ Run commands from `server/` so dotenv can load the intended `.env`. The server c
 | `bun run start` | Run the server without watch mode |
 | `bun run test` | Run Vitest in watch mode |
 | `bun run test:run` | Run the API tests once |
-| `bun run typecheck` | Run the full TypeScript check, which still reports existing errors |
-| `bun run typecheck:check` | Fail if the TypeScript error count exceeds the checked-in baseline |
+| `bun run typecheck` | Run the full TypeScript check |
+| `bun run typecheck:check` | Fail if the TypeScript error count exceeds the checked-in baseline, currently zero |
 | `bun run format` | Run Prettier with writes across the server directory |
 
 There is no server build script. Production startup runs [src/server.ts](src/server.ts) directly with Bun.
@@ -45,18 +45,24 @@ SPOTIFY_CLIENT_ID=your-spotify-app-client-id
 SPOTIFY_CLIENT_SECRET=your-spotify-app-client-secret
 FRONTEND_URL=http://localhost:3000
 COOKIE_DOMAIN=
+RESEND_API_KEY=
+RESEND_FROM_EMAIL="Sway <no-reply@sway.onl>"
 ```
 
 | Variable | Use |
 | --- | --- |
 | `PORT` | HTTP and Socket.IO port; defaults to 9999 |
-| `MONGO_URI` | MongoDB connection string |
-| `JWT_SECRET` | Secret used to sign and verify real-account login tokens |
-| `NODE_ENV` | Controls cookie security, proxy handling, and error details; use `development` for local HTTP |
-| `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET` | Server-side Spotify app credentials; required for live catalog requests in real and demo rooms |
-| `FRONTEND_URL` | Exact frontend origin used by Express CORS and Socket.IO CORS; omit a trailing slash. QR codes always use `https://app.sway.onl`. |
+| `MONGO_URI` | Required. MongoDB connection string |
+| `JWT_SECRET` | Required. Secret used to sign and verify real-account login tokens |
+| `NODE_ENV` | Controls cookie security, proxy handling, the production cookie domain default, and HTTPS enforcement for reset links; use `development` for local HTTP |
+| `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET` | Required. Server-side Spotify app credentials for live catalog requests and request metadata in real and demo rooms |
+| `FRONTEND_URL` | Required. Exact frontend origin used by Express CORS, Socket.IO CORS, and password reset links; omit a trailing slash. QR codes always use `https://app.sway.onl`. |
 | `LOG_LEVEL` | Optional pino level (`debug`, `info`, `warn`, `error`). Defaults to `info`, and to `silent` under tests |
 | `COOKIE_DOMAIN` | Optional cookie domain override; omit locally. Production defaults to `.sway.onl` for the `app.sway.onl`/`api.sway.onl` deployment |
+| `RESEND_API_KEY` | Optional. Enables password reset email delivery; see [Resend configuration](#resend-configuration) |
+| `RESEND_FROM_EMAIL` | Optional sender; defaults to `Sway <no-reply@sway.onl>` |
+
+The server validates the required variables, and that `FRONTEND_URL` is a bare HTTP(S) origin, before connecting to MongoDB. It refuses to start if either check fails.
 
 There are no additional demo environment variables or shared demo credentials. Seeded demo tracks require no upstream Spotify calls, searching or submitting a new track requires valid Spotify credentials.
 
@@ -69,6 +75,8 @@ Express and Socket.IO CORS both use the normalized `FRONTEND_URL`. The server de
 
 Real account auth uses a shared cookie policy for creation and removal: `HttpOnly`, `SameSite=Lax`, path `/`, and a 30 day lifetime. It is `Secure` in production and uses `.sway.onl` by default there; development cookies are insecure and host-only. This supports the same-site `app.sway.onl` and `api.sway.onl` deployment while preserving the existing production cookie scope. Cross-origin requests must include credentials.
 
+Guest routes (request submission, voting, request lists, and the Spotify catalog) set a `sway_guest` cookie with the same flags, holding a random UUID for one year. It identifies a guest without an account: it keys votes, the per-guest pending-request cap, and the per-guest rate limits.
+
 Demo requests use `X-Demo-Token`, which is included in the API's allowed headers, instead of login cookies.
 
 ## Structure
@@ -78,12 +86,15 @@ Demo requests use `X-Demo-Token`, which is included in the API's allowed headers
 | [src/server.ts](src/server.ts) | Database connection, index builds, cleanup startup, HTTP listener, sockets, and signal handling |
 | [src/shutdown.ts](src/shutdown.ts) | Graceful shutdown on `SIGTERM`/`SIGINT` |
 | [src/app.ts](src/app.ts) | Express middleware, router registration, demo-token guard, and errors |
-| [src/config](src/config/) | Environment configuration, MongoDB, and logging |
-| [src/models](src/models/) | User, Room, and Request schemas |
+| [src/config](src/config/) | Environment configuration and validation, MongoDB, and logging |
+| [src/models](src/models/) | User, Room, Request, and Vote schemas, plus the embedded email-token schema |
 | [src/routes](src/routes/) | Normal API route registration |
-| [src/controllers](src/controllers/) | Account, room, request, catalog, analytics, export, and health handlers |
-| [src/middlewares](src/middlewares/) | Cookie authentication, error handling, and normal rate limiters |
-| [src/demo](src/demo/) | Demo model, seed data, restricted routes, display QR, Spotify cache, and limits |
+| [src/controllers](src/controllers/) | Account, password reset, room, request, catalog, profile and user analytics, global analytics, export, and health handlers |
+| [src/services](src/services/) | Playback transitions, guest votes and queue caps, request metadata, the shared Spotify client and token, password reset, email tokens, and email delivery |
+| [src/middlewares](src/middlewares/) | Cookie authentication, room-owner detection, the guest cookie, error handling, and normal rate limiters |
+| [src/utils](src/utils/) | JWT cookies, room codes and QR images, formatters, the curated recommendation fallback, and shared helpers |
+| [src/types](src/types/) | Local type declarations for `csv-writer` |
+| [src/demo](src/demo/) | Demo model, seed data, restricted routes, display QR, upstream Spotify quota, and limits |
 | [src/socket.ts](src/socket.ts) | Real-room Socket.IO subscriptions and broadcasts |
 | [tests](tests/) | Vitest/Supertest integration tests and temporary MongoDB setup |
 | [scripts](scripts/) | Data repairs and index migrations, plus the TypeScript error guard |
@@ -93,16 +104,19 @@ Demo requests use `X-Demo-Token`, which is included in the API's allowed headers
 
 | Model | Important fields and behavior |
 | --- | --- |
-| [User](src/models/user.model.ts) | Unique email, optional unique username, bcrypt-hashed password, `active`, `hasActiveRoom`, `hasUsername`, `admin`, timestamps |
+| [User](src/models/user.model.ts) | Unique email, optional unique username, bcrypt-hashed password, `active`, `sessionVersion`, hidden `emailTokens`, `hasActiveRoom`, `hasUsername`, `admin`, timestamps |
 | [Room](src/models/room.model.ts) | `roomName` (100 characters), `roomDescription` (450), unique room code (up to 5), QR data URL, creator reference, active state, nullable `scheduledAt`, timestamps |
-| [Request](src/models/request.model.ts) | Room reference, status, votes, optional requester, `playedAt`, `completedAt`, Spotify metadata, timestamps |
+| [Request](src/models/request.model.ts) | Room reference, status, votes, optional requester, hidden `guestId`, optional `replayOf`, `playedAt`, `completedAt`, required Spotify `track` metadata, timestamps |
+| [Vote](src/models/vote.model.ts) | One document per guest per request (`requestId`, `roomId`, `guestId`), unique on request and guest |
 | [DemoSession](src/demo/demo.model.ts) | Separate `demosessions` document containing a synthetic host, room, requests, vote history, token hashes, and fixed expiry |
 
-Usernames accept 3–20 letters, digits, or underscores. Passwords have an 8 character minimum and are hashed before saving. Account “deletion” sets `active=false` and clears the login cookie, it does not purge the user or their room history.
+Usernames accept 3–20 letters, digits, or underscores. Passwords have an 8 character minimum and are hashed before saving. Changing the password or deactivating the account increments `sessionVersion`, which revokes existing login cookies. Account “deletion” sets `active=false`, removes vote records for the DJ's rooms, and clears the login cookie. It does not purge the user or their room history.
 
-Requests have `pending`, `playing`, `played`, or `rejected` status. Votes start at one. Track metadata includes `spotifyTrackId`, `title`, `artist`, `albumArtUrl`, `spotifyLink`, and `spotifyURI`. Playback transitions maintain timestamps for history and analytics.
+Requests have `pending`, `playing`, `played`, or `rejected` status. A new request starts with one vote, the submitter's. Track metadata includes `spotifyTrackId`, `title`, `artist`, `albumArtUrl`, `spotifyLink`, and `spotifyURI`.
 
-The partial unique index `one_active_room_per_creator` enforces one active room per DJ, so concurrent creates get a `409` instead of a second room. Ending a room is a single conditional update. `hasActiveRoom` in API responses is computed from the rooms collection; the stored `User.hasActiveRoom` field is no longer written. Deleting a room removes its requests. The `scheduledAt` field exists, but room creation and automatic scheduled activation are not implemented as a complete scheduling workflow. (coming soon)
+Playback moves a request from `pending` to `playing`, then to `played`. Marking a track playing moves whichever track was playing to `played`, and the partial unique index `one_playing_per_room` keeps a room to one playing request. Replaying a `played` track never reopens the original: it promotes a pending re-request of the same track, or creates a new request with `replayOf` pointing at the original. Any other transition returns `409`. `playedAt` records when a track started playing and `completedAt` when it finished. The `unique_active_track_per_room` index keeps a track from appearing twice among a room's pending and playing requests.
+
+The partial unique index `one_active_room_per_creator` enforces one active room per DJ, so concurrent creates get a `409` instead of a second room. Ending a room is a single conditional update. `hasActiveRoom` in API responses is computed from the rooms collection; the stored `User.hasActiveRoom` field is no longer written. Deleting a room removes its requests and votes. The `scheduledAt` field exists, but room creation and automatic scheduled activation are not implemented as a complete scheduling workflow. (coming soon)
 
 ## API conventions
 
@@ -110,7 +124,7 @@ Normal endpoints are prefixed with `/api`, health routes are outside that prefix
 
 “Private” below means the route uses the real account JWT middleware. Additional authorization depends on the controller, it does not imply every legacy route performs the same ownership checks. Demo tokens cannot authorize normal routes: [app.ts](src/app.ts) rejects `X-Demo-Token` on non-demo `/api` requests.
 
-Most JSON responses include `success` plus the result key listed below. Common errors use `{ success: false, message }`, sometimes with an additional `error` field. File exports return downloads, and the vote limiter returns a plain-text error, so clients should not assume every response is JSON. The other limiters return the JSON error shape with status `429`.
+Most JSON responses include `success` plus the result key listed below. Common errors use `{ success: false, message }`, sometimes with an additional `error` field. `500` responses carry a generic message and never include internal error details. File exports return downloads, and the guest-write limiters on `POST /api/requests` and `PUT /api/requests/vote` return plain-text errors, so clients should not assume every response is JSON. The other limiters return the JSON error shape with status `429`.
 
 ### Authentication
 
@@ -124,6 +138,8 @@ Prefix: `/api/auth`.
 | GET | `/email/:email` | Public | Email availability in `taken` |
 | POST | `/login` | Public | `identifier` (username or email), `password`; set the login cookie |
 | POST | `/logout` | Public | Clear the login cookie |
+| POST | `/forgot-password` | Public | `email`; always the same `200` response. See [Password reset](#password-reset) |
+| POST | `/reset-password` | Public | `token`, `newPassword`; reset the password and clear the login cookie |
 
 ### Users
 
@@ -151,7 +167,7 @@ Prefix: `/api/rooms`.
 | PUT | `/end` | Private, owner only | `roomId`; end the room. `400` malformed ID, `403` another DJ's room, `404` missing, `409` already ended |
 | GET | `/recent` | Private | `latestRooms`: up to five rooms, active first, then newest |
 | GET | `/active/summary` | Private | `activeRoom` with summary metrics, or `null` |
-| PUT | `/:roomId` | Private | `roomName` and/or `roomDescription`; returns `updatedRoom` |
+| PUT | `/:roomId` | Private, owner only | `roomName` and/or `roomDescription`; returns `updatedRoom` |
 | DELETE | `/:roomId` | Private, owner only | Removes the room and its requests; no body required |
 | GET | `/:roomCode` | Public | `roomDetails` |
 | GET | `/:roomCode/fetch/requests` | Public | Normalized queue in `data`, including Spotify links and status |
@@ -167,18 +183,20 @@ Prefix: `/api/requests`.
 
 | Method | Path | Access | Input / result |
 | --- | --- | --- | --- |
-| POST | `/` | Public | `roomId`, optional `requestedBy`, and `track`; returns `request` |
-| PUT | `/vote` | Public | `requestId`; upvote a request |
-| PUT | `/:requestId/mark-playing` | Private | Also send `requestId` in the body |
-| PUT | `/:requestId/mark-played` | Private | Also send `requestId` in the body |
-| DELETE | `/:requestId/delete` | Private | Also send `requestId` in the body |
+| POST | `/` | Public | `roomId`, optional `requestedBy`, and `track`; returns `request` with `201`, or `200` and `alreadyQueued: true` when the track is already in the queue |
+| PUT | `/vote` | Public | `requestId`; upvote a request. A repeat vote returns `alreadyVoted: true` without counting |
+| PUT | `/:requestId/mark-playing` | Private, room owner | Start playing a request; returns `request` |
+| PUT | `/:requestId/mark-played` | Private, room owner | Finish a playing request; returns `request` |
+| DELETE | `/:requestId/delete` | Private, room owner | Remove a request and its votes |
 | GET | `/:roomId/requests` | Public | `requests` ordered by votes |
 | GET | `/:requestId` | Public | One `request` |
 | GET | `/:roomId/filter?status=pending` | Public | `requests` matching the status |
 
-The normal create handler accepts Spotify search fields `track.id`, `track.name`, `track.artist`, and optional `track.albumImage`. It stores normalized track fields and derived Spotify links. Use the shared client track mapper rather than assuming search and stored track shapes are identical. New requests, duplicate submissions, and votes return 409 after the room has ended. A room holds at most 200 pending requests, and each guest at most 5. The 5-request cap and the guest rate limits don't apply when the signed-in DJ adds to their own room, for example from the recommendations panel.
+The normal create handler accepts the Spotify search shape: `track.id` is required, and `track.name`, `track.artist`, and `track.albumImage` are fallbacks. The server looks up the canonical title, artist, and artwork from Spotify, then stores them with derived Spotify links. It uses the submitted metadata only when Spotify returns `429` or `503`, so a provider outage doesn't stop the queue. Use the shared client track mapper rather than assuming search and stored track shapes are identical.
 
-Demo submissions instead require `track.spotifyTrackId` and resolve canonical metadata server side. The client mapper supplies the aliases needed by both contracts. This server verification is specific to the demo path, not a guarantee of the legacy normal request handler.
+Submitting a track that is already pending or playing adds the guest's vote to the existing request instead of creating a duplicate. Each guest gets one vote per request, tracked by the `sway_guest` cookie. New requests, duplicate submissions, and votes return 409 after the room has ended, and votes also return 409 once a request has been played. A room holds at most 200 pending requests, and each guest at most 5. The 5-request cap and the guest rate limits don't apply when the signed-in DJ adds to their own room, for example from the recommendations panel.
+
+Demo submissions instead require `track.spotifyTrackId` and also resolve canonical metadata server side. The client mapper supplies the aliases needed by both contracts.
 
 ### Spotify
 
@@ -186,13 +204,15 @@ Prefix: `/api/spotify`. These normal routes are public.
 
 | Method | Path | Result |
 | --- | --- | --- |
-| GET | `/search?q=track+or+artist` | Up to eight normalized `tracks` |
-| GET | `/tracks/:id` | One `track` with additional metadata |
-| GET | `/artists/:id/top-tracks` | Artist's top `tracks` |
+| GET | `/search?q=track+or+artist` | Up to eight normalized `tracks`; `q` is required, up to 200 characters |
+| GET | `/tracks/:id` | One `track` |
+| GET | `/artists/:id/top-tracks` | Artist's top `tracks` in the US market |
 
-Search results include `id`, `name`, `artist`, `duration_ms`, `albumImage`, and `uri`. The server uses a cached Spotify client credentials access token. No visitor Spotify login, external account connection, or audio playback is involved.
+Tracks include `id`, `name`, `artist`, `album`, `albumImage`, `duration_ms`, `uri`, `popularity`, and `previewUrl`. The server uses a cached Spotify client credentials access token. No visitor Spotify login, external account connection, or audio playback is involved.
 
-Demo search and track lookup have separate authenticated routes, metadata caching, and additional limits described below.
+The shared [Spotify client](src/services/spotify-client.ts) serves these routes, request metadata lookups, and the demo. Results go into a bounded 500-entry, five-minute in-process cache, and search results also prime the track cache. Upstream requests time out after eight seconds. A Spotify `429` pauses all upstream calls for its `Retry-After` period (30 seconds if absent) and returns `429` with `Retry-After`. Other upstream failures return `503`, and missing tracks return `404`.
+
+Demo search and track lookup have separate authenticated routes and additional limits described below.
 
 ### User analytics
 
@@ -207,13 +227,16 @@ Prefix: `/api/analytics/:userId`.
 | GET | `/most-requested-songs` | Public | Up to ten `songs` |
 | GET | `/most-played-songs` | Public | Up to ten `songs` |
 | GET | `/most-upvoted-songs` | Public | Up to ten `songs` |
+| GET | `/recommended-tracks` | Public | `source` and up to 20 recommended `tracks` |
 | GET | `/request-activity?range=7d` | Private, owner or admin | `range`, `interval`, and activity `data` |
 
-Song rankings include Spotify metadata, `requestCount`, `playCount`, `totalVotes`, `latestRequestedAt`, and `latestPlayedAt`. These support profile/dashboard tables and room recommendations.
+Song rankings include Spotify metadata, `requestCount`, `playCount`, `totalVotes`, `latestRequestedAt`, and `latestPlayedAt`. These support profile and dashboard tables.
+
+Recommended tracks power the room admin's recommendations panel. Once a DJ has played 20 different songs, the response uses `source: "personal"` and lists their most played songs. Until then, it uses `source: "global"` with Sway's most played tracks, topped up from a curated list of popular songs ([popular.tracks.ts](src/utils/popular.tracks.ts), reusing the demo's verified Spotify snapshots). With no global play history yet, the source is `popular`.
 
 Request activity defaults to `30d`; accepted ranges are `7d`, `30d`, `90d`, `6m`, `1y`, and `all`. Daily buckets serve the first three ranges, weekly buckets serve `6m`, monthly buckets serve `1y`, and `all` chooses a granularity based on history length. Buckets use UTC and include zero-count periods. Each item contains `date`, `requestsReceived`, and `requestsPlayed`; received counts use creation time, while played counts use played status and `playedAt`. The dashboard currently requests `7d`.
 
-The other analytics routes are public in the current router, including song rankings. Do not treat them as private account data.
+The other analytics routes are public in the current router, including song rankings and recommendations. Do not treat them as private account data.
 
 ### Global analytics
 
@@ -222,12 +245,12 @@ Prefix: `/api/global`. All routes are public.
 | Method | Path | Result |
 | --- | --- | --- |
 | GET | `/tracks` | Top ten requested tracks in `data` |
-| GET | `/tracks/played` | Top five played tracks in `data`, including `playCount` |
+| GET | `/tracks/played` | Top 20 played tracks in `data`, including `playCount` and `latestPlayedAt` |
 | GET | `/artists` | Top ten requested artists in `data` |
 | GET | `/requests` | `totalRequests` |
 | GET | `/rooms` | `totalRooms` |
 
-Ranking endpoints use a five-day in-process cache and expose a `cached` flag. These are not live rankings. Demo documents do not contribute to real global statistics.
+Ranking endpoints use an in-process cache and expose a `cached` flag. Requested tracks and artists are cached for five days. Played tracks are cached for one hour so recommendations pick up new plays. These are not live rankings. Demo documents do not contribute to real global statistics.
 
 ### Exporting data
 
@@ -242,9 +265,9 @@ Prefix: `/api/exports`.
 | GET | `/:roomCode/export/csv` | Private, room owner | Room-request CSV download |
 | GET | `/:roomCode/export/txt` | Private, room owner | Room-request text download |
 
-Exports require an ended room, and demo exports are unavailable.
+Exports require an ended room; an active room returns 400. Demo exports are unavailable.
 
-Guests receive 401 and other DJs receive 403. CSV exports quote every field and prefix formula-like or leading control-character text with an apostrophe. JSON and text exports preserve the original text. The current room history UI exposes request JSON export; the file helpers also support CSV and TXT.
+Guests receive 401 and other DJs receive 403. CSV exports quote every field and prefix formula-like or leading control-character text with an apostrophe. JSON and text exports preserve the original text. A played song without a recorded `playedAt` gets an empty Played At value rather than a placeholder date. The room history UI exposes tracklist export as JSON, CSV, or TXT, and request export as JSON; the client file helpers also support request CSV and TXT.
 
 ### Server health
 
@@ -281,11 +304,11 @@ Every request validates fixed expiry and scopes resource lookups to the session.
 
 [demo.tracks.ts](src/demo/demo.tracks.ts) holds checked in snapshots of real Spotify tracks with artwork, IDs, and links plus their verification dates. [demo.seed.ts](src/demo/demo.seed.ts) assembles synthetic requests, history, votes, and recommendations. Spotify links work throughout the queue, recommendations, and tracklist. Sway changes request state but does not play audio or connect a visitor's Spotify account.
 
-Recommendations use 19 separately curated tracks across rows of 10 and 9, with sample historical counts such as 203, 331, 98, and 121. For their respective artists. Recommendation counts, initial votes, requesters, and play history are simulated rather than Spotify listening statistics. Queue defaults are maintained separately from recommendations. Existing sessions load changed defaults when reset, not by automatic overwrites.
+Recommendations use 19 separately curated tracks across rows of 10 and 9, with sample historical play counts such as 203, 331, 98, and 121. Recommendation counts, initial votes, requesters, and play history are simulated rather than Spotify listening statistics. Queue defaults are maintained separately from recommendations. Existing sessions load changed defaults when reset, not by automatic overwrites.
 
 Live searches reuse the app's shared Spotify search component and the server's client credentials integration, visitors never log into Spotify. Demo submissions validate a 22-character Spotify track ID and resolve titles, artists, and artwork server-side rather than trusting browser metadata. Search queries must contain 2–100 characters.
 
-Demo Spotify results and canonical track metadata have a bounded 500-entry, five-minute server cache with duplicate in-flight requests coalesced. Upstream requests have eight-second timeouts; Spotify 429 responses preserve `Retry-After` and pause new upstream calls for that period. Seed rendering needs no live Spotify access, while search and newly submitted tracks require the existing `SPOTIFY_CLIENT_ID` and `SPOTIFY_CLIENT_SECRET`. No demo-specific environment variables are required.
+Demo search and track metadata share the server's [Spotify catalog cache](#spotify) (500 entries, five minutes, duplicate in-flight requests coalesced) but keep their own upstream quota. Upstream requests have eight-second timeouts; Spotify 429 responses preserve `Retry-After` and pause new upstream calls for that period. Seed rendering needs no live Spotify access, while search and newly submitted tracks require the existing `SPOTIFY_CLIENT_ID` and `SPOTIFY_CLIENT_SECRET`. No demo-specific environment variables are required.
 
 ### Demo display and synchronization
 
@@ -373,7 +396,7 @@ Guest room reads (`/api/rooms/join`, `/api/rooms/:roomCode/...`, request lists) 
 - **Requests:** [pino-http](https://github.com/pinojs/pino-http) logs one line per response, with method, URL, status, and `responseTime`. 5xx responses log at `error`, 4xx at `warn`, and everything else at `info`.
 - **Request IDs:** every response carries `X-Request-Id`. A well-formed incoming `X-Request-Id` is reused; otherwise the server generates a UUID. The ID appears as `req.id`, and controller logs written with `req.log` carry it too.
 - **Room and user context:** mutation requests (`POST`, `PUT`, `PATCH`, `DELETE`) add `userId` for authenticated DJs and `roomId` from the route, the body, or the room the controller resolved (new rooms, and votes and DJ request actions whose URL only carries a request ID). To answer "what happened in room X at 22:14?", filter on `roomId` and the time.
-- **Redaction:** `cookie`, `authorization`, and `Set-Cookie` headers are replaced with `[Redacted]`.
+- **Redaction:** `cookie`, `authorization`, `X-Demo-Token`, and `Set-Cookie` headers are replaced with `[Redacted]`.
 - **Errors:** controllers log caught errors with `req.log.error({ err }, ...)`. Unhandled errors reach the error middleware, which attaches them to the request's completion line, so each one is logged once with its stack. Spotify failures log only the endpoint, upstream status and error code, never Axios request headers. Code outside a request, such as the Spotify token fetch and demo cleanup, uses the shared `logger`. Nothing in `src/` uses `console.*`.
 
 ## Socket.IO
@@ -386,6 +409,7 @@ The server supports WebSocket and polling transports. A client emits `join-room`
 | `room:ended` | `{ roomId }` |
 | `request:created`, `request:updated`, `request:playing`, `request:played` | Request document |
 | `request:deleted` | `{ requestId }` |
+| `room:error` | `{ message }`, sent only to the requesting socket when a join or leave fails |
 
 The client normalizes request events into its query cache. Client-sent events other than `join-room` and `leave-room` are ignored. [socket.test.ts](tests/socket.test.ts) checks that a forged `room:update` broadcasts nothing.
 
@@ -438,17 +462,22 @@ Each virtual user keeps its own `sway_guest` cookie, so the per-guest limits beh
 bun run test:run
 ```
 
-[vitest.config.ts](vitest.config.ts) runs [tests](tests/) with Supertest and temporary MongoDB instances. Tests cover auth and health behavior, plus demo isolation, role permissions, fixed expiry, cleanup, reset, real-login preservation, voting, playback, room editing/ending, display behavior, Spotify metadata, caching, endpoint/upstream quotas, and provider errors.
+[vitest.config.ts](vitest.config.ts) runs [tests](tests/) with Supertest and temporary MongoDB instances. Coverage includes:
+
+- **Accounts:** auth, cookies, session revocation, password reset, and the authorization sweep across private routes.
+- **Rooms and queue:** one active room per DJ, room lifecycle and QR codes, playback transitions and replays, guest votes, queue caps, request metadata, exports, and recommendations.
+- **Operations:** health and readiness, graceful shutdown, structured logging, error responses, Socket.IO broadcasts, Spotify resilience and log safety, and the TypeScript guard.
+- **Demo:** isolation, role permissions, fixed expiry, cleanup, reset, real-login preservation, voting, playback, room editing/ending, display behavior, Spotify metadata, caching, endpoint/upstream quotas, and provider errors.
 
 Spotify responses are mocked in the demo tests. The normal limiters are mocked in shared test setup. [rate-limits.test.ts](tests/rate-limits.test.ts) and [authz-sweep.test.ts](tests/authz-sweep.test.ts) run the real credential, DJ, and public-read limiters, and [guest-write-limits.test.ts](tests/guest-write-limits.test.ts) enables the real guest-write limiters on the real app. It checks the shared per-guest budget across votes and submissions, the network ceiling, database effects, and broadcasts. [spotify-limits.test.ts](tests/spotify-limits.test.ts) does the same for the Spotify catalog limiters. [guest-votes.test.ts](tests/guest-votes.test.ts) covers one vote per guest per request under concurrent calls. Demo limits have separate coverage. A first run may require network access to download a MongoDB binary. Live catalog verification requires working app credentials and is separate from this suite.
 
 For UI verification, run `pnpm build` from `client/` and follow its [build and deployment guidance](../client/README.md#build-and-deployment).
 
-### CI and TypeScript debt
+### CI and the TypeScript guard
 
 [CI](../.github/workflows/ci.yml) installs frozen lockfiles and runs the server tests and `bun run typecheck:check`, plus client lint, build, and unit tests. Dependency audits report findings without blocking these checks.
 
-The server's full typecheck still reports existing semantic errors. The guard in [scripts/check-typecheck.ts](scripts/check-typecheck.ts) counts TypeScript diagnostic objects and compares the count with [typecheck-baseline.json](typecheck-baseline.json). Compiler, configuration, syntax, and global failures always fail the guard. It forces semantic checking even if `noCheck` is enabled. Twelve CLI integration tests verify the guard against isolated project fixtures. Fix new diagnostics instead of increasing `maxErrors`. When a change reduces the count, lower the baseline to preserve that improvement. At zero, any TypeScript error fails CI.
+The server's full typecheck is clean, and [typecheck-baseline.json](typecheck-baseline.json) sets `maxErrors` to 0, so any TypeScript error fails CI. The guard in [scripts/check-typecheck.ts](scripts/check-typecheck.ts) counts TypeScript diagnostic objects and compares the count with the baseline. Compiler, configuration, syntax, and global failures always fail the guard. It forces semantic checking even if `noCheck` is enabled. Twelve CLI integration tests verify the guard against isolated project fixtures. Fix new diagnostics rather than raising `maxErrors`.
 
 ## Deployment notes
 
@@ -483,9 +512,9 @@ Stop the old server, for example by scaling the service to zero, before running 
 1. **Environment.** `NODE_ENV=production`, `MONGO_URI`, `JWT_SECRET` (keep the existing one so sessions stay valid), `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET`, and `FRONTEND_URL=https://app.sway.onl`. Optional: `COOKIE_DOMAIN` (defaults to `.sway.onl`) and `LOG_LEVEL` (defaults to `info`). The server refuses to start if a required variable is missing.
 2. **Railway settings.** Set the healthcheck path to `/health/ready`, run one replica, set the start command to `bun run start`, and set the root directory to `/server`.
 3. **Index repairs, before deploying code that adds the indexes.** Each script is a dry run by default and changes data only with `--apply`. Run the dry run, read the output, then stop the old server (scale the service to zero) and apply, so no write races the repair. The server calls `Request.init()` and `Room.init()` at boot and won't start while duplicates block an index. Run them in this order:
-   1. `bun run scripts/repair-playing.ts` (from the Phase 1.1 work) demotes all but the newest `playing` request per room, for `one_playing_per_room`.
+   1. `bun run scripts/repair-playing.ts` demotes all but the newest `playing` request per room, for `one_playing_per_room`.
    2. `bun run scripts/repair-active-rooms.ts` ends all but each DJ's newest active room, for `one_active_room_per_creator`.
-   3. `bun run scripts/recount-votes.ts --since <guest-vote rollout ISO time>` (from the Phase 1.3 work) recalculates `votes` from the `Vote` collection for requests created after that time. Older requests have no `Vote` rows and keep their totals. Run it when a crash between a vote insert and its counter update could have left counts off by one. It's a dry run unless you add `--apply`, and guest writes must be stopped first.
+   3. `bun run scripts/recount-votes.ts --since <guest-vote rollout ISO time>` recalculates `votes` from the `Vote` collection for requests created after that time. Older requests have no `Vote` rows and keep their totals. Run it when a crash between a vote insert and its counter update could have left counts off by one. It's a dry run unless you add `--apply`, and guest writes must be stopped first.
 
    `scripts/merge-duplicate-requests.ts` is the older repair for `unique_active_track_per_room`. You only need it if `Request.init()` reports duplicate active tracks.
 4. **Deploy**, then confirm `GET /health/ready` returns `200` and the logs show `Server is live`.
@@ -494,7 +523,7 @@ Stop the old server, for example by scaling the service to zero, before running 
    2. Open the room link on a phone (not logged in) and join it.
    3. Submit a track from the phone, then vote on another request. The DJ dashboard should update live without a refresh.
    4. As the DJ, mark a request playing, then played. The phone should show the change live.
-   5. End the room, then export its requests (JSON, CSV, TXT) and tracklist from room history. Each should download, and the guest's submission should be in it.
+   5. End the room, then from room history export its tracklist (JSON, CSV, TXT) and its requests (JSON). Each should download, and the guest's submission should be in the request export.
    6. Delete the throwaway room.
 
 Keep one Railway replica until Socket.IO has a multi-instance adapter and the process-local rate limits and caches have shared backing stores. Preserve the `X-Demo-Token` request header through any additional proxy or CDN layer.

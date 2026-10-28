@@ -25,12 +25,12 @@ Sway exists because I had finally reached my breaking point: an individual stumb
 - Create rooms with a name and description, and automatically receive a custom generated room code, and QR code.
 - Manage one active room at a time: mark tracks as playing or played, remove requests, edit room details, manually add requests, and end the event.
 - Dedicated room display, showcasing room details and providing an easy way for guests to join live rooms.
-- A custom song recommendation engine, based on personal insights and global play history.
+- A custom song recommendation engine, based on personal insights and global play history, with one-tap add to queue.
 - Access to custom insights and analytics: request totals, play totals, play conversion, personal/global track statistics, weekly or monthly history and more.
-- Search through past rooms to review play rates, tracklists, and export tracklists and request lists as JSON, CSV, or TXT files.
+- Search through past rooms to review play rates and tracklists, export tracklists as JSON, CSV, or TXT files, and export request lists as JSON.
 - A public profile with event and music statistics.
 
-Sway ships with an isolated demo experience, that refresh through their own polling cache, so new users can try the experience with zero friction.
+Sway ships with an isolated demo experience that refreshes through its own polling cache, so new users can try the experience with zero friction.
 
 
 ## How it works
@@ -74,7 +74,7 @@ pnpm dev
 
 The client runs at [localhost:3000](http://localhost:3000), and the API defaults to [localhost:9999](http://localhost:9999). Vite proxies `/api` and `/socket.io` to the API during development, so no client environment variables are required for this setup.
 
-Set `NODE_ENV=development`, `FRONTEND_URL=http://localhost:3000`, a `MONGO_URI`, a private `JWT_SECRET`, and your server-side Spotify client ID and secret in `server/.env`.
+Set `NODE_ENV=development`, `FRONTEND_URL=http://localhost:3000`, a `MONGO_URI`, a private `JWT_SECRET`, and your server-side Spotify client ID and secret in `server/.env`. The server refuses to start if any of these are missing. Resend settings are optional; without them, password reset emails aren't sent.
 
 See [server configuration](server/README.md#environment-variables) and [client deployment](client/README.md#build-and-deployment) before changing ports or deploying. Production hosting needs SPA route fallback and API/WebSocket routing, the development proxy is not a production proxy.
 
@@ -89,7 +89,7 @@ Run these from their respective directories:
 | `client` | `pnpm test` | Run the Bun unit tests |
 | `server` | `bun run test:run` | Run the Vitest API suite once |
 | `server` | `bun run test` | Watch the API tests |
-| `server` | `bun run typecheck:check` | Reject increases in the existing TypeScript error count |
+| `server` | `bun run typecheck:check` | Fail on any TypeScript error (the checked-in baseline is zero) |
 
 Server tests use temporary MongoDB instances and mocked Spotify responses. A first test run may need to download a MongoDB binary. Live Spotify behavior needs a separate smoke test with working app credentials.
 
@@ -99,11 +99,11 @@ Server tests use temporary MongoDB instances and mocked Spotify responses. A fir
 
 | Layer | Technologies |
 | --- | --- |
-| Client | React 19, TypeScript, Vite, React Router, TanStack Query, Zustand, Axios |
-| Interface | Tailwind CSS, shadcn/ui and Radix UI, Motion, Recharts |
-| Server | Bun, Express, Mongoose, JWT cookies, bcrypt, express-rate-limit |
-| Data and realtime | MongoDB, Spotify API, Socket.IO |
-| Testing | Vitest, Supertest, mongodb-memory-server |
+| Client | React 19, TypeScript, Vite, React Router, TanStack Query, Axios |
+| Interface | Tailwind CSS, shadcn/ui and Radix UI, Magic UI components, Recharts, Sonner |
+| Server | Bun, Express 5, Mongoose, JWT cookies, bcryptjs, express-rate-limit, pino |
+| Data and realtime | MongoDB, Spotify API, Socket.IO, Resend (password reset email) |
+| Testing | Vitest, Supertest, mongodb-memory-server, Bun's test runner, Artillery |
 
 ## Repository and documentation
 
@@ -112,7 +112,7 @@ Server tests use temporary MongoDB instances and mocked Spotify responses. A fir
 - [Server demo documentation](server/README.md#public-demo-api): private session design, seeded data, live Spotify requests, isolation, expiry, and quotas.
 - [Screenshot assets](readme-assets/): existing product images.
 
-Normal room data lives in the User, Room, and Request collections. Temporary demo data lives in a separate DemoSession collection, behind its own API namespace. Spotify credentials stay entirely on the server.
+Normal room data lives in the User, Room, Request, and Vote collections. Temporary demo data lives in a separate DemoSession collection, behind its own API namespace. Spotify credentials stay entirely on the server.
 
 ## Screenshots
 
