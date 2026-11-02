@@ -6,6 +6,7 @@ import { emitRoomEnded, emitRoomUpdated } from "./request.controller";
 import Request from "../models/request.model";
 import { createSpotifyLink, createSpotifyUriLink } from "../utils/formatters/format.spotify";
 import { generateRoomQr } from "../utils/room.qr";
+import { withQueueAdmission } from "../services/guest-votes";
 import type { NextFunction, Request as ExpressRequest, Response } from "express";
 
 /**
@@ -229,11 +230,9 @@ export const updateRoom = async (req: ExpressRequest<{ roomId: string }>, res: R
         if (roomDescription !== undefined) update.roomDescription = roomDescription;
         if (allowExplicit !== undefined) update.allowExplicit = allowExplicit;
 
-        const updatedRoom = await Room.findByIdAndUpdate(
-            roomId,
-            update,
-            { new: true, runValidators: true },
-        );
+        const write = () => Room.findByIdAndUpdate(roomId, update, { new: true, runValidators: true });
+        // Wait for in-flight admissions, so no request checked against the old setting is written after this saves.
+        const updatedRoom = allowExplicit === undefined ? await write() : await withQueueAdmission(roomId, write);
 
         if (!updatedRoom) {
             return res.status(500).json({

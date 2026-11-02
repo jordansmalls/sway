@@ -113,4 +113,20 @@ describe("Explicit filter on requests", () => {
         expect((await SongRequest.findOne({ roomId }))?.votes).toBe(1);
         expect(emit).not.toHaveBeenCalled();
     });
+
+    it("rejects a request whose Spotify lookup was still pending when the DJ turned the filter on", async () => {
+        const dj = authCookie(await request(app).post("/api/auth").send({ email: "racer@example.com", password: "password123" }).expect(201));
+        const roomId = (await request(app).post("/api/rooms").set("Cookie", dj).send({ roomName: "Live set", roomDescription: "Tonight" }).expect(201)).body.newRoom._id;
+        let finishLookup!: (track: SpotifyCatalogTrack) => void;
+        vi.mocked(getSpotifyTrack).mockReturnValueOnce(new Promise((resolve) => { finishLookup = resolve; }));
+
+        const pending = add(roomId).then((response) => response);
+        await vi.waitFor(() => expect(getSpotifyTrack).toHaveBeenCalledOnce());
+        await request(app).put(`/api/rooms/${roomId}`).set("Cookie", dj).send({ allowExplicit: false }).expect(200);
+        emit.mockClear();
+        finishLookup(canonical(true));
+
+        expect((await pending).status).toBe(422);
+        await expectNothingWritten();
+    });
 });

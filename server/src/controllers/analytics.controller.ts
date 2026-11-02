@@ -226,7 +226,8 @@ const songGroupStage = {
         albumArtUrl: { $first: "$track.albumArtUrl" },
         spotifyLink: { $first: "$track.spotifyLink" },
         spotifyURI: { $first: "$track.spotifyURI" },
-        explicit: { $top: { sortBy: { createdAt: -1 }, output: "$track.explicit" } },
+        // The latest request's flag: $max compares `at` first. Works on MongoDB 5.0, unlike $top.
+        explicit: { $max: { at: "$createdAt", value: "$track.explicit" } },
         requestCount: { $sum: 1 },
         playCount: {
             $sum: { $cond: [{ $eq: ["$status", "played"] }, 1, 0] },
@@ -247,7 +248,7 @@ const songProjectStage = {
         spotifyLink: 1,
         spotifyURI: 1,
         // Unknown (legacy rows) is left off rather than sent as null
-        explicit: { $ifNull: ["$explicit", "$$REMOVE"] },
+        explicit: { $ifNull: ["$explicit.value", "$$REMOVE"] },
         requestCount: 1,
         playCount: 1,
         totalVotes: 1,

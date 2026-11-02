@@ -108,7 +108,7 @@ export const createRequest = async (req: ExpressRequest, res: Response, next: Ne
         let metadata: Awaited<ReturnType<typeof resolveRequestTrack>> | undefined;
         // When the room blocks explicit songs, only a track Spotify confirmed clean gets in (D4).
         // Rejections return before any write, vote, or emit; checkQueueCapacity only reads counts.
-        const blocksExplicit = room.allowExplicit === false;
+        let blocksExplicit = room.allowExplicit === false;
         const rejectExplicit = (explicit: boolean | undefined) => {
             if (!blocksExplicit || explicit === false) return undefined;
             return explicit
@@ -132,9 +132,11 @@ export const createRequest = async (req: ExpressRequest, res: Response, next: Ne
             if (rejected) return rejected;
         }
         return await withQueueAdmission(String(roomId), async () => {
+            // updateRoom changes allowExplicit under this lock, so this read holds until the write below.
+            blocksExplicit = (await Room.findById(roomId).select("allowExplicit").lean())?.allowExplicit === false;
             const queued = await Request.findOne(filter);
             if (!queued) await checkQueueCapacity(roomId, guestId, capacity);
-            // Re-check inside the lock: the queue may have changed since the pre-check.
+            // Re-check inside the lock: the queue or the room setting may have changed since the pre-check.
             if (blocksExplicit) {
                 const rejected = rejectExplicit(queued ? await queuedExplicit(queued) : (metadata ??= await resolveRequestTrack(track)).explicit);
                 if (rejected) return rejected;
