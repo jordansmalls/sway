@@ -24,6 +24,7 @@ Sway exists because I had finally reached my breaking point: an individual stumb
 
 - Create rooms with a name and description, and automatically receive a custom generated room code, and QR code.
 - Manage one active room at a time: mark tracks as playing or played, remove requests, edit room details, manually add requests, and end the event.
+- Allow or block explicit songs per room, when creating it or at any time while it's live. Guests see the change immediately, and explicit tracks show an "E" badge.
 - Dedicated room display, showcasing room details and providing an easy way for guests to join live rooms.
 - A custom song recommendation engine, based on personal insights and global play history, with one-tap add to queue.
 - Access to custom insights and analytics: request totals, play totals, play conversion, personal/global track statistics, weekly or monthly history and more.

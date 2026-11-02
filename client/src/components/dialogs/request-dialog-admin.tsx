@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useParams } from 'react-router-dom';
 import { useDemoSession } from '@/components/demo/demo-context';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -20,6 +21,7 @@ import {
   createRequestTrackFromSpotifyTrack,
   useCreateRequestMutation,
 } from '@/api/requests';
+import { useRoomDetailsQuery } from '@/api/rooms';
 
 interface RequestDialogProps {
   roomId: string;
@@ -38,6 +40,9 @@ const RequestDialogAdmin = ({
   const demo = useDemoSession();
   const [isOpen, setIsOpen] = useState(false);
   const createRequestMutation = useCreateRequestMutation();
+  // Same cached query the room page uses; room:updated invalidates it, so the toggle shows up live.
+  const { roomCode: rawRoomCode } = useParams<{ roomCode: string }>();
+  const allowExplicit = useRoomDetailsQuery(rawRoomCode?.toUpperCase() ?? '').data?.roomDetails.allowExplicit ?? true;
 
   const handleTrackSelect = (track: SpotifySearchTrack) => {
     setSelectedTrack(track);
@@ -107,7 +112,7 @@ const RequestDialogAdmin = ({
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-3">
-              <SpotifySearch onTrackSelect={handleTrackSelect} />
+              <SpotifySearch onTrackSelect={handleTrackSelect} allowExplicit={allowExplicit} />
               {selectedTrack && (
                 <div className="flex items-center gap-3 rounded-lg bg-muted/50 p-3 ring-1 ring-foreground/10">
                   <img

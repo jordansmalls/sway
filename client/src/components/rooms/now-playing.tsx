@@ -2,6 +2,7 @@ import React from 'react';
 import { AudioLines } from 'lucide-react';
 import { useRequestsByRoomQuery } from '@/api/requests';
 import { GlareHover } from '@/registry/magicui/glare-hover';
+import { ExplicitBadge } from './explicit-badge';
 
 interface NowPlayingProps { roomId: string; }
 
@@ -35,7 +36,10 @@ const NowPlaying: React.FC<NowPlayingProps> = ({ roomId }) => {
           <div className="mb-1.5 flex items-center gap-1.5 text-[0.65rem] font-bold uppercase tracking-normal text-primary">
             <AudioLines className="size-3.5" /> Now playing
           </div>
-          <p className="truncate text-base font-semibold leading-tight tracking-tight sm:text-lg">{nowPlayingRequest.track.title}</p>
+          <div className="flex min-w-0 items-center gap-1.5">
+            <p className="truncate text-base font-semibold leading-tight tracking-tight sm:text-lg">{nowPlayingRequest.track.title}</p>
+            <ExplicitBadge explicit={nowPlayingRequest.track.explicit} />
+          </div>
           <p className="mt-0.5 truncate text-sm text-muted-foreground">{nowPlayingRequest.track.artist}</p>
           {nowPlayingRequest.requestedBy && <p className="mt-2 truncate text-xs text-muted-foreground">Requested by <span className="font-medium text-foreground">{nowPlayingRequest.requestedBy}</span></p>}
         </div>

@@ -128,12 +128,16 @@ export const fetchMostPlayedTracks = async (): Promise<any[]> => {
                 albumArtUrl: { $first: "$track.albumArtUrl" },
                 spotifyLink: { $first: "$track.spotifyLink" },
                 spotifyURI: { $first: "$track.spotifyURI" },
+                // The latest request's flag: $max compares `at` first. Works on MongoDB 5.0, unlike $top.
+                explicit: { $max: { at: "$createdAt", value: "$track.explicit" } },
                 playCount: { $sum: 1 },
                 latestPlayedAt: { $max: "$playedAt" },
             },
         },
         { $sort: { playCount: -1, latestPlayedAt: -1 } },
         { $limit: 20 },
+        // Unknown (legacy rows) is left off rather than sent as null
+        { $set: { explicit: { $ifNull: ["$explicit.value", "$$REMOVE"] } } },
     ]);
 
     mostPlayedTracksCache = tracks;

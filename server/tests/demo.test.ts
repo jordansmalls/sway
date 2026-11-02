@@ -286,3 +286,102 @@ describe("Isolated room demos", () => {
         expect(response.body.message).toBe("Spotify is busy.");
     });
 });
+
+describe("Demo explicit filter", () => {
+    const explicitTrack = { ...demoCatalog[9]!, id: "Explicit0123456789abcd", name: "Explicit song", explicit: true };
+    const cleanTrack = { ...demoCatalog[10]!, id: "Clean01234567890123abc", name: "Clean song", explicit: false };
+    const catalog = [explicitTrack, cleanTrack];
+    const blocked = { success: false, error: "Unprocessable Entity: explicit track", message: "This room isn't accepting explicit songs." };
+    const editRoom = (demo: DemoStart, body: object, token = demo.djToken) => request(app).put(api(`/rooms/${demo.room._id}`))
+        .set("X-Demo-Token", token).send({ roomName: "Demo", roomDescription: "d", ...body });
+    const requestTrack = (demo: DemoStart, spotifyTrackId: string) => request(app).post(api("/requests"))
+        .set("X-Demo-Token", demo.guestToken).send({ roomId: demo.room._id, track: { spotifyTrackId } });
+    const fetchQueue = (demo: DemoStart) => request(app).get(api(`/rooms/${demo.room.roomCode}/fetch/requests`)).set("X-Demo-Token", demo.guestToken);
+
+    beforeEach(() => {
+        vi.mocked(getDemoSpotifyTrack).mockImplementation(async (id) => {
+            const track = [...catalog, ...demoCatalog].find((t) => t.id === id);
+            if (!track) throw new DemoSpotifyError(404, "Track not found.");
+            return track;
+        });
+    });
+
+    it("allows explicit songs by default and returns the setting with the room", async () => {
+        const demo = await start();
+        expect(demo.room.allowExplicit).toBe(true);
+        const details = await request(app).get(api(`/rooms/${demo.room.roomCode}`)).set("X-Demo-Token", demo.guestToken);
+        expect(details.body.roomDetails.allowExplicit).toBe(true);
+        const added = await requestTrack(demo, explicitTrack.id);
+        expect(added.status).toBe(201);
+        expect(added.body.request.track.explicit).toBe(true);
+    });
+
+    it("toggles and persists the setting, rejecting non-boolean values", async () => {
+        const demo = await start();
+        const off = await editRoom(demo, { allowExplicit: false });
+        expect(off.status).toBe(200);
+        expect(off.body.updatedRoom.allowExplicit).toBe(false);
+        expect((await request(app).get("/api/demo/session").set("X-Demo-Token", demo.guestToken)).body.room.allowExplicit).toBe(false);
+        expect((await request(app).get(api(`/rooms/${demo.room._id}`)).set("X-Demo-Token", demo.guestToken)).body.roomDetails.allowExplicit).toBe(false);
+        // Omitting the field leaves it unchanged.
+        expect((await editRoom(demo, {})).body.updatedRoom.allowExplicit).toBe(false);
+        for (const allowExplicit of ["false", 0, null]) {
+            const invalid = await editRoom(demo, { allowExplicit });
+            expect(invalid.status).toBe(400);
+            expect(invalid.body).toEqual({ success: false, error: "Invalid Credentials: allowExplicit must be a boolean", message: "The explicit songs setting must be on or off." });
+        }
+        expect((await editRoom(demo, { allowExplicit: true }, demo.guestToken)).status).toBe(403);
+        expect((await request(app).get("/api/demo/session").set("X-Demo-Token", demo.djToken)).body.room.allowExplicit).toBe(false);
+        expect((await editRoom(demo, { allowExplicit: true })).body.updatedRoom.allowExplicit).toBe(true);
+    });
+
+    it("blocks explicit tracks when the room is clean and lets them in once toggled back", async () => {
+        const demo = await start();
+        await editRoom(demo, { allowExplicit: false });
+        const before = (await fetchQueue(demo)).body.data.length;
+        const rejected = await requestTrack(demo, explicitTrack.id);
+        expect(rejected.status).toBe(422);
+        expect(rejected.body).toEqual(blocked);
+        expect((await fetchQueue(demo)).body.data).toHaveLength(before);
+        const clean = await requestTrack(demo, cleanTrack.id);
+        expect(clean.status).toBe(201);
+        expect(clean.body.request.track.explicit).toBe(false);
+        await editRoom(demo, { allowExplicit: true });
+        const allowed = await requestTrack(demo, explicitTrack.id);
+        expect(allowed.status).toBe(201);
+        expect(allowed.body.request.track.explicit).toBe(true);
+        const rows = (await fetchQueue(demo)).body.data;
+        expect(rows.find((r: { title: string }) => r.title === explicitTrack.name).explicit).toBe(true);
+        expect(rows.find((r: { title: string }) => r.title === cleanTrack.name).explicit).toBe(false);
+        // Seeded snapshot tracks have no flag, so it stays unknown.
+        expect(rows.find((r: { title: string }) => r.title === "DtMF")).not.toHaveProperty("explicit");
+    });
+
+    it("rejects a request for an already-queued explicit track, but not a vote", async () => {
+        const demo = await start();
+        const queued = await requestTrack(demo, explicitTrack.id);
+        await editRoom(demo, { allowExplicit: false });
+        const again = await requestTrack(demo, explicitTrack.id);
+        expect(again.status).toBe(422);
+        expect(again.body).toEqual(blocked);
+        const vote = await request(app).put(api("/requests/vote")).set("X-Demo-Token", demo.djToken).send({ requestId: queued.body.request._id });
+        expect(vote.status).toBe(200);
+    });
+
+    it("checks queued seed tracks with Spotify and fails closed when it can't confirm", async () => {
+        const demo = await start();
+        await editRoom(demo, { allowExplicit: false });
+        const seeded = (await readQueue(demo)).body.requests.find((r: DemoRequest) => r.status === "pending");
+        vi.mocked(getDemoSpotifyTrack).mockRejectedValueOnce(new DemoSpotifyError(503, "Spotify is temporarily unavailable."));
+        const unknown = await requestTrack(demo, seeded.track.spotifyTrackId);
+        expect(unknown.status).toBe(503);
+        expect(unknown.body).toEqual({ success: false, error: "Service Unavailable", message: "We couldn't check this song right now, please try again shortly." });
+        vi.mocked(getDemoSpotifyTrack).mockRejectedValueOnce(new DemoSpotifyError(429, "Spotify is busy.", 7));
+        const busy = await requestTrack(demo, cleanTrack.id);
+        expect(busy.status).toBe(503);
+        expect(busy.headers["retry-after"]).toBe("7");
+        expect((await readQueue(demo)).body.requests.find((r: DemoRequest) => r._id === seeded._id).votes).toBe(seeded.votes);
+        vi.mocked(getDemoSpotifyTrack).mockResolvedValueOnce({ ...demoCatalog[0]!, id: seeded.track.spotifyTrackId, explicit: false });
+        expect((await requestTrack(demo, seeded.track.spotifyTrackId)).body.alreadyQueued).toBe(true);
+    });
+});

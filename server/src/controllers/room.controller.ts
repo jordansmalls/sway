@@ -6,6 +6,7 @@ import { emitRoomEnded, emitRoomUpdated } from "./request.controller";
 import Request from "../models/request.model";
 import { createSpotifyLink, createSpotifyUriLink } from "../utils/formatters/format.spotify";
 import { generateRoomQr } from "../utils/room.qr";
+import { withQueueAdmission } from "../services/guest-votes";
 import type { NextFunction, Request as ExpressRequest, Response } from "express";
 
 /**
@@ -46,7 +47,7 @@ export const fetchActiveRoomSummary = async (req: ExpressRequest, res: Response)
             roomCreator: req.user!._id,
             active: true,
         })
-            .select("roomName roomDescription roomCode roomCreator active scheduledAt createdAt updatedAt")
+            .select("roomName roomDescription roomCode roomCreator active allowExplicit scheduledAt createdAt updatedAt")
             .lean();
 
         if (!activeRoom) {
@@ -107,6 +108,13 @@ export const fetchActiveRoomSummary = async (req: ExpressRequest, res: Response)
 const isActiveRoomConflict = (err: any) =>
     err?.code === 11000 && (err.keyPattern?.roomCreator || String(err.message).includes("one_active_room_per_creator"));
 
+const invalidAllowExplicit = (res: Response) =>
+    res.status(400).json({
+        success: false,
+        error: "Invalid Credentials: allowExplicit must be a boolean",
+        message: "The explicit songs setting must be on or off.",
+    });
+
 /**
  * @desc    Create a Room
  * @route   POST /api/rooms
@@ -114,7 +122,7 @@ const isActiveRoomConflict = (err: any) =>
  */
 
 export const createRoom = async (req: ExpressRequest, res: Response) => {
-    const { roomName, roomDescription } = req.body;
+    const { roomName, roomDescription, allowExplicit } = req.body;
 
     try {
         if (!roomName || !roomDescription) {
@@ -123,6 +131,10 @@ export const createRoom = async (req: ExpressRequest, res: Response) => {
                 error: "Invalid Credentials: room name/description missing",
                 message: "Both a room name and description are required.",
             });
+        }
+
+        if (allowExplicit !== undefined && typeof allowExplicit !== "boolean") {
+            return invalidAllowExplicit(res);
         }
 
         // generate room code to use during room creation
@@ -135,6 +147,7 @@ export const createRoom = async (req: ExpressRequest, res: Response) => {
             roomCode,
             roomCreator: req.user!._id,
             active: true,
+            allowExplicit,
         });
 
         // The new room has no ID in the URL or body; expose it to the request log.
@@ -170,11 +183,11 @@ export const createRoom = async (req: ExpressRequest, res: Response) => {
  * @desc    Update Room Details
  * @route   PUT /api/rooms/:roomId
  * @access  PRIVATE
- * @feats   Update room name and room description
+ * @feats   Update room name, room description, and the explicit songs setting
  */
 
 export const updateRoom = async (req: ExpressRequest<{ roomId: string }>, res: Response) => {
-    const { roomName, roomDescription } = req.body;
+    const { roomName, roomDescription, allowExplicit } = req.body;
     const userId = req.user!._id;
     const { roomId } = req.params;
 
@@ -186,6 +199,10 @@ export const updateRoom = async (req: ExpressRequest<{ roomId: string }>, res: R
                 error: "Invalid Credentials: invalid room id",
                 message: "Oops! Invalid room ID.",
             });
+        }
+
+        if (allowExplicit !== undefined && typeof allowExplicit !== "boolean") {
+            return invalidAllowExplicit(res);
         }
 
         // Find room and validate authorization
@@ -207,12 +224,15 @@ export const updateRoom = async (req: ExpressRequest<{ roomId: string }>, res: R
             });
         }
 
-        // update the room
-        const updatedRoom = await Room.findByIdAndUpdate(
-            roomId,
-            { roomName, roomDescription },
-            { new: true, runValidators: true },
-        );
+        // update only the fields that were sent
+        const update: { roomName?: string; roomDescription?: string; allowExplicit?: boolean } = {};
+        if (roomName !== undefined) update.roomName = roomName;
+        if (roomDescription !== undefined) update.roomDescription = roomDescription;
+        if (allowExplicit !== undefined) update.allowExplicit = allowExplicit;
+
+        const write = () => Room.findByIdAndUpdate(roomId, update, { new: true, runValidators: true });
+        // Wait for in-flight admissions, so no request checked against the old setting is written after this saves.
+        const updatedRoom = allowExplicit === undefined ? await write() : await withQueueAdmission(roomId, write);
 
         if (!updatedRoom) {
             return res.status(500).json({
@@ -294,6 +314,7 @@ export const joinRoom = async (req: ExpressRequest, res: Response) => {
             roomName: room.roomName,
             roomDescription: room.roomDescription,
             roomCode: room.roomCode,
+            allowExplicit: room.allowExplicit,
             createdAt: room.createdAt,
         };
 
@@ -465,6 +486,7 @@ export const fetchRoomDetails = async (req: ExpressRequest<{ roomCode: string }>
                 createdAt: room.createdAt,
                 updatedAt: room.updatedAt,
                 active: room.active,
+                allowExplicit: room.allowExplicit,
             };
 
             return res.status(200).json({
@@ -524,6 +546,7 @@ export const fetchRoomRequests = async (req: ExpressRequest<{ roomCode: string }
                 albumArtUrl: track.albumArtUrl,
                 spotifyUri: createSpotifyUriLink(track.spotifyTrackId),
                 spotifyLink: createSpotifyLink(track.spotifyTrackId),
+                explicit: track.explicit,
                 status: req.status,
                 votes: req.votes,
                 hasVoted: voted.has(String(req._id)),
@@ -590,6 +613,7 @@ export const fetchRoomPlayedRequests = async (req: ExpressRequest<{ roomCode: st
                 albumArtUrl: track.albumArtUrl,
                 spotifyUri: createSpotifyUriLink(track.spotifyTrackId),
                 spotifyLink: createSpotifyLink(track.spotifyTrackId),
+                explicit: track.explicit,
                 status: req.status,
                 votes: req.votes,
                 // ISO timestamps; the client formats them in the viewer's time zone

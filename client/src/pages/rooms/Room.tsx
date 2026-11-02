@@ -48,6 +48,7 @@ const Room: React.FC = () => {
             </div>
             <h1 className="text-balance text-3xl font-bold tracking-tighter sm:text-5xl">{roomData.roomName}</h1>
             {roomData.roomDescription && <p className="mx-auto mt-2 max-w-xl text-pretty text-sm leading-6 text-muted-foreground sm:mt-3 sm:text-base">{roomData.roomDescription}</p>}
+            {roomData.allowExplicit === false && <p className="mx-auto mt-2 max-w-xl text-xs text-muted-foreground">Explicit songs are turned off in this room.</p>}
           </section>
 
           <div className="space-y-5 sm:space-y-7">

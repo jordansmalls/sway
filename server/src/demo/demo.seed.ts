@@ -21,7 +21,9 @@ export function demoRequest(track: SpotifyCatalogTrack, roomId: string, requeste
         roomId, status: "pending", votes: 1, playedAt: null as string | null,
         completedAt: null as string | null, requestedBy, createdAt, updatedAt: createdAt,
         track: { spotifyTrackId: track.id, title: track.name, artist: track.artist,
-            albumArtUrl: track.albumImage, spotifyLink: `https://open.spotify.com/track/${track.id}`, spotifyURI: `spotify:track:${track.id}` },
+            albumArtUrl: track.albumImage, spotifyLink: `https://open.spotify.com/track/${track.id}`, spotifyURI: `spotify:track:${track.id}`,
+            // Snapshot seed tracks carry no flag, so it stays unknown (undefined) rather than guessed.
+            explicit: track.explicit },
     };
 }
 
@@ -32,7 +34,7 @@ export function seedDemo() {
         hasActiveRoom: true, hasUsername: true, active: true, admin: false, createdAt, updatedAt: createdAt };
     const room = { _id: `demo-room-${suffix}`, roomCode: `DEMO-${suffix.toUpperCase()}`, roomName: "The Sway Demo",
         roomDescription: "Your room. Your rhythm. Try requesting a track, voting for a favorite, or stepping behind the decks.",
-        roomCreator: user._id, active: true, isDemo: true, createdAt, updatedAt: createdAt };
+        roomCreator: user._id, active: true, allowExplicit: true, isDemo: true, createdAt, updatedAt: createdAt };
     // Keep the five active songs independent of the sample played tracklist.
     const requests = [...demoQueueTracks, ...demoSeedTracks.slice(5, 8)].map((track, index) => {
         const request = demoRequest(track, room._id, ["Alex", "Sam", "Taylor", "Jordan"][index % 4]!, 9 - index);

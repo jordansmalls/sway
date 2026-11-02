@@ -35,6 +35,8 @@ export type RecommendedTrack = {
   artist: string
   albumArtUrl?: string
   spotifyLink?: string
+  // Undefined for tracks Sway has no stored flag for (legacy requests, curated fallback)
+  explicit?: boolean
   playCount: number
 }
 

@@ -48,14 +48,14 @@ The unit tests cover the formatting helpers, request-cache updates, and profile-
 - **Dashboard:** account totals, an active room summary, recent requests, a 7 day received/played activity chart, play conversion, and personal/global song statistics.
 - **Insights:** additional request, play, vote, and artist analytics.
 - **Navigation:** a responsive sidebar with recent rooms, account controls, and a shared app layout.
-- **Room admin:** edit details, request songs, manage the queue, add recommended tracks in one tap, open the room display, share a real room, and end the event.
-- **Guest room:** Spotify search, requests, votes, Now Playing, and access to the played tracklist without signup.
+- **Room admin:** edit details and the allow-explicit setting (a "Clean only" badge shows when explicit songs are blocked), request songs, manage the queue, add recommended tracks in one tap, open the room display, share a real room, and end the event.
+- **Guest room:** Spotify search (explicit results are greyed out when the room blocks them), requests, votes, Now Playing, and access to the played tracklist without signup.
 - **Room display:** room information and a large join QR code, with a corresponding private demo display.
 - **Room history:** search, pagination, status, request/play counts, play-rate progress, room editing/deletion, played-tracklist exports, and request JSON export.
 - **Profile and settings:** public music statistics, username/email/password management, account deactivation, light/dark/system theme, and six toast-position options.
 - **Password reset:** the login page links to a forgot-password form, and the emailed link opens a reset form. See the [server password reset notes](../server/README.md#password-reset).
 
-Recommended tracks show up to 20 songs split across two scrolling rows, each with an Add to queue button. Once the DJ has played 20 different songs, the picks come from their own play history. Until then, they show Sway's most played tracks, topped up with a curated list of popular songs. Tracks already pending or playing show as queued, and a DJ adding to their own room skips the guest request limits. Demos show a curated set of 19 tracks with sample play counts.
+Recommended tracks show up to 20 songs split across two scrolling rows, each with an Add to queue button. Once the DJ has played 20 different songs, the picks come from their own play history. Until then, they show Sway's most played tracks, topped up with a curated list of popular songs. Explicit picks are hidden in rooms that block explicit songs. Tracks already pending or playing show as queued, and a DJ adding to their own room skips the guest request limits. Demos show a curated set of 19 tracks with sample play counts.
 
 ## Routes
 

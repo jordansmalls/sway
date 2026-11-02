@@ -27,7 +27,12 @@ type JoinRoomResponse = {
   success: true
   roomDetails: Pick<
     Room,
-    "_id" | "roomName" | "roomDescription" | "roomCode" | "createdAt"
+    | "_id"
+    | "roomName"
+    | "roomDescription"
+    | "roomCode"
+    | "allowExplicit"
+    | "createdAt"
   >
 }
 
@@ -59,7 +64,7 @@ type LatestRoomsResponse = {
 
 export type ActiveRoomSummary = Pick<
   Room,
-  "_id" | "roomName" | "roomDescription" | "roomCode" | "roomCreator" | "active" | "scheduledAt" | "createdAt" | "updatedAt"
+  "_id" | "roomName" | "roomDescription" | "roomCode" | "roomCreator" | "active" | "allowExplicit" | "scheduledAt" | "createdAt" | "updatedAt"
 > & {
   requestsReceived: number
   requestsPlayed: number
@@ -82,12 +87,14 @@ type ActiveRoomSummaryResponse = {
 export type CreateRoomInput = {
   roomName: string
   roomDescription: string
+  allowExplicit?: boolean
 }
 
 export type UpdateRoomInput = {
   roomId: string
   roomName?: string
   roomDescription?: string
+  allowExplicit?: boolean
 }
 
 export type JoinRoomInput = {
